@@ -750,13 +750,17 @@ export async function executeSweep(pub, wallet, account, plan, log = () => {}, {
   // pool's $BOBAI are bought together, the pool's share of what arrived is taken by proportion
   const halfA = split.liq / 2n, halfB = split.liq - halfA, buyIn = split.hold + halfA;
   const bobaiQuote = (plan.bobaiOut * buyIn) / plan.amount;
+  // THE BUY FIRST, THE OPERATOR'S HALF AFTER IT (2026-11-16, A-Z review 15.11.): with the transfer first, a buy the floor
+  // refused left the $BOBAI half in the wallet, and the next sweep split that half again — the operator got three
+  // quarters, $BOBAI one. A plain transfer does not fail where a swap can; so the swap goes first, and a refused swap
+  // has moved nothing but an approval: the next sweep splits the whole again, half and half.
   const before = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
-  await send(`send half of the ${plan.source.symbol} to the operator`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'transfer', args: [OPERATOR_WALLET, toOperator] });
-  await send(`approve ${plan.source.symbol}`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, toBobai] });
+  await send(`approve ${plan.source.symbol}`,{ address: plan.source.token, abi: ABI.ERC20, functionName: 'approve', args: [ADDR.V2_ROUTER, toBobai] });
   await send(split.liq ? 'buy $BOBAI with the other half (held, and the share for the pool)' : `buy $BOBAI with the other half and hold it`, {
     address: ADDR.V2_ROUTER, abi: ABI.ROUTER, functionName: 'swapExactTokensForTokensSupportingFeeOnTransferTokens',
     args: [buyIn, bobaiBuyFloor(bobaiQuote), [plan.source.token, ADDR.WBNB, ADDR.BOBAI], holder, deadline()],
   });
+  await send(`send half of the ${plan.source.symbol} to the operator`, { address: plan.source.token, abi: ABI.ERC20, functionName: 'transfer', args: [OPERATOR_WALLET, toOperator] });
   const after = await read(pub, ADDR.BOBAI, ABI.ERC20, 'balanceOf', [holder]);
   const got = after > before ? after - before : 0n, bobaiIn = buyIn > 0n ? (got * halfA) / buyIn : 0n;
   const out = { txs, sold: formatUnits(toBobai, plan.source.decimals), to_operator: formatUnits(toOperator, plan.source.decimals), operator: OPERATOR_WALLET, bobai_bought: formatEther(got - bobaiIn), bnb_worth: formatEther(plan.bnbOut), held_by: holder };

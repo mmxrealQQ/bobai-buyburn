@@ -23,12 +23,13 @@
 // at its block for minutes, and the public endpoints prune it within seconds.
 //
 //   node scripts/lp-fork-test.mjs            every path
-//   node scripts/lp-fork-test.mjs --only up  one of: up, down, reserve, resume, collect
+//   node scripts/lp-fork-test.mjs --only up  one of: up, down, reserve, resume, collect, thirds, sweep, sweepliq, sweepsmall, sweepfail
 import 'dotenv/config';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { createPublicClient, createWalletClient, createTestClient, http, parseAbi, parseEther, formatEther, encodeFunctionData } from 'viem';
 import { bsc } from 'viem/chains';
 import {
@@ -337,7 +338,7 @@ await scenario('EVERY AI PAYMENT: HALF BUYS $BOBAI, HALF TO THE OPERATOR (2026-1
   if (plan.no) return;
   const txs = [], done = await executeSweep(pub, walletOf(src.wallet), src.wallet, plan, () => {}, { txs });
   const usd1 = await bal(src.token, src.wallet), bobai1 = await bal(BOBAI, src.wallet), lpBnb1 = await pub.getBalance({ address: LP }), op1 = await bal(src.token, OPERATOR_WALLET);
-  ok('three transactions: half to the operator, approve, one swap USD1 -> WBNB -> $BOBAI', txs.length === 3 && /half of the USD1 to the operator/.test(txs[0].label) && /buy \$BOBAI with the other half/.test(txs[2].label), txs.map((t) => t.label).join(' · '));
+  ok('three transactions: approve, one swap USD1 -> WBNB -> $BOBAI, then half to the operator (the buy first, 2026-11-16)', txs.length === 3 && /buy \$BOBAI with the other half/.test(txs[1].label) && /half of the USD1 to the operator/.test(txs[2].label), txs.map((t) => t.label).join(' · '));
   ok('the swept USD1 has left the wallet', usd0 - usd1 === plan.amount, `${Number(usd0 - usd1) / 1e18} of ${Number(plan.amount) / 1e18}`);
   ok('the operator received exactly half, in USD1 as it was paid', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} USD1 of ${Number(plan.amount) / 1e18}`);
   ok('$BOBAI for the other half arrived in the income wallet, at least the floor (half the quote less the 3% tax less 5%)', bobai1 - bobai0 >= (plan.bobaiOut / 2n * 97n * 95n) / 10000n && Number(done.bobai_bought) > 0, `${done.bobai_bought} $BOBAI for half of a quote of ${(Number(plan.bobaiOut) / 1e18).toFixed(2)}`);
@@ -385,6 +386,39 @@ await scenario('INCOME ALSO DEEPENS THE POOL, AT TODAY\'S SIZE (22.10. evening: 
   ok('the operator still receives exactly half', op1 - op0 === plan.amount / 2n, `${Number(op1 - op0) / 1e18} of ${Number(plan.amount) / 1e18}`);
   ok('the gas line was read and the pool part followed it', gasUsd > 0 && (want.liq > 0n) === !!done.liquidity, `gas of the pool part ${gasUsd?.toFixed(4)} $, line ${(gasUsd / 0.05).toFixed(2)} $, pool part ${want.liq_usd} $ -> ${done.liquidity ? 'into the pool' : 'held'}`);
   if (done.liquidity) ok('LP of the small part burned', lp1 > lp0, `${done.liquidity.lp_burned} LP`);
+});
+
+await scenario('A REFUSED BUY SPLITS NOTHING (2026-11-16, A-Z review 15.11.) — the $BOBAI buy is refused at its floor: the operator receives nothing and the whole payment waits in the wallet for the next sweep, still half and half; the code before sent the operator half first, and the next sweep split the rest again', 'sweepfail', async () => {
+  const src = INCOME_SOURCES.find((s) => s.key === 'x402');
+  await sendAs(WHALE, { address: ADDR.V2_ROUTER, abi: parseAbi(['function swapExactETHForTokens(uint256,address[],address,uint256) payable returns (uint256[])']), functionName: 'swapExactETHForTokens', args: [0n, [ADDR.WBNB, src.token], src.wallet, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.05') });
+  await test.setBalance({ address: src.wallet, value: parseEther('0.01') });
+  const plan = await planSweep(pub, src);
+  ok('the plan sweeps the payment', !plan.no && plan.amount > 0n, plan.no || '');
+  if (plan.no) return;
+  // a floor no pool gives: the quote doubled (a price that ran away between the read and the block)
+  const refused = { ...plan, bobaiOut: plan.bobaiOut * 2n };
+  const attempt = async (sweep) => {
+    const snap = await test.snapshot();
+    const usd0 = await bal(src.token, src.wallet), op0 = await bal(src.token, OPERATOR_WALLET);
+    let err = null; try { await sweep(pub, walletOf(src.wallet), src.wallet, refused, () => {}, { txs: [] }); } catch (e) { err = e; }
+    const r = { err, kept: usd0 - (await bal(src.token, src.wallet)), toOp: (await bal(src.token, OPERATOR_WALLET)) - op0 };
+    await test.revert({ id: snap });
+    return r;
+  };
+  const now = await attempt(executeSweep);
+  ok('the buy was refused (the step stops)', !!now.err, now.err ? String(now.err.shortMessage || now.err.message).slice(0, 90) : 'it went through');
+  ok('the operator received nothing, the whole payment is still in the wallet', now.toOp === 0n && now.kept === 0n, `operator +${Number(now.toOp) / 1e18}, wallet -${Number(now.kept) / 1e18} USD1`);
+  // the code before (git HEAD), same fork, same refused buy
+  let headSrc = null; try { headSrc = execSync('git show HEAD:shared/lp-agent.js', { cwd: process.cwd(), maxBuffer: 1e8 }).toString(); } catch { /* not in a repo */ }
+  if (headSrc && !/THE BUY FIRST, THE OPERATOR'S HALF AFTER IT/.test(headSrc)) {
+    const headCopy = path.join(process.cwd(), 'shared', '.lp-agent-head-fork.mjs');
+    fs.writeFileSync(headCopy, headSrc);
+    try {
+      const head = await import(pathToFileURL(headCopy).href);
+      const before = await attempt(head.executeSweep);
+      ok('… and the code before had sent the operator half before the refusal (the check sees the fault)', !!before.err && before.toOp === plan.amount / 2n, `operator +${Number(before.toOp) / 1e18} of ${Number(plan.amount) / 1e18} USD1`);
+    } finally { fs.rmSync(headCopy, { force: true }); }
+  }
 });
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

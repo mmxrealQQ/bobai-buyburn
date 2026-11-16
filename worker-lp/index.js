@@ -45,6 +45,37 @@ export const KV_KEY = 'lp:agent';
 // can tell "just left" from "gone for two hours". Cleared the moment the
 // price is back inside or the range has been re-set.
 export const OUT_SINCE_KEY = 'lp:out_since';
+// THE EDGE DOES NOT RESTART THE WAIT (2026-11-16, A-Z review 15.11.): a centred range the price left by more than the
+// slack, came back to within it and left again had its note cleared at the edge and stamped anew — a price swinging
+// around edge + 0.5 % restarted the two hours every swing, and the range, earning nothing, was never re-set. Beside a
+// centred range the note now stays until the price is back INSIDE; the edge still re-sets nothing. Beside a one-sided
+// range (minted at the edge by design) it is cleared as before. Pure; pinned by scripts/lp-lock-edge-regressions.mjs.
+export function edgeKeepsClock(env, inRange) { return env.LP_RESET_MODE === 'centred' && !inRange; }
+// ONE RE-SET AT A TIME (2026-11-16, A-Z review 15.11.): a re-set asks the second opinion first (up to five minutes)
+// and then sends; the :50 check or the 04:23 run doing so can still be at it when the next ten-minute watch starts,
+// and the two would send from the same wallet into a range half unwound. The re-set holds this key while it works
+// (15 min at most, a cron's whole life); a watch that finds it held does nothing, an hourly or daily run waits for it.
+// THE RE-SET IS STILL DUE AFTER THE SECOND OPINION (2026-11-16, A-Z review 15.11.): the plan was read before the ask,
+// and the ask may take five minutes. Read again after it: null = still due (go on with the fresh plan), else the reason
+// it is not — a price back inside or at the edge is no re-set to pay for. A resume (no position, the two tokens in the
+// wallet) stays due while the fresh read still finds it. Pure; pinned by scripts/lp-lock-edge-regressions.mjs.
+export function stillDue(fresh, old) {
+  if (old.resume) return fresh.resume && !fresh.no ? null : `the re-set to finish is no longer there after the second opinion${fresh.no ? ` (${fresh.no})` : ''}`;
+  if (fresh.resume || String(fresh.summary?.position ?? '') !== String(old.summary?.position ?? '')) return 'the position changed while the second opinion was asked — nothing sent, the next check reads it anew';
+  if (fresh.summary?.in_range) return 'the price came back inside the range while the second opinion was asked — no re-set';
+  if (fresh.summary?.at_edge) return 'the price came back to the edge of the range while the second opinion was asked — no re-set';
+  if (fresh.no) return `after the second opinion: ${fresh.no}`;
+  return null;
+}
+export const BUSY_KEY = 'lp:busy';
+export const BUSY_TTL_S = 900;
+export const BUSY_WAIT_MS = 8 * 60000;
+export async function busyAfterWait(env, { watch = false, waitMs = BUSY_WAIT_MS, stepMs = 15000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  let held = await env.AGENT.get(BUSY_KEY).catch(() => null);
+  if (!held || watch) return held;
+  for (let waited = 0; held && waited < waitMs; waited += stepMs) { await sleep(stepMs); held = await env.AGENT.get(BUSY_KEY).catch(() => null); }
+  return held;
+}
 // THE LADDER RECORD (2026-09-16): which position is the main range and
 // which the reserve range below the price (shared/lp-agent.js, planLadder).
 // Every step reads the wallet through it, so two positions it names read as
@@ -189,6 +220,19 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
   }
   const lp = account(lpKey);
   entry.wallet = lp.address;
+  // a re-set still at work (BUSY_KEY): the watch leaves the wallet to it; the hourly and daily runs wait, then stop
+  // with a red line rather than send beside it. The sweep above moved other wallets and is not held up.
+  if (!dry) {
+    const busy = await busyAfterWait(env, { watch });
+    if (busy) {
+      const why = `a re-set is still at work (${busy}) — ${watch ? 'the watch leaves the wallet to it' : `still at work after ${BUSY_WAIT_MS / 60000} min, nothing sent beside it`}`;
+      if (watch) { console.log(`[LP] ${at}: ${why}`); return { ...entry, skipped: why }; }
+      entry.ok = false;
+      for (const s of ['collect', 'relocate', 'rebalance', 'ladder', 'increase']) if (steps.includes(s)) entry.steps[s] = { acted: false, error: why };
+      entry.why = whyOf(entry.steps);
+      return record(env, entry, steps.length < STEPS.length);
+    }
+  }
   const lpWallet = () => createWalletClient({ account: lp, chain: bsc, transport: transport() });
   const ladder = await readLadder(env);
   // The record follows the chain (ladderHeal, 2026-09-17): a main range the
@@ -279,13 +323,14 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
         const forced = settled || (ladderOn && s.side === 'other') ? null : depositForcesReset({ inRange: false, spendableBnb: s.spendable_bnb, valueBnb: s.value_bnb });
         if (!forced) {
           const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
-          if (settled) { if (outSinceRaw != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY); }
+          const edgeKeeps = edgeKeepsClock(env, s.in_range);
+          if (settled) { if (outSinceRaw != null && !dry && !edgeKeeps) await env.AGENT.delete(OUT_SINCE_KEY); }
           else if (outSinceRaw == null && !dry) await env.AGENT.put(OUT_SINCE_KEY, at);
           return {
             position: s.position, ticks: [Number(inc.pos[5]), Number(inc.pos[6])], tick: s.tick, in_range: s.in_range,
             pool: s.pool, wbnb_is0: inc.wbnbIs0, value_bnb: s.value_bnb,
             acted: false, watch: true, looked_only: true, ...(lf.outside && !lf.left ? { at_edge: true, ticks_beyond_edge: lf.ticks_away } : {}),
-            outside_since: settled ? null : (outSinceRaw || at),
+            outside_since: settled ? (edgeKeeps ? outSinceRaw : null) : (outSinceRaw || at),
             deposit_beside: { spendable_bnb: s.spendable_bnb, value_bnb: s.value_bnb },
             why: 'deposit watch: the range is re-set here only when a large deposit waits beside it; the hourly check does the rest',
           };
@@ -310,11 +355,14 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     const outSinceRaw = await env.AGENT.get(OUT_SINCE_KEY);
     const outSince = outSinceRaw ? Date.parse(outSinceRaw) : null;
     let upgrade = null;
-    // At the edge (within the slack) counts as settled: the wait does not
-    // run, and a note that ran is cleared — the price is back at the range.
+    // At the edge (within the slack) is not a re-set: the price may be back
+    // within the hour. Beside a one-sided range a note that ran is cleared —
+    // the edge is where such a range lives. Beside a centred range the note
+    // stays (edgeKeepsClock): it is still outside and earning nothing.
     if (plan.summary.at_edge === true && !plan.summary.in_range) {
-      if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
-      return { ...plan.summary, acted: false, why: plan.no };
+      const edgeKeeps = edgeKeepsClock(env, false);
+      if (outSince != null && !dry && !edgeKeeps) await env.AGENT.delete(OUT_SINCE_KEY);
+      return { ...plan.summary, acted: false, ...(edgeKeeps && outSinceRaw ? { outside_since: outSinceRaw } : {}), why: plan.no };
     }
     if (plan.summary.in_range) {
       if (outSince != null && !dry) await env.AGENT.delete(OUT_SINCE_KEY);
@@ -377,8 +425,19 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
     // THE SECOND OPINION (2026-10-14, operator's choice "an agent that hires an agent"; stage 1: recorded beside the
     // run, it decides nothing): before money moves, an outside agent is paid to read the position independently
     // (agent worker /second-opinion: Mandate Range-1 over the ERC-8183 kernel, through the Altana leash). A failed or
-    // slow opinion never stops or delays the re-set beyond its one-minute cap.
+    // slow opinion never stops the re-set; it is waited for up to five minutes (askSecondOpinion), and then the plan is
+    // read again (stillDue): a price back in the range by then is no re-set any more, and one still out is re-set from
+    // the pool as it is now, not as it was five minutes before. BUSY_KEY is held from the ask to the last send.
+    await env.AGENT.put(BUSY_KEY, `${watch ? 'watch' : steps.length === STEPS.length ? 'daily run' : 'hourly check'} of ${at}`, { expirationTtl: BUSY_TTL_S }).catch(() => {});
+    try {
     entry.second_opinion = await askSecondOpinion(env, 'before a re-set', { position: plan.summary.position ?? null, in_range: plan.summary.in_range ?? null, tick: plan.summary.tick ?? null });
+    let fresh = null;
+    try { fresh = await planRebalance(pub, lp.address, { record, pool: log?.pool || null, keptPct, ladder, widthOverride: fixedWidth, centred: env.LP_RESET_MODE === 'centred' }); } catch { fresh = null; }
+    const gone = fresh ? stillDue(fresh, plan) : null;
+    if (gone) return { ...fresh.summary, ...forcedNote, acted: false, outside_since: outSinceRaw, why: gone };
+    // a read that failed keeps the plan in hand (the re-set as it was before 2026-11-16), and says so
+    const go = fresh || plan;
+    const replanNote = fresh ? {} : { replan: 'the plan could not be read again after the second opinion — the first plan was used' };
     const txs = [];
     try {
       // THE MERGE (2026-09-16). A reserve range that holds the same token as
@@ -386,7 +445,7 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       // first; its tokens and fees come back to the wallet, and the mint
       // below takes them with the rest — one range again, no trade.
       let merged = null;
-      if (plan.summary.reserve) {
+      if (go.summary.reserve) {
         const lp2 = await planLadder(pub, lp.address, { record: widthRecord, ladder });
         if (lp2.act === 'merge') {
           const m = await executeLadder(pub, lpWallet(), lp, lp2, () => {}, { txs });
@@ -396,13 +455,14 @@ export async function agentTick(env, { dry = false, steps = STEPS, watch = false
       }
       // A re-set a deposit forced takes the deposit with it: wrapped after
       // the unwind, minted with the rest, no sell-then-buy-back.
-      const done = await executeRebalance(pub, lpWallet(), lp, plan, () => {}, { keptPct, wrapFirst: !!forced, txs });
+      const done = await executeRebalance(pub, lpWallet(), lp, go, () => {}, { keptPct, wrapFirst: !!forced, txs });
       if (done.new_position) { ladder.main = String(done.new_position); ladder.since = ladder.since || at; }
       const kv = await afterSend(async () => { await env.AGENT.delete(OUT_SINCE_KEY); if (done.new_position) await writeLadder(env, ladder); });
-      return { ...plan.summary, ...forcedNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done, ...kv };
+      return { ...go.summary, ...forcedNote, ...replanNote, acted: true, outside_since: outSinceRaw, ...(merged || {}), ...done, ...kv };
     } catch (e) {
-      return { ...plan.summary, ...forcedNote, acted: txs.length > 0, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
+      return { ...go.summary, ...forcedNote, ...replanNote, acted: txs.length > 0, outside_since: outSinceRaw, error: String(e.shortMessage || e.message).slice(0, 300), txs };
     }
+    } finally { await env.AGENT.delete(BUSY_KEY).catch(() => {}); }
   });
   // The price the check saw goes on the tape, every ten minutes, whatever
   // the step decided (lp-windows.js, THE PRICE TAPE). The price is WBNB per

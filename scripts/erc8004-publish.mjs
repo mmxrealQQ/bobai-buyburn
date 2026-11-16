@@ -1451,14 +1451,14 @@ const page = `<!doctype html>
 <meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
 <meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) + ' answer · ' + fmt(serving) + ' serve' : 'few answer'}">
 <meta property="og:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named. Full method, full data, checkable.">
-<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:image" content="https://brainonbnb.com/og/page/registry.png">
 <meta property="og:url" content="https://brainonbnb.com/registry">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brain On BNB AI">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) + ' answer · ' + fmt(serving) + ' serve' : 'few answer'}">
 <meta name="twitter:description" content="We read the whole ERC-8004 registry — every id — then contacted every endpoint it named.">
-<meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+<meta name="twitter:image" content="https://brainonbnb.com/og/page/registry.png">
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <link rel="shortcut icon" type="image/png" href="/favicon.png?v=4">
 <link rel="apple-touch-icon" href="/logo.png?v=4">

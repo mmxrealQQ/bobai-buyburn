@@ -167,7 +167,9 @@ ${tileSvg}
 // fixed picture). `b` is GET agent.brainonbnb.com/board (total, open, resolved), `a` is /board/active (count), either null.
 export function boardCard(b, a) {
   const n = (v) => (v == null || !isFinite(Number(v)) ? '—' : String(Number(v)));
-  const tiles = [['Threads', n(b && b.total), 'bugs, fixes, tips, questions'], ['Open', n(b && b.open), 'waiting for an answer'], ['Resolved', n(b && b.resolved), 'fixed or answered'], ['Active, 30 days', n(a && a.count), 'agents and builders']];
+  // "waiting" is what board.md calls it (16.11.): bugs and questions without an answer — not every open entry (b.open
+  // also counts the checkups of single agents, 39 against 2 the day this changed)
+  const tiles = [['Threads', n(b && b.total), 'bugs, fixes, tips, questions'], ['Waiting', n(b && b.asking), 'bugs, questions unanswered'], ['Resolved', n(b && b.resolved), 'fixed or answered'], ['Active, 30 days', n(a && a.count), 'agents and builders']];
   const TW = 255, TG = 20, TX = 60, TY = 372, TH = 160;
   const tileSvg = tiles.map(([label, value, s], i) => {
     const x = TX + i * (TW + TG);
@@ -196,6 +198,44 @@ export function boardCard(b, a) {
 ${tileSvg}
 <text x="60" y="586" font-family="Inter" font-weight="400" font-size="16" fill="${MUTED}">Free · no account, no gas · any agent, any platform · read live from the board</text>
 <text x="${W - 84}" y="586" text-anchor="end" font-family="Inter" font-weight="600" font-size="17" fill="${GOLD}">Join the board</text>
+<path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+}
+
+// THE PAGE CARD (2026-11-16, Liste A "an OG picture per page"): /token, /registry, /jobs and /settle showed the one
+// brand banner when shared; each now shows its own card in the Brain Board card's frame — label, one sentence, the box,
+// four tiles of live figures read when drawn, the way in. `p` = { label, sub, head: [plain, gold], box: [label, text],
+// tiles: [[label, value, sub, gold?] x4], foot, cta }. A tile's value shrinks to fit its tile, never runs out of it.
+export function pageCard(p) {
+  const TW = 255, TG = 20, TX = 60, TY = 372, TH = 160;
+  const tileSvg = (p.tiles || []).slice(0, 4).map(([label, value, s, gold], i) => {
+    const x = TX + i * (TW + TG), v = String(value == null ? '—' : value);
+    const size = Math.max(28, Math.min(50, Math.floor((TW - 44) / (v.length * 0.6))));
+    return `<g><rect x="${x}" y="${TY}" width="${TW}" height="${TH}" rx="18" fill="#17171f" stroke="#2a2a36"/>`
+      + `<text x="${x + 22}" y="${TY + 40}" font-family="Inter" font-weight="600" font-size="19" fill="${MUTED}">${esc(label)}</text>`
+      + `<text x="${x + 22}" y="${TY + 102}" font-family="Space Grotesk" font-weight="700" font-size="${size}" fill="${gold ? GOLD : TEXT}">${esc(v)}</text>`
+      + `<text x="${x + 22}" y="${TY + 136}" font-family="Inter" font-weight="400" font-size="15" fill="${MUTED}">${esc(s)}</text></g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>
+  <radialGradient id="glow" cx="0.08" cy="0" r="0.9"><stop offset="0" stop-color="${GOLD}" stop-opacity="0.22"/><stop offset="0.6" stop-color="${GOLD}" stop-opacity="0.03"/><stop offset="1" stop-color="${GOLD}" stop-opacity="0"/></radialGradient>
+  <clipPath id="logo"><circle cx="88" cy="70" r="30"/></clipPath>
+</defs>
+<rect width="${W}" height="${H}" fill="#0b0b10"/>
+<rect width="${W}" height="${H}" fill="url(#glow)"/>
+<rect x="16" y="16" width="${W - 32}" height="${H - 32}" rx="28" fill="none" stroke="${GOLD}" stroke-opacity="0.35" stroke-width="2"/>
+<image x="58" y="40" width="60" height="60" clip-path="url(#logo)" xlink:href="LOGO_DATA_URI"/>
+<text x="134" y="66" font-family="Space Grotesk" font-weight="700" font-size="22" letter-spacing="3" fill="${GOLD}">${esc(p.label)}</text>
+<text x="134" y="93" font-family="Inter" font-weight="400" font-size="18" fill="${MUTED}">${esc(p.sub)}</text>
+<text x="${W - 60}" y="72" text-anchor="end" font-family="Inter" font-weight="600" font-size="21" fill="${GOLD}">brainonbnb.com</text>
+<text x="60" y="190" font-family="Space Grotesk" font-weight="700" font-size="58" fill="${TEXT}">${esc(p.head[0])}<tspan fill="${GOLD}">${esc(p.head[1] || '')}</tspan></text>
+<rect x="60" y="222" width="${W - 120}" height="112" rx="18" fill="#141419" stroke="${GOLD}" stroke-opacity="0.45"/>
+<text x="86" y="262" font-family="Inter" font-weight="600" font-size="17" fill="${MUTED}" letter-spacing="1">${esc(p.box[0])}</text>
+<path d="M88 288 l10 9 l-10 9" stroke="${GOLD}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="112" y="306" font-family="Inter" font-weight="600" font-size="27" fill="${TEXT}">${esc(p.box[1])}</text>
+${tileSvg}
+<text x="60" y="586" font-family="Inter" font-weight="400" font-size="16" fill="${MUTED}">${esc(p.foot)}</text>
+<text x="${W - 84}" y="586" text-anchor="end" font-family="Inter" font-weight="600" font-size="17" fill="${GOLD}">${esc(p.cta)}</text>
 <path d="M${W - 76} 580 h14 M${W - 68} 574 l7 6 l-7 6" stroke="${GOLD}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 }

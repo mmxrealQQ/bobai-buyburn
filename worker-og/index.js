@@ -9,7 +9,8 @@ import grotesk from './fonts/grotesk-700.ttf';
 import inter400 from './fonts/inter-400.ttf';
 import inter600 from './fonts/inter-600.ttf';
 import logo from './logo.png';
-import { card, agentCard, boardCard, popCard } from './card.js';
+import { card, agentCard, boardCard, popCard, pageCard } from './card.js';
+import { pageSpec, PAGES } from './pages.js';
 import jpeg from 'jpeg-js';
 
 let ready = null;
@@ -78,6 +79,22 @@ export default {
       if (run.ranked) { const t = await get(POP + 'top?scope=day&d=' + run.day); const i = t && Array.isArray(t.rows) ? t.rows.findIndex((x) => x.run === run.run) : -1; if (i >= 0) { place = { rank: i + 1, players: t.players, today: run.day === new Date().toISOString().slice(0, 10) }; run.name = t.rows[i].name || run.name; /* the name the player plays as now, as the board and the Telegram post show it */ } }
       const svg = popCard(run, place, await posterUri()), png = jpg ? await renderJpeg(svg) : await render(svg);
       const res = new Response(png, { headers: { 'content-type': jpg ? 'image/jpeg' : 'image/png', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' } });
+      ctx.waitUntil(caches.default.put(key, res.clone()));
+      return res;
+    }
+    // THE PAGE CARDS (2026-11-16): /page/<token|registry|jobs|settle>.png with that page's live figures (pages.js), 15
+    // minutes at the edge like the board's; /page/scanner.png is the plain "scan any token" card. A page whose sources did
+    // not answer still gets its card, figures as "—", kept two minutes only.
+    const pg = url.pathname.match(/^\/(?:og\/)?page\/([a-z]{3,12})\.png$/);
+    if (pg && (PAGES.includes(pg[1]) || pg[1] === 'scanner')) {
+      const key = new Request('https://og.brainonbnb.com/page/' + pg[1] + '.png');
+      const hit = await caches.default.match(key);
+      if (hit) return hit;
+      const get = (u) => fetch(u, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const spec = pg[1] === 'scanner' ? null : await pageSpec(pg[1], get);
+      const png = await render(pg[1] === 'scanner' ? card(null) : pageCard(spec));
+      const fresh = pg[1] === 'scanner' || (spec && spec.ok);
+      const res = new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': `public, max-age=${fresh ? 900 : 120}`, 'access-control-allow-origin': '*' } });
       ctx.waitUntil(caches.default.put(key, res.clone()));
       return res;
     }

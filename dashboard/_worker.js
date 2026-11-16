@@ -2824,7 +2824,23 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // says is written where the page waits; without an answer the page stands as before. The browser draws it all anyway.
     if ((response.headers.get('content-type') || '').includes('text/html') && RECORD_PAGES[url.pathname.replace(/.html$/, '')]) {
       const rp = RECORD_PAGES[url.pathname.replace(/.html$/, '')];
-      const ask = (u) => fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      // a record source is kept 2 minutes at the edge (2026-11-16, measured: /services waited ~1 s on every load for one
+      // number of /stats, /registry 2.6 s, and /buys at 3.3 s never made the 2.5 s limit, so "paid us" was never written);
+      // a slow one goes on in the background and fills the cache for the next reader, the page waits at most 2.5 s
+      // (the Cache API, not cf.cacheTtl: these sources are Workers, and a Worker answers before the edge cache would)
+      const ask = async (u) => {
+        const key = new Request(u), cache = caches.default;
+        const hit = await cache.match(key).catch(() => null);
+        if (hit) return hit.json().catch(() => null);
+        const f = fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(15000) }).then(async (x) => {
+          if (!x.ok) return null;
+          const body = await x.text();
+          await cache.put(key, new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' } })).catch(() => {});
+          return JSON.parse(body);
+        }).catch(() => null);
+        ctx.waitUntil(f);
+        return Promise.race([f, new Promise((res) => setTimeout(() => res(null), 2500))]);
+      };
       const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
       if (lines) {

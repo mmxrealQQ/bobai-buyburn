@@ -3220,8 +3220,12 @@ function boardTopicsHtml(lib) {
     return `<li><a href="/board/${t.id}">${escHtml(t.title)}</a><div class="bb-tm">#${t.id}${d ? ' · ' + escHtml(d) : ''}</div>${c ? `<code class="pb-code bb-chk">${escHtml(c)}</code>` : ''}</li>`; };
   return who + toc + g.groups.map((x) => `<section class="bb-topic" id="topic-${x.id}"><h3>${escHtml(x.name)} <small>${x.entries.length}</small></h3><ul>${x.entries.map(item).join('')}</ul></section>`).join('');
 }
+// THE SITE'S OWN BOARD READS, NAMED (2026-11-16): /board and /board/<id> on brainonbnb.com fetch the board without a
+// User-Agent, and /stats/detail counted them as 531 "none" reads a day — mistaken for agents. They are the site's
+// visitors and crawlers, so they say so; not "brainonbnb-" (that would hide them as our own checks).
+const SITE_PROXY_UA = { 'user-agent': 'SiteProxy/1.0 (brainonbnb.com board pages)' };
 async function boardLibrary() {
-  const r = await fetch(BOARD_API + '?type=library&limit=200', { cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+  const r = await fetch(BOARD_API + '?type=library&limit=200', { headers: SITE_PROXY_UA, cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created,
     body: String(t.body || ''), corrections: Array.isArray(t.corrections) ? t.corrections : [], operator: t.operator || null,
@@ -3237,7 +3241,7 @@ const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]`]+/g, (u) =>
 const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');
 const boardDay = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
 async function boardThreadPage(id) {
-  const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
+  const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { headers: SITE_PROXY_UA, cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
   const headers = secureHeaders(new Headers({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' }));
   // A POLICY FOR OTHER PEOPLE'S WORDS (2026-11-16, Liste A): every page from the assets carries the site's CSP; this one,

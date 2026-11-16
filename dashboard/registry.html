@@ -3050,14 +3050,14 @@ The first-ever interactive AI-agent world powered by PancakeSwap AI Skills.</div
 
     <details class="rg-box rg-fold" id="rg-rated">
       <summary><h2>Who has actually been rated</h2><span class="rg-peek">21,064 ratings &rarr; 65 you could check</span></summary>
-      <p class="rg-sub">ERC-8004 has a second registry almost nothing reads. The <b>ReputationRegistry</b> is live on BNB Smart Chain at <code>0x8004BAa17C55a88189AE136b182e5fdA19dE9b63</code>, bound to the same identity registry counted above, and we read it one index at a time for every agent that answered. It holds <b>21,064 ratings across 381 of the 995 agents we asked about</b>, written by 79 addresses. On the face of it, a reputation layer.</p>
+      <p class="rg-sub">ERC-8004 has a second registry almost nothing reads. The <b>ReputationRegistry</b> is live on BNB Smart Chain at <code>0x8004BAa17C55a88189AE136b182e5fdA19dE9b63</code>, bound to the same identity registry counted above, and we read it one index at a time for every agent that answered. It holds <b>21,064 ratings across 381 of the 995 agents we asked about on 2026-10-25</b>, written by 79 addresses. On the face of it, a reputation layer.</p>
       <p class="rg-sub"><b>Then you read what they say.</b> A rating here is a value under a tag, and two entirely different kinds of claim share the roof. One is a measurement &mdash; uptime, response time, liveness &mdash; which anybody can go and take again and disagree with. The other is a score for <em>personality</em>, <em>style</em>, <em>stance</em>, <em>knowledge</em>, <em>timeline</em> or <em>relationship</em>, awarded to a stranger's agent and falsifiable by nobody. Sorted that way, the 21,064 becomes <b>65 measurements over 24 agents</b> and 20,999 opinions. That is not a rounding difference. It is the whole number.</p>
 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">21,064</div><div class="rg-l">ratings on chain</div><div class="rg-s">the figure a count would report</div></div>
         <div class="rg-card"><div class="rg-n">65</div><div class="rg-l">that state something measurable</div><div class="rg-s">uptime, responseTime, liveness, responsetime &mdash; over 24 agents</div></div>
         <div class="rg-card"><div class="rg-n">79</div><div class="rg-l">addresses wrote all of it</div><div class="rg-s">286 agents were rated by more than one</div></div>
-        <div class="rg-card"><div class="rg-n">381</div><div class="rg-l">agents carry any rating</div><div class="rg-s">of 995 that answer &mdash; the rest, nothing</div></div>
+        <div class="rg-card"><div class="rg-n">381</div><div class="rg-l">agents carry any rating</div><div class="rg-s">of the 995 that answered on 2026-10-25 &mdash; the rest, nothing</div></div>
       </div>
 
       <p class="rg-note" style="margin:16px 0 8px">Every tag in the registry, largest first. <b>Most common</b> is the share of a tag's records sitting on one single value: a tag that is nine-tenths the same number is a default being written, not a measurement being taken.</p>
@@ -3748,8 +3748,11 @@ The first-ever interactive AI-agent world powered by PancakeSwap AI Skills.</div
         // daily point. With a single day recorded the first-to-last difference
         // is always zero, which would hide the one number this section exists
         // for — the registry grew by 4,592 in a day and the page said nothing.
-        var since = last && last.new_since_baseline;
+        // Counted against the scan shown beside it (2026-11-16): the daily row's
+        // own new_since_baseline was taken against the scan before, so the line
+        // read "+8,763 · 419,005 on 2026-11-15 -> 418,966" for a day.
         var base = (d.full_scans||[]).slice(-1)[0];
+        var since = last && base ? Number(last.highest_id||0) - Number(base.registered_ids||0) : 0;
         if(since>0 && base){
           rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
             '<span>+'+nf(since)+'</span></div>'+

@@ -631,10 +631,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4280,
-   "zipBytes": 153387,
-   "txtBytes": 459411,
-   "sha256": "71e02fba833af43c",
+   "lines": 4283,
+   "zipBytes": 153562,
+   "txtBytes": 460016,
+   "sha256": "651f896c36e937a0",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -786,10 +786,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 5079,
-   "zipBytes": 114764,
-   "txtBytes": 330999,
-   "sha256": "346573fd41fb460b",
+   "lines": 5082,
+   "zipBytes": 114893,
+   "txtBytes": 331409,
+   "sha256": "e5f3006c75de4250",
    "reqs": [
     {
      "what": "Node 18+ and time",

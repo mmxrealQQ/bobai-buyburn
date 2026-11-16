@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4280 lines.
+# one fetch. 5 files, 4283 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3038,14 +3038,17 @@ const RECORD_PAGES = {
     const floor = Number(r?.registered_ids) || 0, live = Number(cs?.highest_id) || 0, ids = Math.max(floor, live);
     return { '#sv-agents': ids ? nfmt(ids) : null, '#sv-reach': r?.reachability?.reachable != null ? nfmt(r.reachability.reachable) : null, '#sv-when': r?.measured_at ? `census of ${dayOf(r.measured_at)}` : null, '#sv-asked': st?.asked?.total != null ? nfmt(st.asked.total) : null };
   } },
-  '/registry': { get: async (ask) => { const [b, h, op, st, li, own, buys] = await Promise.all(['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings', '/jobs/own', '/buys'].map((x) => ask('https://agent.brainonbnb.com' + x))); return { b, h, op, st, li, own, buys }; }, say: ({ b, h, op, st, li, own, buys }) => {
+  // the headline count too (2026-11-16): without a browser /registry said the last full scan's 419,005 while /services
+  // said the live 419,423 — the same rule as /services now, the live high-water mark only ever raises the scan's figure
+  '/registry': { get: async (ask) => { const [b, h, op, st, li, own, buys, cs, rg] = await Promise.all([...['/board?limit=1', '/hires', '/second-opinion', '/settle/public', '/listings', '/jobs/own', '/buys', '/census'].map((x) => ask('https://agent.brainonbnb.com' + x)), ask('https://brainonbnb.com/api-registry.json')]); return { b, h, op, st, li, own, buys, cs, rg }; }, say: ({ b, h, op, st, li, own, buys, cs, rg }) => {
+    const floor = Number(rg?.registered_ids) || 0, live = Number(cs?.highest_id) || 0, ids = floor && live > floor ? nfmt(live) : null;
     const hired = ((h?.log) || []).filter((x) => x.job).length + ((op?.opinions) || []).filter((x) => x.job).length;
     const others = li?.listings ? li.listings.filter((l) => !l.house).length : null;
     // paid ours (2026-11-12: the page without a browser said "—", which it defines as "could not be read"): the same count as
     // the page's script — paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers
     const paidUs = own?.jobs && buys ? Object.values(own.jobs).filter((j) => j.client && !isOwnWallet(j.client) && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(((j.history || []).slice(-1)[0] || {}).status || '')).length
       + ((buys.payments) || []).filter((x) => !x.self_test && !isOwnWallet(x.from)).length : null;
-    return { '#pb-n-all': b ? nfmt(b.total) : null, '#pb-n-open': b ? nfmt(b.open) : null, '#pb-n-done': b ? nfmt(b.resolved || 0) : null,
+    return { '#rg-live-total': ids, '#rg-tile-total': ids, '#rg-tile-total-sub': ids ? 'live · the counts below are from the last full scan' : null, '#pb-n-all': b ? nfmt(b.total) : null, '#pb-n-open': b ? nfmt(b.open) : null, '#pb-n-done': b ? nfmt(b.resolved || 0) : null,
       '#aw-n-hired': h || op ? nfmt(hired) : null, '#aw-n-settled': st?.totals ? nfmt(st.totals.jobs || 0) : null, '#aw-n-listed': others != null ? nfmt(others) : null, '#aw-n-us': paidUs != null ? nfmt(paidUs) : null };
   } },
   '/screener': { src: 'https://agent.brainonbnb.com/screener', say: (j) => {

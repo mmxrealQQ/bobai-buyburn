@@ -2044,14 +2044,14 @@ ${liveRows}
 
     ${reputation ? `<details class="rg-box rg-fold" id="rg-rated">
       <summary><h2>Who has actually been rated</h2><span class="rg-peek">${fmt(reputation.rated.attestations)} ratings &rarr; ${fmt(reputation.checkable.attestations)} you could check</span></summary>
-      <p class="rg-sub">ERC-8004 has a second registry almost nothing reads. The <b>ReputationRegistry</b> is live on BNB Smart Chain at <code>${esc(reputation.contract)}</code>, bound to the same identity registry counted above, and we read it one index at a time for every agent that answered. It holds <b>${fmt(reputation.rated.attestations)} ratings across ${fmt(reputation.rated.agents)} of the ${fmt(reputation.population.asked)} agents we asked about</b>, written by ${fmt(reputation.rated.distinct_raters)} addresses. On the face of it, a reputation layer.</p>
+      <p class="rg-sub">ERC-8004 has a second registry almost nothing reads. The <b>ReputationRegistry</b> is live on BNB Smart Chain at <code>${esc(reputation.contract)}</code>, bound to the same identity registry counted above, and we read it one index at a time for every agent that answered. It holds <b>${fmt(reputation.rated.attestations)} ratings across ${fmt(reputation.rated.agents)} of the ${fmt(reputation.population.asked)} agents we asked about on ${esc(String(reputation.measured_at || '').slice(0, 10))}</b>, written by ${fmt(reputation.rated.distinct_raters)} addresses. On the face of it, a reputation layer.</p>
       <p class="rg-sub"><b>Then you read what they say.</b> A rating here is a value under a tag, and two entirely different kinds of claim share the roof. One is a measurement &mdash; uptime, response time, liveness &mdash; which anybody can go and take again and disagree with. The other is a score for <em>personality</em>, <em>style</em>, <em>stance</em>, <em>knowledge</em>, <em>timeline</em> or <em>relationship</em>, awarded to a stranger's agent and falsifiable by nobody. Sorted that way, the ${fmt(reputation.rated.attestations)} becomes <b>${fmt(reputation.checkable.attestations)} measurements over ${fmt(reputation.checkable.agents)} agents</b> and ${fmt(reputation.rated.attestations - reputation.checkable.attestations)} opinions. That is not a rounding difference. It is the whole number.</p>
 
       <div class="rg-grid">
         <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.attestations)}</div><div class="rg-l">ratings on chain</div><div class="rg-s">the figure a count would report</div></div>
         <div class="rg-card"><div class="rg-n">${fmt(reputation.checkable.attestations)}</div><div class="rg-l">that state something measurable</div><div class="rg-s">${(reputation.checkable.tags || []).join(', ') || 'none'} &mdash; over ${fmt(reputation.checkable.agents)} agents</div></div>
         <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.distinct_raters)}</div><div class="rg-l">addresses wrote all of it</div><div class="rg-s">${fmt(reputation.multi_rated)} agents were rated by more than one</div></div>
-        <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.agents)}</div><div class="rg-l">agents carry any rating</div><div class="rg-s">of ${fmt(reputation.population.asked)} that answer &mdash; the rest, nothing</div></div>
+        <div class="rg-card"><div class="rg-n">${fmt(reputation.rated.agents)}</div><div class="rg-l">agents carry any rating</div><div class="rg-s">of the ${fmt(reputation.population.asked)} that answered on ${esc(String(reputation.measured_at || '').slice(0, 10))} &mdash; the rest, nothing</div></div>
       </div>
 
       <p class="rg-note" style="margin:16px 0 8px">Every tag in the registry, largest first. <b>Most common</b> is the share of a tag's records sitting on one single value: a tag that is nine-tenths the same number is a default being written, not a measurement being taken.</p>
@@ -2273,8 +2273,11 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         // daily point. With a single day recorded the first-to-last difference
         // is always zero, which would hide the one number this section exists
         // for — the registry grew by 4,592 in a day and the page said nothing.
-        var since = last && last.new_since_baseline;
+        // Counted against the scan shown beside it (2026-11-16): the daily row's
+        // own new_since_baseline was taken against the scan before, so the line
+        // read "+8,763 · 419,005 on 2026-11-15 -> 418,966" for a day.
         var base = (d.full_scans||[]).slice(-1)[0];
+        var since = last && base ? Number(last.highest_id||0) - Number(base.registered_ids||0) : 0;
         if(since>0 && base){
           rows.push('<div class="rg-step"><div class="rg-top"><b>New registrations since the last full scan</b>'+
             '<span>+'+nf(since)+'</span></div>'+

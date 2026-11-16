@@ -92,7 +92,7 @@ async function readAgentRecord(env) {
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
 import { healthFactor } from './venus.js';
 import { yieldPlan } from './yield.js';
-import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
+import { secondOpinion, readOpinions, heldSession, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
@@ -3638,7 +3638,7 @@ ${pageTail}`;
         ctx.waitUntil(work.then((r) => (r && r.job ? tickOwnJobs(env, rpc, [r.job]) : null)).catch(() => {}));
         return json(await work);
       }
-      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, last_ask: await env.AGENT.get('opinion:ask:last', 'json').catch(() => null), opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
+      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', session_held: heldSession(env), seller: SELLER, subject: SUBJECT, last_ask: await env.AGENT.get('opinion:ask:last', 'json').catch(() => null), opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });

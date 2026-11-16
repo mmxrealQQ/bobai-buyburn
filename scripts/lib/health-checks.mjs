@@ -964,6 +964,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     ok('Agents', 'every wallet that pays its own gas holds its floor (hiring agents 0.003 BNB, x402 income 0.001, NFT relayer 0.025)', !low.length, gas.map((g) => `${g.n} ${g.b == null ? 'unread' : g.b.toFixed(4)}${g.b != null && g.b < g.floor ? ' < ' + g.floor : ''}`).join(' · ') + (low.length ? ' (top up from the NFT relayer: node scripts/fund-service-wallet.mjs --to <provider|altana|health|yield|service> --usd 3 --confirm; the relayer itself from the operator)' : ''));
     const ses = (await getJ(`${AGENT}/session`)).body, keys = ses?.chains?.find((c) => c.chainId === 56)?.keys || [];
     ok('Agents', 'the Altana leash has a valid session key (the second opinion pays through it)', keys.some((k) => k.role === 'session' && k.valid), keys.length ? `${keys.filter((k) => k.role === 'session' && k.valid).length} valid of ${keys.filter((k) => k.role === 'session').length} session keys` : 'no keys read');
+    // the session the WORKER holds, not only the chain's (2026-11-16: a valid key on chain, the secret never uploaded,
+    // the 04:23 ask refused "expired"): it must hold one, readable, at least 3 days from expiry
+    const held = (await getJ(`${AGENT}/second-opinion`)).body?.session_held;
+    const left = held?.expires_at ? (Date.parse(held.expires_at) - Date.now()) / 86400000 : null;
+    ok('Agents', 'the agent worker holds a session that is good for 3 more days (ALTANA_SESSION, the one it pays with)', !!held && held.held && !held.unreadable && left != null && left >= 3,
+      !held ? 'unread' : !held.held ? 'no ALTANA_SESSION on the worker' : held.unreadable ? 'ALTANA_SESSION unreadable' : `expires ${held.expires_at} (${left.toFixed(1)} days)${left < 3 ? ' — grant (node scripts/altana-session.mjs --grant --mainnet --days 30 --confirm) and upload: (cd worker-agent; Get-Content ..\\temp\\altana\\session-56.json -Raw | npx wrangler secret put ALTANA_SESSION)' : ''}`);
   }
   // Marque keeps brainonbnb.com/defi as #363709's endpoint (2026-10-09: its live test got the page's 405 and the
   // listing dropped): a JSON-RPC POST there must reach the agent.

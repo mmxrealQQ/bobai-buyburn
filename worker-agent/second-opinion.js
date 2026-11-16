@@ -22,6 +22,16 @@ function sessionOf(env) {
   return { ...raw, signer: signerFromPrivateKey(raw.signerPrivateKey), expiry: Number(raw.expiry),
     permissions: { ...raw.permissions, spend: (raw.permissions?.spend || []).map((s) => ({ ...s, limit: BigInt(s.limit) })) } };
 }
+// THE SESSION THIS WORKER HOLDS, PUBLIC PARTS ONLY (2026-11-16: a new leash was granted on chain on 15.11., the upload
+// of its secret never arrived, and the 04:23 ask was refused "expired" while the health check — reading the chain —
+// saw a valid key). Its expiry and the start of its public key are no secret; the private key never leaves sessionOf.
+export function heldSession(env) {
+  try {
+    if (!env.ALTANA_SESSION) return { held: false };
+    const raw = JSON.parse(env.ALTANA_SESSION), exp = Number(raw.expiry) || 0;
+    return { held: true, expires_at: exp ? new Date(exp * 1000).toISOString() : null, expired: !exp || exp * 1000 < Date.now(), public_key: String(raw.publicKey || '').slice(0, 20) + '…', granted_tx: raw.transactionHash || null };
+  } catch { return { held: true, unreadable: true }; }
+}
 async function balanceOfU(rpc, who) {
   const r = await rpc('eth_call', [{ to: U, data: '0x70a08231' + who.slice(2).toLowerCase().padStart(64, '0') }, 'latest']);
   return BigInt(r || '0x0');

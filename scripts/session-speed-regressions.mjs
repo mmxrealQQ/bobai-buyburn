@@ -47,7 +47,8 @@ ok('an unreadable chain is not cached', /if \(!st\.chains\.some\(\(c\) => c\.err
 
 // /lp/portfolio builds from its six reads at once (2026-11-16: one after the other, 14.2 s cold)
 const bp = (idx.match(/async function buildPortfolio\(\) \{[\s\S]*?const model = lpPortfolio/) || [''])[0];
-ok('/lp/portfolio: the six reads in one Promise.all, none awaited alone before it', /const \[rec, series, bobaiUsd, bnbUsdNow, verdict, outSince\] = await Promise\.all\(\[/.test(bp) && !/const rec = await readAgentRecord/.test(bp) && !/await lpWidthVerdict\(env\)/.test(bp));
+// (the seventh since the same day: the wallet's own $BOBAI, lp-held-bobai-regressions.mjs — in the same Promise.all)
+ok('/lp/portfolio: the seven reads in one Promise.all, none awaited alone before it', /const \[rec, series, bobaiUsd, bnbUsdNow, verdict, outSince, bobaiHeldChain\] = await Promise\.all\(\[/.test(bp) && !/const rec = await readAgentRecord/.test(bp) && !/await lpWidthVerdict\(env\)/.test(bp));
 
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exitCode = fails ? 1 : 0;

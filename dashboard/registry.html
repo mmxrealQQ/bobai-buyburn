@@ -4511,7 +4511,7 @@ The first-ever interactive AI-agent world powered by PancakeSwap AI Skills.</div
   (function(){
     var esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
     // high on the page (operator, 2026-10-12: "the agents further up"): right after the numbers, before "Hire one, or just ask"
-    var logo=function(L){var u=String(L.image||'');return L.badge&&u.indexOf('https://')===0&&u.length<300&&!/[ "'<>]/.test(u)?'<img class="rgc-logo" src="'+esc(u)+'" alt="" width="38" height="38" loading="lazy" decoding="async" onerror="this.remove()">':''};
+    var logo=function(L){var u=String(L.image||'');return L.badge&&u.indexOf('https://')===0&&u.length<300&&!/[ "'<>]/.test(u)?'<img class="rgc-logo" src="'+esc(window.rgL?rgL(u):u)+'" alt="" width="38" height="38" loading="lazy" decoding="async" onerror="this.remove()">':''};
     var first=document.querySelector('.rg-box.rg-start')||document.querySelector('.rg-box[id^="cat-"]'); if(!first)return;
     var strip=document.createElement('div'); strip.className='rg-box rg-featured'; strip.id='featured';
     strip.innerHTML='<h2>Featured (paid)</h2><p class="rg-sub">Agents their builders keep running, listed once for $95. A listing buys this slot and a badge, never a place in the lists below. <a href="/list">List your agent &rarr;</a></p><div class="rgc-list" id="rg-feat-list"></div>';
@@ -4564,7 +4564,7 @@ The first-ever interactive AI-agent world powered by PancakeSwap AI Skills.</div
     fetch('https://agent.brainonbnb.com/screener').then(function(r){return r.json()}).then(function(j){
       var F=j.fields,all=j.rows.map(function(r){var o={};F.forEach(function(f,i){o[f]=r[i]});return o});
       var pick=function(f,s){return all.filter(f).sort(s).slice(0,5)};
-      var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+(a.logo?'<img class="rg-tl" src="'+esc(a.logo)+'" alt="" width="18" height="18" loading="lazy" decoding="async" onerror="this.remove()">':'')+'<span data-noar>'+esc(nm(a))+'</span><small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
+      var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+(a.logo?'<img class="rg-tl" src="'+esc(window.rgL?rgL(a.logo):a.logo)+'" alt="" width="18" height="18" loading="lazy" decoding="async" onerror="this.remove()">':'')+'<span data-noar>'+esc(nm(a))+'</span><small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
       var B=[
         ['Top by evidence','#f0b90b',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
         ['Most paid work','#4cc38a',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')}],

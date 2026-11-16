@@ -103,6 +103,11 @@
 /i18n/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Other agents' logos as 76-px copies (16.11., scripts/logo-cache.mjs): named by their URL, so a new logo is a new name;
+# a week, because the owner may change the picture behind the same URL (index.json is read by the worker via ASSETS).
+/logos/x/*
+  Cache-Control: public, max-age=604800
+
 # The @font-face rules themselves do change, so they keep the ?v= treatment.
 /fonts.css
   Cache-Control: public, max-age=604800, must-revalidate

@@ -2856,9 +2856,15 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       };
       const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
-      if (lines) {
+      // /registry: every foreign logo from our own 76-px copy, a broken one not asked for at all (1.8 MB -> a few KB)
+      const lx = url.pathname.replace(/.html$/, '') === '/registry' ? await logoIndex(env, url.origin) : null;
+      if (lines || lx) {
         const rw = new HTMLRewriter();
-        for (const [sel, txt] of Object.entries(lines)) if (txt) rw.on(sel, { element(e) { e.setInnerContent(txt); } });
+        if (lines) for (const [sel, txt] of Object.entries(lines)) if (txt) rw.on(sel, { element(e) { e.setInnerContent(txt); } });
+        if (lx) {
+          rw.on('img[src^="https://"]', { element(e) { const h = fnv32(String(e.getAttribute('src') || '').replace(/&amp;/g, '&')); if (lx.ok.has(h)) e.setAttribute('src', `/logos/x/${h}.webp`); else if (lx.broken.has(h)) e.remove(); } });
+          rw.on('head', { element(e) { e.append(`<script>window.RG_LOGOS=${JSON.stringify([...lx.ok])};${LOGO_JS}</script>`, { html: true }); } });
+        }
         const t = rw.transform(response);
         return new Response(t.body, { status: t.status, headers: secure(new Headers(t.headers)) });
       }
@@ -2890,6 +2896,17 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
 // reader without JavaScript get Arabic too; i18n/ar.js does the same in the browser for what the page writes later.
 // Links into this site stay inside /ar/. Every page, English and Arabic, carries the switch "EN | ع"; the choice is
 // remembered in this browser. A text with no entry stays English (never guessed); the checker lists those.
+// OTHER AGENTS' LOGOS, KEPT HERE SMALL (2026-11-16, scripts/logo-cache.mjs): which are copied to /logos/x/<fnv>.webp
+// (76 px) and which were broken, read from the assets and kept 10 minutes. The name is FNV-1a 32 of the exact URL.
+let LOGO_IX = { at: 0, ok: null, broken: null };
+const fnv32 = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+async function logoIndex(env, origin) {
+  if (LOGO_IX.ok && Date.now() - LOGO_IX.at < 600000) return LOGO_IX;
+  try { const r = await env.ASSETS.fetch(origin + '/logos/x/index.json'); if (r.ok) { const j = await r.json(); LOGO_IX = { at: Date.now(), ok: new Set(j.ok || []), broken: new Set(j.broken || []) }; } } catch {}
+  return LOGO_IX.ok ? LOGO_IX : null;
+}
+// the page's own script draws some logos later (the listings, the top tables): the same names, one line of JS
+const LOGO_JS = "window.rgL=function(u){try{var s=window.RG_LOGOS,h=0x811c9dc5,i;if(!s||!u)return u;for(i=0;i<u.length;i++){h^=u.charCodeAt(i);h=Math.imul(h,16777619)>>>0}h=('0000000'+h.toString(16)).slice(-8);return s.indexOf(h)>=0?'/logos/x/'+h+'.webp':u}catch(e){return u}};";
 let AR_DICT = { at: 0, t: null, v: 0 };
 async function arDict(env, origin) {
   if (AR_DICT.t && Date.now() - AR_DICT.at < 300e3) return AR_DICT.t;

@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4310 lines.
+# one fetch. 5 files, 4335 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2786,7 +2786,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
         // WHAT THE AGENT IS, IN THE PAGE ITSELF (2026-10-30): the page read "Reading this agent..." to every crawler and
         // every agent without a browser. The chart is asked once, briefly; without it the page stands as before.
-        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        // an id the registry does not hold is a 404 (2026-11-16, Liste A: /agent/999999999 answered 200, a soft 404); the
+        // page stays the same, only its status says it — and a chart that did not answer at all leaves the 200
+        let missing = false;
+        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => { if (x.status === 404) missing = true; return x.ok ? x.json() : null; }).catch(() => null);
         // cut at a sentence (2026-11-12: "centred on the Evidence score", "skill showca Evidence score"), and the paid
         // jobs said as the registry says them: by outside buyers, ours beside
         const desc = (() => { const d = String(c?.description || '').trim(); if (d.length <= 280) return d; const cut = d.slice(0, 280), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); return end > 80 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…'; })();
@@ -2803,9 +2806,14 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
           .on('meta[property="og:url"]', set(`https://brainonbnb.com/agent/${id}`))
           .on('head', { element(e) { e.append('<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">', { html: true }); } })
           .transform(r);
-        return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
+        return new Response(t.body, { status: missing ? 404 : t.status, headers: secureHeaders(new Headers(t.headers)) });
       }
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
+    }
+    // /agent/<not a number> is no agent at all: the same page, a 404 (it was the agent page with a 200)
+    if (request.method === 'GET' && /^\/agent\/[^/]+\/?$/.test(url.pathname)) {
+      const r = await env.ASSETS.fetch(new Request(url.origin + '/agent/0', request));
+      return new Response(r.body, { status: 404, headers: secureHeaders(new Headers(r.headers)) });
     }
 
     // AN /api/ PATH WE DO NOT SERVE IS A 404 (2026-10-04). It fell through to the
@@ -2864,9 +2872,15 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       };
       const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
-      if (lines) {
+      // /registry: every foreign logo from our own 76-px copy, a broken one not asked for at all (1.8 MB -> a few KB)
+      const lx = url.pathname.replace(/.html$/, '') === '/registry' ? await logoIndex(env, url.origin) : null;
+      if (lines || lx) {
         const rw = new HTMLRewriter();
-        for (const [sel, txt] of Object.entries(lines)) if (txt) rw.on(sel, { element(e) { e.setInnerContent(txt); } });
+        if (lines) for (const [sel, txt] of Object.entries(lines)) if (txt) rw.on(sel, { element(e) { e.setInnerContent(txt); } });
+        if (lx) {
+          rw.on('img[src^="https://"]', { element(e) { const h = fnv32(String(e.getAttribute('src') || '').replace(/&amp;/g, '&')); if (lx.ok.has(h)) e.setAttribute('src', `/logos/x/${h}.webp`); else if (lx.broken.has(h)) e.remove(); } });
+          rw.on('head', { element(e) { e.append(`<script>window.RG_LOGOS=${JSON.stringify([...lx.ok])};${LOGO_JS}</script>`, { html: true }); } });
+        }
         const t = rw.transform(response);
         return new Response(t.body, { status: t.status, headers: secure(new Headers(t.headers)) });
       }
@@ -2898,6 +2912,17 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
 // reader without JavaScript get Arabic too; i18n/ar.js does the same in the browser for what the page writes later.
 // Links into this site stay inside /ar/. Every page, English and Arabic, carries the switch "EN | ع"; the choice is
 // remembered in this browser. A text with no entry stays English (never guessed); the checker lists those.
+// OTHER AGENTS' LOGOS, KEPT HERE SMALL (2026-11-16, scripts/logo-cache.mjs): which are copied to /logos/x/<fnv>.webp
+// (76 px) and which were broken, read from the assets and kept 10 minutes. The name is FNV-1a 32 of the exact URL.
+let LOGO_IX = { at: 0, ok: null, broken: null };
+const fnv32 = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+async function logoIndex(env, origin) {
+  if (LOGO_IX.ok && Date.now() - LOGO_IX.at < 600000) return LOGO_IX;
+  try { const r = await env.ASSETS.fetch(origin + '/logos/x/index.json'); if (r.ok) { const j = await r.json(); LOGO_IX = { at: Date.now(), ok: new Set(j.ok || []), broken: new Set(j.broken || []) }; } } catch {}
+  return LOGO_IX.ok ? LOGO_IX : null;
+}
+// the page's own script draws some logos later (the listings, the top tables): the same names, one line of JS
+const LOGO_JS = "window.rgL=function(u){try{var s=window.RG_LOGOS,h=0x811c9dc5,i;if(!s||!u)return u;for(i=0;i<u.length;i++){h^=u.charCodeAt(i);h=Math.imul(h,16777619)>>>0}h=('0000000'+h.toString(16)).slice(-8);return s.indexOf(h)>=0?'/logos/x/'+h+'.webp':u}catch(e){return u}};";
 let AR_DICT = { at: 0, t: null, v: 0 };
 async function arDict(env, origin) {
   if (AR_DICT.t && Date.now() - AR_DICT.at < 300e3) return AR_DICT.t;

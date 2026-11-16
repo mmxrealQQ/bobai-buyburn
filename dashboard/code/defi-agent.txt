@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7633 lines.
+# one fetch. 17 files, 7645 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -5471,10 +5471,22 @@ export function changeText(changePct, since) {
   return `${pct} on the capital${dd && mm ? ` since ${dd} ${MONTHS[mm - 1]}` : ''}`;
 }
 
-export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bnbUsdNow = null, width = null, outsideSince = null, centred = false } = {}) {
+// WHAT IT HOLDS IS WHAT THE CHAIN HOLDS (2026-11-16, Liste B): "BOBAI it holds" read the record's sum of the fee share's
+// buys (218,227) while the wallet held 220,273.5 — the 2,046.485 bought on 14.10. by hand (scripts/sweep-dormant.mjs,
+// the Set and Earn $U) never were in a run's record. bobaiHeldChain: the wallet's balanceOf, read beside; holdings say
+// that, the fee share's own figure stays as bobai_from_fees_units, and the rest is named. Unread: the record's, as before.
+export const HAND_BOBAI = { units: 2046.485, why: 'bought on 2026-10-14 by hand from the Set and Earn $U that lay in the wallet (scripts/sweep-dormant.mjs, tx 0xa07e6597…)' };
+export function heldBobai(feesUnits, chainUnits) {
+  const fees = n(feesUnits);
+  if (!(chainUnits != null && Number.isFinite(Number(chainUnits)))) return { units: fees, source: 'record', from_fees: fees, other: null };
+  const chain = Number(chainUnits), other = chain - fees;
+  return { units: chain, source: 'chain', from_fees: fees, other: Math.abs(other) < 0.5 ? null : { units: Math.round(other * 1000) / 1000, why: Math.abs(other - HAND_BOBAI.units) < 1 ? HAND_BOBAI.why : 'not bought by a run of the agent (a transfer in or out, or a run not on record)' } };
+}
+export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bnbUsdNow = null, width = null, outsideSince = null, centred = false, bobaiHeldChain = null } = {}) {
   const last = rec && rec.last;
   const sum = series && series.summary;
   if (!last || !last.at || !sum || !sum.profit) return null;
+  const held = heldBobai(sum.bobai_held_units, bobaiHeldChain);
   const pts = Array.isArray(series.points) ? series.points : [];
   const pt = pts.length ? pts[pts.length - 1] : null;
   const bnbUsd = n(sum.profit.bnb_usd) || null;
@@ -5585,11 +5597,11 @@ export function lpPortfolio(rec, series, { now = Date.now(), bobaiUsd = null, bn
     worth: { bnb: r4(value.now), usd: bnbUsdNow > 0 ? Math.round(n(value.now) * bnbUsdNow * 100) / 100 : usd(value.now), beside_bnb: r4(besideBnb), beside_usd: bnbUsdNow > 0 ? Math.round(n(besideBnb) * bnbUsdNow * 100) / 100 : usd(besideBnb), beside_parts: besideParts, all_in_bnb: r4(n(value.now) + besideBnb) },
     holdings: {
       position_bnb: r4(value.now), fees_owed_bnb: sum.fees_owed_now_bnb == null ? null : r5(sum.fees_owed_now_bnb),
-      bobai_units: Math.round(n(sum.bobai_held_units)), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
+      bobai_units: Math.round(held.units), bobai_source: held.source, bobai_from_fees_units: Math.round(held.from_fees), ...(held.other ? { bobai_other: held.other } : {}), bobai_bnb: r5(sum.fees_into_bobai_bnb ?? sum.fees_sent_to_buyback_bnb),
       // What the held $BOBAI is worth now, at the pair's own price — read by
       // the route, so the model can say "3,895 $BOBAI (≈ $x)" beside the
       // BNB it cost.
-      bobai_usd: bobaiUsd > 0 ? Math.round(n(sum.bobai_held_units) * bobaiUsd * 100) / 100 : null,
+      bobai_usd: bobaiUsd > 0 ? Math.round(held.units * bobaiUsd * 100) / 100 : null,
       bobai_usd_price: bobaiUsd > 0 ? bobaiUsd : null,
       wallet_bnb: r4(walletBnb), kept_waiting_bnb: r5(sum.fees_kept_waiting_bnb),
       // The ladder's reserve range (2026-09-16), when one stands: BNB below

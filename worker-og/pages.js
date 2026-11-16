@@ -5,6 +5,8 @@
 //   /registry /api-registry.json (the census) and the agent server's /census (the live registered count)
 //   /jobs     agent /jobs/board (the last 30 days on the ERC-8183 escrow)
 //   /settle   agent /settle/public (every settle and refund since 23 Oct 2026)
+//   /defi     agent /lp/portfolio (what /defi's own card reads: worth, fees, result, $BOBAI held, the range)
+//   /venus    agent /venus/work (the four tiles /venus shows: actions, health factor, supplied, days)
 // Every sentence here holds in every tax phase and on any day: nothing seasonal, nothing that ends.
 
 const SITE = 'https://brainonbnb.com', AG = 'https://agent.brainonbnb.com';
@@ -24,7 +26,8 @@ export const amountShort = (v) => { const x = num(v); if (x == null) return '—
 const u2 = (v) => (num(v) == null ? '—' : num(v).toFixed(2) + ' $U');
 const day = (iso) => { const t = Date.parse(iso || ''); return isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null; };
 
-export const PAGES = ['token', 'registry', 'jobs', 'settle'];
+export const PAGES = ['token', 'registry', 'jobs', 'settle', 'defi', 'venus'];
+const signedPct = (v, d = 1) => (num(v) == null ? '—' : (num(v) < 0 ? '−' : '+') + Math.abs(num(v)).toFixed(d) + '%');
 
 export async function pageSpec(name, get) {
   if (name === 'token') {
@@ -94,6 +97,47 @@ export async function pageSpec(name, get) {
         ['Returned', u2(r.returned_u), 'to ' + int((r.clients || []).length) + ' clients', false],
       ],
       foot: 'Every settle and refund with its transaction on BscScan', cta: 'See every settle', ok: !!j,
+    };
+  }
+  if (name === 'defi') {
+    // the result is said as the page says it, loss or gain: a card that showed only the good tiles would be an advert
+    const p = await get(AG + '/lp/portfolio');
+    const w = (p && p.worth) || {}, pl = (p && p.pnl) || {}, h = (p && p.holdings) || {}, pool = (p && p.pool) || {};
+    const bu = num(p && p.bnb_usd), since = day(pl.since);
+    const feesUsd = bu && num(pl.from_fees_bnb) != null ? usdShort(num(pl.from_fees_bnb) * bu) : '—';
+    const range = pool.in_range === true ? 'IN RANGE' : pool.in_range === false ? 'OUT OF RANGE' : 'RANGE';
+    return {
+      label: 'THE DEFI AGENT · #363709', sub: 'An AI agent running a PancakeSwap V3 position on BNB Chain, in public',
+      head: ['Its fees ', 'buy $BOBAI'],
+      box: [[range, pool.width_pct ? '±' + num(pool.width_pct) + '%' : null, pool.label || null].filter(Boolean).join(' · '), 'Every run, its wallet and its transactions on the record'],
+      tiles: [
+        ['Working', usdShort(w.usd), (num(w.bnb) == null ? '—' : num(w.bnb).toFixed(2)) + ' BNB in the position', false],
+        ['Fees earned', feesUsd, (num(pl.from_fees_bnb) == null ? '—' : num(pl.from_fees_bnb).toFixed(3)) + ' BNB' + (since ? ' since ' + since : ''), true],
+        ['$BOBAI held', amountShort(h.bobai_units), 'in its own wallet, never sold', false],
+        ['Result', signedPct(pl.change_pct), pl.vs_holding && num(pl.vs_holding.vs_holding_pct) != null ? signedPct(pl.vs_holding.vs_holding_pct) + ' against simply holding' : 'on the capital put in', false],
+      ],
+      foot: 'Read from the chain at every run · a record, not advice', cta: 'See the agent', ok: !!p,
+    };
+  }
+  if (name === 'venus') {
+    // the same four figures as /venus's tiles (dashboard/_worker.js RECORD_PAGES['/venus']), from the same log
+    const j = await get(AG + '/venus/work');
+    const log = (j && Array.isArray(j.log)) ? j.log : [];
+    const acts = log.filter((x) => x.tx);
+    const hf = log.map((x) => String(x.note || '').match(/^health factor (?:now )?([\d.]+)/)).find(Boolean);
+    const sup = acts.filter((x) => x.action === 'deposit').reduce((a, x) => a + (parseFloat(x.amount) || 0), 0);
+    const days = new Set(log.map((x) => String(x.at).slice(0, 10))).size;
+    return {
+      label: 'VENUS AGENTS · #302257 · #304493', sub: 'Two AI agents on Venus, each with its own wallet, doing what they sell',
+      head: ['Agents that ', 'use what they sell'],
+      box: ['THEIR OWN MONEY ON VENUS', 'A loan kept safe and stablecoins put to work, every step a transaction'],
+      tiles: [
+        ['On chain', j ? int(acts.length) : '—', 'actions, each a transaction', false],
+        ['Health factor', hf ? Number(hf[1]).toFixed(2) : '—', 'of the loan the monitor keeps', true],
+        ['Supplied', j ? '$' + sup.toFixed(2) : '—', 'stablecoins put to work', false],
+        ['Days at work', j ? int(days) : '—', 'a run every morning', false],
+      ],
+      foot: 'Read from their log and the chain · a record, not advice', cta: 'See the agents', ok: !!j,
     };
   }
   return null;

@@ -2040,8 +2040,8 @@ const SITE = {
     // and the Brain Board's (2026-10-24): /og/board.png, its live figures
     // and a Brain Pop run's (2026-11-07): /og/pop/<run>.png, who scored what, the place of the day
     // (10.11.) a run's card also as /og/pop/<run>.jpg, ~250 KB instead of ~1.5 MB: WhatsApp shows no preview that large
-    // and a page's own (16.11.): /og/page/<token|registry|jobs|settle|scanner>.png, its live figures (worker-og/pages.js)
-    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9}|board|pop\/[a-z0-9]{1,12}|page\/(?:token|registry|jobs|settle|scanner))\.png$/) || url.pathname.match(/^\/og\/(pop\/[a-z0-9]{1,12})\.(jpg)$/);
+    // and a page's own (16.11.): /og/page/<token|registry|jobs|settle|scanner|defi|venus>.png, its live figures (worker-og/pages.js)
+    const ogCard = url.pathname.match(/^\/og\/(scan\/0x[0-9a-fA-F]{40}|agent\/\d{1,9}|board|pop\/[a-z0-9]{1,12}|page\/(?:token|registry|jobs|settle|scanner|defi|venus))\.png$/) || url.pathname.match(/^\/og\/(pop\/[a-z0-9]{1,12})\.(jpg)$/);
     if (ogCard) {
       const ext = ogCard[2] || 'png', ct = ext === 'jpg' ? 'image/jpeg' : 'image/png';
       const r = await fetch(`https://bobai-og.bobbuildonbnb.workers.dev/${ogCard[1].toLowerCase()}.${ext}`, { signal: AbortSignal.timeout(25000) }).catch(() => null);

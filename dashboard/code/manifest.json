@@ -632,9 +632,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 4340,
-   "zipBytes": 155821,
-   "txtBytes": 465785,
-   "sha256": "39c032391981dd64",
+   "zipBytes": 155828,
+   "txtBytes": 465807,
+   "sha256": "01807c65fc29842f",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

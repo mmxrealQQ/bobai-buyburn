@@ -26,7 +26,7 @@ export const ALTANA_NETWORKS = {
     name: 'BNB Smart Chain',
     keyStore: '0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a',
     explorer: 'https://bscscan.com',
-    rpcs: ['https://bsc.publicnode.com', 'https://bsc-dataseed1.defibit.io'],
+    rpcs: ['https://bsc.publicnode.com', 'https://bsc-dataseed.bnbchain.org', 'https://bsc-dataseed1.defibit.io'],
     kernel: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6',
     paymentToken: '0xcE24439F2D9C6a2289F741120FE202248B666666',
   },
@@ -62,7 +62,7 @@ async function call(rpcs, to, data) {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(5000),
       });
       const j = await r.json();
       if (j.error) { last = new Error(j.error.message); continue; }
@@ -98,13 +98,12 @@ export async function readSessionState(chainId, wallet) {
   try {
     const raw = await call(net.rpcs, net.keyStore, SEL_GET_KEYS + pad(wallet));
     const keyIds = decodeBytes32Array(raw);
+    // every key's validity at once (2026-11-16: one after the other, 8 keys on 56 took /session 10-16 s from the Worker)
+    const valids = await Promise.all(keyIds.map((keyId) => call(net.rpcs, net.keyStore, SEL_IS_VALID + pad(wallet) + keyId.replace(/^0x/, ''))
+      .then((v) => BigInt(v || '0x0') === 1n).catch(() => null)));
     const keys = [];
-    for (const keyId of keyIds) {
-      let valid = null;
-      try {
-        const v = await call(net.rpcs, net.keyStore, SEL_IS_VALID + pad(wallet) + keyId.replace(/^0x/, ''));
-        valid = BigInt(v || '0x0') === 1n;
-      } catch { valid = null; }
+    for (const [i, keyId] of keyIds.entries()) {
+      const valid = valids[i];
       keys.push({
         keyId,
         // null is its own answer: the key exists in the registry and we could
@@ -141,8 +140,7 @@ export async function handleSession(url, env) {
   const want = url.searchParams.get('chain');
   const chains = want ? [Number(want)] : [56, 97];
 
-  const states = [];
-  for (const c of chains) states.push(await readSessionState(c, wallet));
+  const states = await Promise.all(chains.map((c) => readSessionState(c, wallet)));
 
   return {
     what_this_is: 'The spending authority delegated to this agent, read live from the Altana KeyStore on-chain. Not a description of our configuration — the same view calls a stranger would make.',

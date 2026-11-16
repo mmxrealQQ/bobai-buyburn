@@ -3130,7 +3130,14 @@ ${pageTail}`;
     // answer is one a stranger can reproduce with two view calls. See
     // session.js for why revocation is deliberately not reachable from here.
     if (path === '/session') {
-      const out = annotateRoles(await handleSession(url, env), env);
+      // the chain read kept 60 s (2026-11-16: 10-16 s a load); measured_at says when it was read, a revoke clears it
+      const ck = new Request(`https://agent.brainonbnb.com/session/state?chain=${url.searchParams.get('chain') || 'all'}`);
+      let st = await caches.default.match(ck).then((r) => (r ? r.json() : null)).catch(() => null);
+      if (!st) {
+        st = await handleSession(url, env);
+        if (!st.chains.some((c) => c.error)) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(st), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
+      }
+      const out = annotateRoles(st, env);
       // The revocations fired from the product, beside the live state, so the
       // page can show the control and its record together.
       out.revocations = await readRevocations(env);
@@ -3140,7 +3147,10 @@ ${pageTail}`;
     // Revocation from the product: two locks (admin key as a worker secret,
     // operator token on the request), see session-revoke.js.
     if (path === '/session/revoke') {
-      return handleSessionRevoke(request, env);
+      const res = await handleSessionRevoke(request, env);
+      // a revoke shows at once on /session, never a cached "valid"
+      if (request.method === 'POST') await Promise.all(['all', '56', '97'].map((c) => caches.default.delete(new Request(`https://agent.brainonbnb.com/session/state?chain=${c}`)).catch(() => {})));
+      return res;
     }
 
     // When this worker was last deployed (2026-10-24, operator: "auf der page steht ja immer noch rebuilt 1h ago" — a

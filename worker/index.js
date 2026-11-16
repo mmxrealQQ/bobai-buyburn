@@ -300,6 +300,11 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
   const minOut = minOutFor(amountsOut[1], tokenAddress);
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
 
+  // ONLY WHAT THIS SWAP BOUGHT IS BURNED (2026-11-16, Liste B, operator's go): the burn took the wallet's whole balance
+  // above the 808.41 kept, so tokens a failed liquidity add had bought minutes before burned with it. The balance is read
+  // before the swap; the burn takes what came in, never more than is above the kept 808.41.
+  const before = await publicClient.readContract({ address: tokenAddress, abi: ERC20_ABI, functionName: 'balanceOf', args: [account.address] });
+
   // Swap BNB -> token
   let txHash;
   try {
@@ -318,13 +323,15 @@ async function swapAndBurn(walletClient, publicClient, account, bnbAmount, token
     return null;
   }
 
-  // Check token balance
-  const tokenBalance = spendable(await publicClient.readContract({
+  // Check token balance: what this swap brought, capped by what is above the kept amount
+  const after = await publicClient.readContract({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [account.address],
-  }), tokenAddress);
+  });
+  const bought = after > before ? after - before : 0n, above = spendable(after, tokenAddress);
+  const tokenBalance = bought < above ? bought : above;
 
   if (tokenBalance === 0n) {
     console.log(`  No ${tokenName} to burn.`);

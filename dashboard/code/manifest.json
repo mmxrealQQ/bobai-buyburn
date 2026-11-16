@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1859,
-   "zipBytes": 26956,
-   "txtBytes": 82942,
-   "sha256": "4b30b684a432b54d",
+   "lines": 1873,
+   "zipBytes": 27473,
+   "txtBytes": 84276,
+   "sha256": "4208375eff8b4565",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -666,10 +666,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 75,
-   "lines": 24805,
-   "zipBytes": 633705,
-   "txtBytes": 1795126,
-   "sha256": "51d55bda4956947c",
+   "lines": 24831,
+   "zipBytes": 634364,
+   "txtBytes": 1796869,
+   "sha256": "644ead98fe963326",
    "reqs": [
     {
      "what": "A wallet to be paid into",

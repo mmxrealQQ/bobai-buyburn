@@ -20,7 +20,7 @@
 // Needs anvil (~/.foundry/bin) and BSC_RPC_KEYED_URL_2 in .env, like lp-fork-test.mjs.
 //   node scripts/buyback-fork-test.mjs
 import 'dotenv/config';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -186,7 +186,7 @@ console.log(`\nthe run (fork of block ${forkBlock}, throwaway wallet ${bot})`);
 // the text that was read above is run from a copy with the right extension, inside the repo so 'viem' resolves.
 const copy = path.join(ROOT, 'temp', 'buyback-worker-fork.mjs');
 fs.mkdirSync(path.dirname(copy), { recursive: true });
-fs.writeFileSync(copy, `${workerSrc}\nexport { addLiquidityAndBurn };\n`);   // the liquidity add is asked for by name further down
+fs.writeFileSync(copy, `${workerSrc}\nexport { addLiquidityAndBurn, swapAndBurn };\n`);   // the liquidity add and the burn are asked for by name further down
 const workerModule = await import(pathToFileURL(copy).href);
 const worker = workerModule.default;
 const log = console.log; const out = []; console.log = (...a) => out.push(a.join(' '));
@@ -290,6 +290,44 @@ console.log('\nthe liquidity add (dormant path, called by name)');
     // $BOBAI: the wallet keeps its 808.41 (operator, 2026-10-08); $BOB keeps nothing
     const kept = await tok(token, acct.address), keep = token.toLowerCase() === BOBAI.toLowerCase() ? parseEther('808.41') : 0n;
     ok(`${name}: nothing stays approved and the wallet keeps ${keep ? 'exactly 808.41' : 'no token'}`, allowance === 0n && kept === keep, `allowance ${allowance}, ${formatEther(kept)} kept`);
+  }
+}
+
+// ── the burn takes only what its own swap bought (2026-11-16, Liste B) ──────
+// A wallet already holding $BOBAI above the kept 808.41 — what a liquidity add that failed after its buy leaves — then
+// runs the burn: the tokens it held stay, only what the burn's swap brought goes to dead. The same on the code before
+// the change (git HEAD) burns the tokens it held too: the check sees the fault it is there for.
+console.log('\nthe burn takes only what its own swap bought (tokens a failed add left stay)');
+{
+  const SWAP = parseAbi(['function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable']);
+  const ROUTER_ADDR = (workerSrc.match(/const PANCAKE_ROUTER_V2 = '(0x[0-9a-fA-F]{40})'/) || [])[1];
+  const WBNB_ADDR = (workerSrc.match(/const WBNB = '(0x[0-9a-fA-F]{40})'/) || [])[1];
+  const leftover = async (mod) => {
+    const k = generatePrivateKey(), acct = privateKeyToAccount(k);
+    await test.setBalance({ address: acct.address, value: parseEther('0.05') });
+    const wallet = createWalletClient({ account: acct, chain, transport: http(LOCAL, { timeout: 120000 }) });
+    // the tokens a failed add left behind: bought straight from the router, never burned
+    const h = await wallet.writeContract({ address: ROUTER_ADDR, abi: SWAP, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [0n, [WBNB_ADDR, BOBAI], acct.address, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.01') });
+    const rc = await pub.waitForTransactionReceipt({ hash: h });
+    if (rc.status !== 'success') throw new Error('the setup purchase reverted — no leftover to test with');
+    const held = await tok(BOBAI, acct.address), dead0 = await tok(BOBAI, DEAD);
+    if (held <= parseEther('808.41')) throw new Error(`the setup purchase left only ${formatEther(held)} BOBAI`);
+    const lines = []; console.log = (...a) => lines.push(a.join(' '));
+    let res = null;
+    try { res = await mod.swapAndBurn(wallet, pub, acct, parseEther('0.01'), BOBAI, 'BOBAI'); } finally { console.log = log; }
+    return { held, left: await tok(BOBAI, acct.address), burned: (await tok(BOBAI, DEAD)) - dead0, res, lines };
+  };
+  const now = await leftover(workerModule);
+  ok('the tokens held before the burn stay on the wallet; only the swap\'s own purchase goes to dead', !!now.res && now.left >= now.held && now.burned > 0n && now.burned <= parseEther(now.res.amount),
+    `held ${Number(formatEther(now.held)).toFixed(0)}, left ${Number(formatEther(now.left)).toFixed(0)}, burned ${Number(formatEther(now.burned)).toFixed(0)} BOBAI`);
+  // the code before (git HEAD), same fork, same steps
+  let headSrc = null; try { headSrc = execSync('git show HEAD:worker/index.js', { cwd: ROOT, maxBuffer: 1e8 }).toString(); } catch { /* not in a repo */ }
+  if (headSrc && !/ONLY WHAT THIS SWAP BOUGHT IS BURNED/.test(headSrc)) {
+    const headCopy = path.join(ROOT, 'temp', 'buyback-worker-fork-head.mjs');
+    fs.writeFileSync(headCopy, `${headSrc}\nexport { swapAndBurn };\n`);
+    const old = await leftover(await import(pathToFileURL(headCopy).href));
+    ok('… and the code before burned them with it (the check sees the fault)', !!old.res && old.left === parseEther('808.41') && old.left < old.held,
+      `held ${Number(formatEther(old.held)).toFixed(0)}, left ${Number(formatEther(old.left)).toFixed(0)} BOBAI`);
   }
 }
 

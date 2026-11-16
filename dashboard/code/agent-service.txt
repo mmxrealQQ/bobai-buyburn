@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24805 lines.
+# one fetch. 75 files, 24831 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -11071,6 +11071,22 @@ const rpc = async (method, params, endpoints) => {
   throw last || new Error('all RPC endpoints failed');
 };
 
+// A READ ASKED OF THE NODES STAGGERED, NOT IN TURN (2026-11-16, Liste B: every unpaid /answer took 3.1 or 6.1 s, the
+// $BOBAI quote's reads waiting on a node that hung from this worker before the next was asked; MANDATE logged "HTTP 402
+// in 3109 ms"): the first node at once, the next 400 ms later if none has answered, and so on — the first good answer
+// counts. For read-only calls (prices, reserves); a payment's receipt keeps its own list and order.
+const rpcRace = (method, params, list = RPCS, stagger = 400) => new Promise((resolve, reject) => {
+  let left = list.length, done = false, lastErr = null;
+  list.forEach((endpoint, i) => setTimeout(async () => {
+    if (done) { left--; return; }
+    try { const r = await rpc(method, params, [endpoint]); if (!done) { done = true; resolve(r); } }
+    catch (e) { lastErr = e; }
+    finally { if (--left === 0 && !done) reject(lastErr || new Error('all RPC endpoints failed')); }
+  }, i * stagger));
+});
+const callQuick = (to, data) => rpcRace('eth_call', [{ to, data }, 'latest']);
+export { rpcRace };   // held by scripts/x402-quote-speed-regressions.mjs (2026-11-16)
+
 const hexToBig = (h) => (h && h !== '0x' ? BigInt(h) : 0n);
 const addrFromTopic = (t) => '0x' + String(t).slice(26).toLowerCase();
 
@@ -11324,14 +11340,24 @@ function bareFields(body) {
   return Object.fromEntries(Object.entries(rest).filter(([, v]) => v == null || ['string', 'number', 'boolean'].includes(typeof v)));
 }
 
-async function bobaiForUsd(usd) {
-  const [res, t0, price] = await Promise.all([call(BOBAI_PAIR, SEL.getReserves), call(BOBAI_PAIR, SEL.token0), bnbUsd()]);
+// THE PRICE KEPT HALF A MINUTE (2026-11-16, Liste B): every 402 read the two pairs again. A quote at most 30 s old is
+// well inside the tenth of slack the payment already allows for a price that moves; quoted_at says when it was read.
+let BOBAI_QUOTE = null; // { at, usdPerBobai }
+export const QUOTE_KEEP_MS = 30000;
+async function usdPerBobaiNow() {
+  if (BOBAI_QUOTE && Date.now() - BOBAI_QUOTE.at < QUOTE_KEEP_MS) return BOBAI_QUOTE;
+  const [res, t0, price] = await Promise.all([callQuick(BOBAI_PAIR, SEL.getReserves), callQuick(BOBAI_PAIR, SEL.token0), bnbUsd()]);
   const b = res.slice(2);
   const r0 = Number(BigInt('0x' + b.slice(0, 64))) / 1e18, r1 = Number(BigInt('0x' + b.slice(64, 128))) / 1e18;
   const bobaiIs0 = ('0x' + t0.slice(26)).toLowerCase() === BOBAI;
   const bnbPerBobai = bobaiIs0 ? r1 / r0 : r0 / r1;
   const usdPerBobai = bnbPerBobai * price;
   if (!(usdPerBobai > 0)) throw new Error('could not price $BOBAI');
+  BOBAI_QUOTE = { at: Date.now(), usdPerBobai };
+  return BOBAI_QUOTE;
+}
+async function bobaiForUsd(usd) {
+  const q = await usdPerBobaiNow(), usdPerBobai = q.usdPerBobai;
   // `tokens` is what to SEND (the full price, rounded up); `atomic` is the
   // least that must ARRIVE — a tenth less, which covers the token's own 3 %
   // transfer tax and a price that moved between the quote and the block.
@@ -11339,7 +11365,7 @@ async function bobaiForUsd(usd) {
   // amount, which after the tax would have arrived short and been refused.
   const tokens = Math.ceil(usd / usdPerBobai);
   // in integers (2026-10-13): tokens * 0.9 * 1e18 in floating point read 360900000000000065536 for 360.9 $BOBAI
-  return { atomic: BigInt(tokens) * 9n * 10n ** 17n, tokens, usd_per_bobai: usdPerBobai };
+  return { atomic: BigInt(tokens) * 9n * 10n ** 17n, tokens, usd_per_bobai: usdPerBobai, quoted_at: new Date(q.at).toISOString() };
 }
 
 
@@ -11376,8 +11402,8 @@ const BNB_PAIR = '0x58f876857a02d6762e0101bb5c46a8c1ed44dc16';
 const WBNB = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
 async function bnbUsd() {
   const [res, t0] = await Promise.all([
-    call(BNB_PAIR, SEL.getReserves),
-    call(BNB_PAIR, SEL.token0),
+    callQuick(BNB_PAIR, SEL.getReserves),
+    callQuick(BNB_PAIR, SEL.token0),
   ]);
   const b = res.slice(2);
   const r0 = Number(BigInt('0x' + b.slice(0, 64))) / 1e18;
@@ -12086,7 +12112,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
           // What to send and what is accepted, both said (2026-10-05): maxAmountRequired is the least that
           // must arrive, a tenth under the price, for the token's 3% tax and a price that moves before the block.
           description: `${description} — half price in $BOBAI (${(Number(ANSWER_PRICE) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(ANSWER_PRICE)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: bobai.quoted_at },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: ANSWER_PRICE.toString(), description, resource, asset: U }),
@@ -12261,7 +12287,7 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
         ...(bobai ? [{
           scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `${what} — half price in $BOBAI (${(usd * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(SCAN_PASS_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: bobai.quoted_at },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: SCAN_PASS_PRICE_USD1.toString(), description: what, resource, asset: U }),
@@ -12340,7 +12366,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
         ...(bobai ? [{
           scheme: DIRECT_SCHEME, network: NETWORK, asset: BOBAI, amount: bobaiSend(bobai), maxAmountRequired: bobaiSend(bobai), min_arrival: bobai.atomic.toString(), payTo, resource,
           description: `Pool watch for ${WATCH_DAYS} days — half price in $BOBAI (${(Number(WATCH_PRICE_USD1) / 1e18 * BOBAI_SHARE).toFixed(2)} USD instead of ${fmtUsd1(WATCH_PRICE_USD1)}): send ${bobai.tokens.toLocaleString('en-US')} BOBAI (the amount at this quote); at least ${Number(bobai.atomic / 10n ** 18n).toLocaleString('en-US')} BOBAI must arrive after the token's transfer tax. Direct transfer, then the transaction hash in PAYMENT-SIGNATURE`,
-          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: new Date().toISOString() },
+          ...DIRECT_TERMS, extra: { name: 'BOB', symbol: 'BOBAI', version: '1', decimals: 18, assetTransferMethod: 'direct-transfer', usd_per_bobai: bobai.usd_per_bobai, quoted_at: bobai.quoted_at },
         }] : []),
         // $U by EIP-3009 (2026-10-22, operator's go): last, so every index named elsewhere (accepts[0] USD1 …) stays
         eip3009Accepts({ payTo, amountAtomic: WATCH_PRICE_USD1.toString(), description: `Pool watch for ${WATCH_DAYS} days`, resource, asset: U }),

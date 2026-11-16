@@ -45,5 +45,9 @@ const idx = readFileSync(new URL('../worker-agent/index.js', import.meta.url), '
 ok('the route keeps the read 60 s and a POST revoke clears it', /session\/state\?chain=/.test(idx) && /max-age=60/.test(idx) && /caches\.default\.delete\(new Request\(`https:\/\/agent\.brainonbnb\.com\/session\/state/.test(idx));
 ok('an unreadable chain is not cached', /if \(!st\.chains\.some\(\(c\) => c\.error\)\)/.test(idx));
 
+// /lp/portfolio builds from its six reads at once (2026-11-16: one after the other, 14.2 s cold)
+const bp = (idx.match(/async function buildPortfolio\(\) \{[\s\S]*?const model = lpPortfolio/) || [''])[0];
+ok('/lp/portfolio: the six reads in one Promise.all, none awaited alone before it', /const \[rec, series, bobaiUsd, bnbUsdNow, verdict, outSince\] = await Promise\.all\(\[/.test(bp) && !/const rec = await readAgentRecord/.test(bp) && !/await lpWidthVerdict\(env\)/.test(bp));
+
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exitCode = fails ? 1 : 0;

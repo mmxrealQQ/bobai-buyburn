@@ -3883,16 +3883,23 @@ ${pageTail}`;
       return res;
     }
     async function buildPortfolio() {
-      const rec = await readAgentRecord(env);
-      const series = await buildLpSeries(env);
-      const bobaiUsd = await bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null);
-      const bnbUsdNow = await fetch('https://brainonbnb.com/api/price', { signal: AbortSignal.timeout(4000) }).then((r) => r.json()).then((j) => Number(j.bnb_usd) || null).catch(() => null);
+      // ALL SIX READS AT ONCE (2026-11-16: one after the other, the first call after a quiet quarter of an hour took
+      // 14.2 s live); none needs another's answer, only the width pick below needs the record, after
+      const [rec, series, bobaiUsd, bnbUsdNow, verdict, outSince] = await Promise.all([
+        readAgentRecord(env),
+        buildLpSeries(env),
+        bobaiForUsd(1).then((q) => q.usd_per_bobai).catch(() => null),
+        fetch('https://brainonbnb.com/api/price', { signal: AbortSignal.timeout(4000) }).then((r) => r.json()).then((j) => Number(j.bnb_usd) || null).catch(() => null),
+        lpWidthVerdict(env).catch(() => null),
+        env.AGENT.get('lp:out_since').catch(() => null),
+      ]);
       // The width and wait the next re-set would use, from the width record,
       // and since when the price has been outside, from the DeFi worker's
       // own note — so the one sentence about what comes next is the record's.
       let width = null, outsideSince = null;
       try {
-        const { v } = await lpWidthVerdict(env);
+        if (!verdict) throw new Error('no width record');
+        const { v } = verdict;
         // The same pick the re-set will make: re-read with the width the
         // position is in, so the card's sentence and the plan agree.
         const lastRb = rec && rec.last && rec.last.steps && rec.last.steps.rebalance;
@@ -3901,7 +3908,7 @@ ${pageTail}`;
         if (pick) width = { width_pct: pick.width, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: pick.earnings?.net_usd_per_day ?? null };
         else if (v) width = { width_pct: null, wait_hours: v.delay_test?.in_use_hours ?? null, net_usd_per_day: null };
       } catch { /* the sentence does without */ }
-      try { outsideSince = (await env.AGENT.get('lp:out_since')) || null; } catch { /* likewise */ }
+      outsideSince = outSince || null;
       // the width and mode worker-lp mints with (its LP_WIDTH_PCT / LP_RESET_MODE, mirrored in this worker's vars)
       const fixedWidth = Number(env.LP_WIDTH_PCT) > 0 ? Number(env.LP_WIDTH_PCT) : null;
       if (fixedWidth) width = { ...(width || {}), width_pct: fixedWidth, net_usd_per_day: null };

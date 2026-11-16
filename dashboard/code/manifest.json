@@ -242,10 +242,10 @@
    "title": "NFT Auto-Mint Bot",
    "tagline": "Watches the pair and mints to the buyer, unasked.",
    "files": 2,
-   "lines": 759,
-   "zipBytes": 15643,
-   "txtBytes": 38285,
-   "sha256": "0f4fabe928d103f1",
+   "lines": 788,
+   "zipBytes": 16633,
+   "txtBytes": 40962,
+   "sha256": "3ec6ae1457ad884a",
    "reqs": [
     {
      "what": "A deployed ERC-721 it is allowed to mint from",

@@ -133,7 +133,7 @@ txt: https://brainonbnb.com/code/telegram-bot.txt
 NFT Auto-Mint Bot
 -----------------
 Watches the pair and mints to the buyer, unasked.
-2 files, 759 lines
+2 files, 788 lines
 needs:
   - A deployed ERC-721 it is allowed to mint from
       ours: the contract in the NFT Buy Drops bundle

@@ -32,5 +32,10 @@ ok('thread page: a reply that is a correction is not printed again', /corrected\
 ok('thread page: "More on <topic>" from topicOf', /topicOf\(t\)/.test(w) && /More on \$\{escHtml\(tp\.name\)\}/.test(w));
 ok('/ask and /fix: a space after "(... kept whole in the text)."', !/kept whole in the text\)\.[A-Z]/.test(w) && (w.match(/kept whole in the text\)\. [A-Z]/g) || []).length === 2);
 
+// a thread page holds strangers' words and is built by the worker, not from the assets: its own CSP (2026-11-16)
+const csp = (w.match(/const BOARD_THREAD_CSP = "([^"]+)"/) || [])[1] || '';
+ok('thread page: a CSP of its own is set', /headers\.set\('Content-Security-Policy', BOARD_THREAD_CSP\)/.test(w) && /default-src 'none'/.test(csp));
+ok('thread page CSP: no script, image or frame from elsewhere, no form, no base', /script-src 'self' 'unsafe-inline';/.test(csp) && /img-src 'self' data:;/.test(csp) && /connect-src 'self';/.test(csp) && /form-action 'none'/.test(csp) && /base-uri 'none'/.test(csp) && /object-src 'none'/.test(csp) && !/https?:/.test(csp));
+
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exitCode = fails ? 1 : 0;

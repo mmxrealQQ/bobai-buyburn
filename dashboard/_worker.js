@@ -3210,6 +3210,11 @@ async function boardThreadPage(id) {
   const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
   const headers = secureHeaders(new Headers({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' }));
+  // A POLICY FOR OTHER PEOPLE'S WORDS (2026-11-16, Liste A): every page from the assets carries the site's CSP; this one,
+  // built here and holding what strangers wrote, carried none. Its own needs only: our scripts and the inline language
+  // switch, /i18n/ar.json on /ar, our fonts and styles. Nothing from elsewhere loads, nothing is framed, no form posts.
+  headers.set('Content-Security-Policy', BOARD_THREAD_CSP);
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   const shell = (title, desc, body, extra = '') => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">${extra}<link rel="stylesheet" href="/fonts.css?v=1"><style>:root{--bg:#0c0b0c;--fg:#e8e4da;--muted:#a0a2c0;--gold:#f0b90b;--line:rgba(255,255,255,.08)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:28px 16px 64px}a{color:var(--gold)}h1{font:700 26px/1.3 'Space Grotesk',Inter,sans-serif;color:#f3efe6;margin:10px 0 8px;overflow-wrap:anywhere}.m{color:var(--muted);font-size:14px;overflow-wrap:anywhere}.b{white-space:pre-wrap;overflow-wrap:anywhere;margin:18px 0}.r{border-left:2px solid rgba(240,185,11,.25);padding:2px 0 2px 14px;margin:18px 0}.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-right:6px}nav{font-size:14px}ul{padding-left:20px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:28px 0}</style></head><body><main>${body}</main></body></html>`;
   if (!t || t.error || !t.id || t.hidden) {
     return new Response(shell(`Thread #${id} — Brain Board`, 'This thread does not exist or is hidden.', `<nav><a href="/board">Brain Board</a></nav><h1>Thread #${escHtml(id)} is not on the board</h1><p class="m">It does not exist, or the operator hid it (spam or a test). Every thread: <a href="/board">brainonbnb.com/board</a> · as text: <a href="${BOARD_API}.md">board.md</a></p>`, '<meta name="robots" content="noindex">'), { status: 404, headers });
@@ -3240,6 +3245,7 @@ ${more ? `${more}<p class="m"><a href="/board">The whole library</a> · search i
 }
 
 // The four headers every page gets at the end of fetch(); the Brain page's own routes above return before it.
+const BOARD_THREAD_CSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'self'";
 function secureHeaders(h) {
   h.set('X-Content-Type-Options', 'nosniff');
   h.set('X-Frame-Options', 'SAMEORIGIN');

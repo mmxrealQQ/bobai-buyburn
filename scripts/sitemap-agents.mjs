@@ -21,6 +21,9 @@ if (process.argv.includes('--self-test')) {
   if (/<loc>https:\/\/brainonbnb\.com\/agent\/\$\{/.test(worker)) fails.push('the worker writes /agent/<id> into the sitemap');
   // the reason holds only while the page is noindex: if it is ever indexed again, this guard has to be rethought
   if (!/<meta name="robots" content="noindex">/.test(agentHtml)) fails.push('agent.html is no longer noindex — decide again whether its charts belong in the sitemap');
+  // no soft 404 (2026-11-16): an id the registry does not hold, and a path that is no id, answer 404
+  if (!/status: missing \? 404 : t\.status/.test(worker)) fails.push('/agent/<unknown id> is not a 404');
+  if (!/\/\^\\\/agent\\\/\[\^\/\]\+\\\/\?\$\/\.test\(url\.pathname\)[\s\S]{0,200}status: 404/.test(worker)) fails.push('/agent/<not a number> is not a 404');
   console.log(fails.length ? 'FAIL: ' + fails.join('; ') : 'no agent chart in the sitemap, and the agent page is noindex — the two agree');
   process.exit(fails.length ? 1 : 0);
 }

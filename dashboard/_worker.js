@@ -2770,7 +2770,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
         // WHAT THE AGENT IS, IN THE PAGE ITSELF (2026-10-30): the page read "Reading this agent..." to every crawler and
         // every agent without a browser. The chart is asked once, briefly; without it the page stands as before.
-        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+        // an id the registry does not hold is a 404 (2026-11-16, Liste A: /agent/999999999 answered 200, a soft 404); the
+        // page stays the same, only its status says it — and a chart that did not answer at all leaves the 200
+        let missing = false;
+        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => { if (x.status === 404) missing = true; return x.ok ? x.json() : null; }).catch(() => null);
         // cut at a sentence (2026-11-12: "centred on the Evidence score", "skill showca Evidence score"), and the paid
         // jobs said as the registry says them: by outside buyers, ours beside
         const desc = (() => { const d = String(c?.description || '').trim(); if (d.length <= 280) return d; const cut = d.slice(0, 280), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); return end > 80 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…'; })();
@@ -2787,9 +2790,14 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
           .on('meta[property="og:url"]', set(`https://brainonbnb.com/agent/${id}`))
           .on('head', { element(e) { e.append('<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">', { html: true }); } })
           .transform(r);
-        return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
+        return new Response(t.body, { status: missing ? 404 : t.status, headers: secureHeaders(new Headers(t.headers)) });
       }
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
+    }
+    // /agent/<not a number> is no agent at all: the same page, a 404 (it was the agent page with a 200)
+    if (request.method === 'GET' && /^\/agent\/[^/]+\/?$/.test(url.pathname)) {
+      const r = await env.ASSETS.fetch(new Request(url.origin + '/agent/0', request));
+      return new Response(r.body, { status: 404, headers: secureHeaders(new Headers(r.headers)) });
     }
 
     // AN /api/ PATH WE DO NOT SERVE IS A 404 (2026-10-04). It fell through to the

@@ -79,7 +79,7 @@ async function morningRun(env, { notify, pauseMs = 60000, notifyRetryMs = 120000
     failing = failedTwice(first, results);
   }
   const text = renderHealthMessage(results, failing, new Date().toISOString().slice(0, 10));
-  let sent = null;
+  let sent = null, mailed = null;
   if (notify) {
     const post = () => env.TG.fetch('https://tg/broadcast', {
       method: 'POST',
@@ -93,11 +93,14 @@ async function morningRun(env, { notify, pauseMs = 60000, notifyRetryMs = 120000
     sent = r && r.ok === true && r.message_id != null;
     if (r && r.duplicate) { console.log('[HEALTH] the morning message was already sent today — not repeated'); return { checks: results.length, failing, sent, text, duplicate: true }; }
     if (!sent) console.error('[HEALTH] the message did not go out:', JSON.stringify(r));
+    // THE MORNING TOO HAS A SECOND WAY (2026-11-16, Liste B): the hourly look e-mailed when the bot could not post, the
+    // daily report only logged it — a broken bot was the one morning with no report. Twice refused: the e-mail.
+    if (!sent) mailed = await emailFallback(env, text);
   }
-  console.log(`[HEALTH] ${results.length} checks, ${failing.length} failing, sent=${sent}`);
+  console.log(`[HEALTH] ${results.length} checks, ${failing.length} failing, sent=${sent}${mailed ? `, e-mail ${mailed}` : ""}`);
   const waiting = results.find((r) => r.recheck && r.look);
   if (secondLook && waiting) await buybackSecondLook(env, waiting.look, { notify });
-  return { checks: results.length, failing, sent, text, second_look: !!waiting };
+  return { checks: results.length, failing, sent, ...(mailed ? { mailed } : {}), text, second_look: !!waiting };
 }
 
 // Pure: the second look's message, or '' when there is nothing to tell.
@@ -201,6 +204,14 @@ export default {
       if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) return new Response('forbidden', { status: 403 });
       const out = await lightRun(env, { notify: url.searchParams.get('notify') === '1', pauseMs: 20000 });
       return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+    // the e-mail way, tried on demand (2026-11-16): after RESEND_API_KEY and ALERT_EMAIL_TO are set, one test message — 'sent', 'not configured' or 'refused (status)'
+    if (url.pathname === '/email-test' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) return new Response('forbidden', { status: 403 });
+      const out = await emailFallback(env, `BOBAI Health · e-mail test ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC
+The second way works: when the Telegram bot cannot post a health message, it comes here.`);
+      return new Response(JSON.stringify({ email: out }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
     if (url.pathname === '/run' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';

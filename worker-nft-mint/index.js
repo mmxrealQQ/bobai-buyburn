@@ -2,7 +2,7 @@
 // Cron every minute: detects BOBAI buys ≥ $100 on PancakeSwap, rolls a rarity
 // per the drop matrix, and mints a BobaiBuyDrops NFT to the buyer wallet.
 
-import { createPublicClient, createWalletClient, http, parseAbi, encodeFunctionData, keccak256 } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, parseAbi, encodeFunctionData, keccak256 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 
@@ -269,7 +269,27 @@ export function foldBuysByTx(logs) {
 }
 
 // How many runs in a row a buy's mint may fail before it is given up (a run is a minute).
-const MINT_TRIES = 30;
+// ONLY THE BUY'S OWN FAULT COUNTS TO 30 (2026-11-16, A-Z review 15.11.): every failure counted, so a relayer out of gas
+// or a node down for half an hour gave the buy at the head up — and the next, and the next: an NFT lost every 30 minutes
+// of an outage, the 18.9. loss again in slow motion. Now a mint the contract refuses (a recipient that cannot take an
+// NFT: the estimate or the block reverts) counts to MINT_TRIES; a failure of the road (gas, nonce, a node, a timeout,
+// a mint still in the mempool) counts to OUTAGE_TRIES, a day — never for ever, so one buy cannot hold up every buy after
+// it. A buy given up is kept in KV mint_given_up, shown on /drops and read by the health check.
+export const MINT_TRIES = 30;
+export const OUTAGE_TRIES = 1440;
+export function mintFault(e) {
+  const m = String((e && (e.shortMessage || e.message)) || e || '');
+  if (/insufficient funds|exceeds the balance|nonce|timed? ?out|timeout|fetch failed|HTTP request failed|rate limit|\bstatus:? ?(?:429|50[0-9])\b|still not mined|underpriced|network|socket|ECONN/i.test(m)) return 'road';
+  if (/revert/i.test(m) || /ContractFunctionRevertedError|ContractFunctionExecutionError/.test(String(e && e.name))) return 'buy';
+  return 'road';
+}
+// pure: one more failure on the count of a buy (old rows were a bare number = the buy's own count)
+export function nextTries(prev, fault) {
+  const t = typeof prev === 'number' ? { buy: prev, road: 0 } : { buy: (prev && prev.buy) || 0, road: (prev && prev.road) || 0 };
+  t[fault === 'buy' ? 'buy' : 'road']++;
+  const giveUp = t.buy >= MINT_TRIES ? `the mint was refused ${t.buy} runs in a row (a recipient that cannot take an NFT)` : t.road >= OUTAGE_TRIES ? `the road failed ${t.road} runs in a row (a day: relayer, gas or nodes)` : null;
+  return { tries: t, giveUp };
+}
 
 function tierFromUsd(usd) {
   for (const [min, t] of TIER_THRESHOLDS) if (usd >= min) return t;
@@ -403,7 +423,9 @@ const mintWorker = {
     if (url.pathname === '/drops' || url.pathname === '/api/drops') {
       const raw = await env.KV.get('recent_drops');
       const drops = raw ? JSON.parse(raw) : [];
-      return new Response(JSON.stringify({ drops }), {
+      // the buys given up without an NFT (mint_given_up, 2026-11-16): said beside the drops, read by the health check
+      const given_up = JSON.parse((await env.KV.get('mint_given_up')) || '[]');
+      return new Response(JSON.stringify({ drops, given_up }), {
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=10',
@@ -468,8 +490,10 @@ const mintWorker = {
     if (!env.NFT_CONTRACT_ADDRESS)    { console.error('FATAL: NFT_CONTRACT_ADDRESS missing'); return; }
 
     const account = privateKeyToAccount(env.NFT_RELAYER_PRIVATE_KEY);
-    const publicClient = createPublicClient({ chain: bsc, transport: http(RPC_DATASEED[0]) });
-    const wallet = createWalletClient({ account, chain: bsc, transport: http(RPC_DATASEED[0]) });
+    // three nodes, not one (2026-11-16): a dataseed that does not answer is passed over, the signed transaction is the same
+    const roads = fallback(RPC_DATASEED.map((u) => http(u, { timeout: 20000 })));
+    const publicClient = createPublicClient({ chain: bsc, transport: roads });
+    const wallet = createWalletClient({ account, chain: bsc, transport: roads });
     const contract = env.NFT_CONTRACT_ADDRESS;
 
     // ---- block range
@@ -703,16 +727,21 @@ const mintWorker = {
         // up, loudly, so one buy cannot hold up every buy after it.
         let tries = {};
         try { tries = JSON.parse((await env.KV.get('mint_tries')) || '{}'); } catch { tries = {}; }
-        const n = (tries[txHash] || 0) + 1;
-        if (n >= MINT_TRIES) {
-          console.error(`[MINT GIVEN UP] buyTx=${txHash} after ${n} runs — marked processed, no NFT for this buy`);
+        const fault = mintFault(e), { tries: t, giveUp } = nextTries(tries[txHash], fault);
+        if (giveUp) {
+          console.error(`[MINT GIVEN UP] buyTx=${txHash}: ${giveUp} — marked processed, no NFT for this buy`);
           processed.add(txHash);
           delete tries[txHash];
           if (pendingMints[txHash]) { delete pendingMints[txHash]; await savePending(); }
-        } else tries[txHash] = n;
+          try {
+            const gone = JSON.parse((await env.KV.get('mint_given_up')) || '[]');
+            gone.unshift({ at: new Date().toISOString(), buyTx: txHash, buyer: mBuyer, usd: Math.round(usd), why: giveUp, last_error: String(e.shortMessage || e.message || e).slice(0, 160) });
+            await env.KV.put('mint_given_up', JSON.stringify(gone.slice(0, 50)));
+          } catch (e2) { console.error('mint_given_up write failed:', e2.message || e2); }
+        } else tries[txHash] = t;
         const keep = Object.fromEntries(Object.entries(tries).slice(-20));
         await env.KV.put('mint_tries', JSON.stringify(keep)).catch(() => {});
-        if (n < MINT_TRIES) { bailed = true; break outer; }
+        if (!giveUp) { bailed = true; break outer; }
       }
     }
 

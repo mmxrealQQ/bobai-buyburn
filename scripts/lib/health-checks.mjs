@@ -572,7 +572,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
       else { const since = Date.now() - 36 * 3600e3, n = new Map();
         for (const d of D) { const t = d.ts < 1e12 ? d.ts * 1000 : d.ts; if (t >= since && d.buyTx) n.set(String(d.buyTx).toLowerCase(), (n.get(String(d.buyTx).toLowerCase()) || 0) + 1); }
         const two = [...n].filter(([, c]) => c > 1).map(([k]) => k.slice(0, 10) + '…');
-        ok('Bots', 'no buy got two NFTs in the last 36 h', !two.length, two.length ? `${two.length} buy(s) minted twice: ${two.join(', ')}` : `${n.size} buy(s), one NFT each`); } }
+        ok('Bots', 'no buy got two NFTs in the last 36 h', !two.length, two.length ? `${two.length} buy(s) minted twice: ${two.join(', ')}` : `${n.size} buy(s), one NFT each`); }
+      // AND NO BUY LEFT WITHOUT ONE (2026-11-16, A-Z review 15.11.): a buy the minter gave up (mint_given_up — refused 30
+      // runs, or a whole day of relayer/node failures) is said here, the last 36 h; a minter that predates the list reads ok
+      const G = dr.json && Array.isArray(dr.json.given_up) ? dr.json.given_up : null;
+      if (D && G) { const since = Date.now() - 36 * 3600e3, gone = G.filter((g) => Date.parse(g.at) >= since);
+        ok('Bots', 'no buy of $100+ was given up without its NFT in the last 36 h', !gone.length, gone.length ? gone.map((g) => `${String(g.buyTx).slice(0, 10)}… $${g.usd}: ${g.why}`).join(' | ') : `${G.length} given up ever, none in 36 h`); } }
     // informational: a degraded log scan walks on from its cursor (2026-10-09); said, not red
     ok('Bots', 'telegram bot log scans read whole (informational)', true, j.scan_degraded_since ? `degraded since ${j.scan_degraded_since}, walking from the cursor` : 'not degraded');
   }

@@ -1,7 +1,7 @@
 // AGENT WATCH — an alarm when an agent you rely on goes down, and when it is back (agent chart phase 4, 2026-10-12).
 //
 // Rug Watch tells a holder when a token turns against them; this tells whoever depends on an agent when it stops
-// answering. Free, for any agent on BNB Chain, webhook only (as Rug Watch): POST /agent-watch {agent, callback} and
+// answering. Free, for any agent on BNB Chain, webhook only (Rug Watch also polls since 5.11.; this one does not): POST /agent-watch {agent, callback} and
 // the callback receives {agent, state: "down"|"up", at, chart} on every change.
 //   - every agent: from the daily pulse (pulse.js calls noteAgentState after each measurement)
 //   - a LISTED agent: also every hour (runListedLive), so the alarm and its profile follow within the hour

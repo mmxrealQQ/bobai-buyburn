@@ -3621,7 +3621,7 @@ ${pageTail}`;
       return json(out.body, out.status, out.headers || {});
     }
 
-    // THE RUG WATCH (2026-10-09, rug-watch.js): free, webhook only — GET the terms, POST to register,
+    // THE RUG WATCH (2026-10-09, rug-watch.js): free, a webhook or (since 5.11.) polled — GET the terms, POST to register,
     // GET /rug-watch/<id> for the status, DELETE it with x-rug-watch-secret. Free of the payment path above.
     // AN AGENT THAT HIRES AN AGENT (2026-10-14, second-opinion.js): the public log of every second opinion the DeFi
     // agent bought from an outside agent through its Altana leash; POST (internal, x-hit-secret) buys one.

@@ -6,8 +6,9 @@
 // bsc_token_preflight gives) and compared with the read before. When something
 // dangerous changed — the sell stopped going through, the liquidity left, the
 // tax went up, the owner or the proxy implementation changed — the callback is
-// POSTed, signed with the watch's own secret. Delivery is the webhook only: no
-// Telegram, no browser, no mail. The preflight is a measurement, not a promise,
+// POSTed, signed with the watch's own secret — or, without a callback (poll mode,
+// since 5.11.), kept in the watch for its status read. No Telegram, no browser,
+// no mail. The preflight is a measurement, not a promise,
 // and so is every event here: it says what changed between two reads.
 //
 // WHO GETS HOW MANY (the operator's decisions, 2026-10-09). One active watch

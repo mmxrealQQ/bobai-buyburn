@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24713 lines.
+# one fetch. 75 files, 24732 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4519,7 +4519,7 @@ export const _clearWalletCache = () => walletCache.clear();
 // AGENT WATCH — an alarm when an agent you rely on goes down, and when it is back (agent chart phase 4, 2026-10-12).
 //
 // Rug Watch tells a holder when a token turns against them; this tells whoever depends on an agent when it stops
-// answering. Free, for any agent on BNB Chain, webhook only (as Rug Watch): POST /agent-watch {agent, callback} and
+// answering. Free, for any agent on BNB Chain, webhook only (Rug Watch also polls since 5.11.; this one does not): POST /agent-watch {agent, callback} and
 // the callback receives {agent, state: "down"|"up", at, chart} on every change.
 //   - every agent: from the daily pulse (pulse.js calls noteAgentState after each measurement)
 //   - a LISTED agent: also every hour (runListedLive), so the alarm and its profile follow within the hour
@@ -10709,7 +10709,7 @@ async function readAgentRecord(env) {
 import { lpPositionLook, lpDefaultTarget, OWN_LP_WALLET } from './lp-service.js';
 import { healthFactor } from './venus.js';
 import { yieldPlan } from './yield.js';
-import { secondOpinion, readOpinions, SELLER, SUBJECT } from './second-opinion.js';
+import { secondOpinion, readOpinions, heldSession, SELLER, SUBJECT } from './second-opinion.js';
 import { encodeFunctionData, keccak256, toBytes, getAddress } from 'viem';
 import { agentWalletOf, AGENT_ID_OF } from './agent-wallets.js';
 import { runVenusWork, readVenusLog, venusWorkDue } from './venus-work.js';
@@ -13747,7 +13747,14 @@ ${pageTail}`;
     // answer is one a stranger can reproduce with two view calls. See
     // session.js for why revocation is deliberately not reachable from here.
     if (path === '/session') {
-      const out = annotateRoles(await handleSession(url, env), env);
+      // the chain read kept 60 s (2026-11-16: 10-16 s a load); measured_at says when it was read, a revoke clears it
+      const ck = new Request(`https://agent.brainonbnb.com/session/state?chain=${url.searchParams.get('chain') || 'all'}`);
+      let st = await caches.default.match(ck).then((r) => (r ? r.json() : null)).catch(() => null);
+      if (!st) {
+        st = await handleSession(url, env);
+        if (!st.chains.some((c) => c.error)) ctx.waitUntil(caches.default.put(ck, new Response(JSON.stringify(st), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=60' } })).catch(() => {}));
+      }
+      const out = annotateRoles(st, env);
       // The revocations fired from the product, beside the live state, so the
       // page can show the control and its record together.
       out.revocations = await readRevocations(env);
@@ -13757,7 +13764,10 @@ ${pageTail}`;
     // Revocation from the product: two locks (admin key as a worker secret,
     // operator token on the request), see session-revoke.js.
     if (path === '/session/revoke') {
-      return handleSessionRevoke(request, env);
+      const res = await handleSessionRevoke(request, env);
+      // a revoke shows at once on /session, never a cached "valid"
+      if (request.method === 'POST') await Promise.all(['all', '56', '97'].map((c) => caches.default.delete(new Request(`https://agent.brainonbnb.com/session/state?chain=${c}`)).catch(() => {})));
+      return res;
     }
 
     // When this worker was last deployed (2026-10-24, operator: "auf der page steht ja immer noch rebuilt 1h ago" — a
@@ -14228,7 +14238,7 @@ ${pageTail}`;
       return json(out.body, out.status, out.headers || {});
     }
 
-    // THE RUG WATCH (2026-10-09, rug-watch.js): free, webhook only — GET the terms, POST to register,
+    // THE RUG WATCH (2026-10-09, rug-watch.js): free, a webhook or (since 5.11.) polled — GET the terms, POST to register,
     // GET /rug-watch/<id> for the status, DELETE it with x-rug-watch-secret. Free of the payment path above.
     // AN AGENT THAT HIRES AN AGENT (2026-10-14, second-opinion.js): the public log of every second opinion the DeFi
     // agent bought from an outside agent through its Altana leash; POST (internal, x-hit-secret) buys one.
@@ -14245,7 +14255,7 @@ ${pageTail}`;
         ctx.waitUntil(work.then((r) => (r && r.job ? tickOwnJobs(env, rpc, [r.job]) : null)).catch(() => {}));
         return json(await work);
       }
-      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', seller: SELLER, subject: SUBJECT, last_ask: await env.AGENT.get('opinion:ask:last', 'json').catch(() => null), opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
+      return json({ what_this_is: 'Every second opinion the DeFi agent (#363709) bought from an outside agent before it moves money: Mandate Range-1 (ERC-8004 #344119) hired on the ERC-8183 kernel, paid from the Altana wallet of the agent through a session key whose limits anyone can read (the kernel, $U.approve, router.registerJob, router.settle; 1 $U a day; an expiry; revocable). Newest first. Stage 1: recorded beside the reading of the agent itself, it decides nothing yet.', leash: 'https://agent.brainonbnb.com/session', session_held: heldSession(env), seller: SELLER, subject: SUBJECT, last_ask: await env.AGENT.get('opinion:ask:last', 'json').catch(() => null), opinions: await readOpinions(env) }, 200, { 'Cache-Control': 'public, max-age=30' });
     }
     if (path === '/rug-watch' || path.startsWith('/rug-watch/')) {
       return handleRugWatch(request, env, path, { rpc, note, bump: (kind, n) => ctx.waitUntil(bump(env, kind, n)) });
@@ -19100,8 +19110,9 @@ export async function rebalancePlan(input = {}) {
 // bsc_token_preflight gives) and compared with the read before. When something
 // dangerous changed — the sell stopped going through, the liquidity left, the
 // tax went up, the owner or the proxy implementation changed — the callback is
-// POSTed, signed with the watch's own secret. Delivery is the webhook only: no
-// Telegram, no browser, no mail. The preflight is a measurement, not a promise,
+// POSTed, signed with the watch's own secret — or, without a callback (poll mode,
+// since 5.11.), kept in the watch for its status read. No Telegram, no browser,
+// no mail. The preflight is a measurement, not a promise,
 // and so is every event here: it says what changed between two reads.
 //
 // WHO GETS HOW MANY (the operator's decisions, 2026-10-09). One active watch
@@ -20346,6 +20357,16 @@ function sessionOf(env) {
   const raw = JSON.parse(env.ALTANA_SESSION);
   return { ...raw, signer: signerFromPrivateKey(raw.signerPrivateKey), expiry: Number(raw.expiry),
     permissions: { ...raw.permissions, spend: (raw.permissions?.spend || []).map((s) => ({ ...s, limit: BigInt(s.limit) })) } };
+}
+// THE SESSION THIS WORKER HOLDS, PUBLIC PARTS ONLY (2026-11-16: a new leash was granted on chain on 15.11., the upload
+// of its secret never arrived, and the 04:23 ask was refused "expired" while the health check — reading the chain —
+// saw a valid key). Its expiry and the start of its public key are no secret; the private key never leaves sessionOf.
+export function heldSession(env) {
+  try {
+    if (!env.ALTANA_SESSION) return { held: false };
+    const raw = JSON.parse(env.ALTANA_SESSION), exp = Number(raw.expiry) || 0;
+    return { held: true, expires_at: exp ? new Date(exp * 1000).toISOString() : null, expired: !exp || exp * 1000 < Date.now(), public_key: String(raw.publicKey || '').slice(0, 20) + '…', granted_tx: raw.transactionHash || null };
+  } catch { return { held: true, unreadable: true }; }
 }
 async function balanceOfU(rpc, who) {
   const r = await rpc('eth_call', [{ to: U, data: '0x70a08231' + who.slice(2).toLowerCase().padStart(64, '0') }, 'latest']);
@@ -21761,7 +21782,7 @@ export const ALTANA_NETWORKS = {
     name: 'BNB Smart Chain',
     keyStore: '0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a',
     explorer: 'https://bscscan.com',
-    rpcs: ['https://bsc.publicnode.com', 'https://bsc-dataseed1.defibit.io'],
+    rpcs: ['https://bsc.publicnode.com', 'https://bsc-dataseed.bnbchain.org', 'https://bsc-dataseed1.defibit.io'],
     kernel: '0xEa4DAa3100A767e86FDed867729ae7446476EBA6',
     paymentToken: '0xcE24439F2D9C6a2289F741120FE202248B666666',
   },
@@ -21797,7 +21818,7 @@ async function call(rpcs, to, data) {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(5000),
       });
       const j = await r.json();
       if (j.error) { last = new Error(j.error.message); continue; }
@@ -21833,13 +21854,12 @@ export async function readSessionState(chainId, wallet) {
   try {
     const raw = await call(net.rpcs, net.keyStore, SEL_GET_KEYS + pad(wallet));
     const keyIds = decodeBytes32Array(raw);
+    // every key's validity at once (2026-11-16: one after the other, 8 keys on 56 took /session 10-16 s from the Worker)
+    const valids = await Promise.all(keyIds.map((keyId) => call(net.rpcs, net.keyStore, SEL_IS_VALID + pad(wallet) + keyId.replace(/^0x/, ''))
+      .then((v) => BigInt(v || '0x0') === 1n).catch(() => null)));
     const keys = [];
-    for (const keyId of keyIds) {
-      let valid = null;
-      try {
-        const v = await call(net.rpcs, net.keyStore, SEL_IS_VALID + pad(wallet) + keyId.replace(/^0x/, ''));
-        valid = BigInt(v || '0x0') === 1n;
-      } catch { valid = null; }
+    for (const [i, keyId] of keyIds.entries()) {
+      const valid = valids[i];
       keys.push({
         keyId,
         // null is its own answer: the key exists in the registry and we could
@@ -21876,8 +21896,7 @@ export async function handleSession(url, env) {
   const want = url.searchParams.get('chain');
   const chains = want ? [Number(want)] : [56, 97];
 
-  const states = [];
-  for (const c of chains) states.push(await readSessionState(c, wallet));
+  const states = await Promise.all(chains.map((c) => readSessionState(c, wallet)));
 
   return {
     what_this_is: 'The spending authority delegated to this agent, read live from the Altana KeyStore on-chain. Not a description of our configuration — the same view calls a stranger would make.',
@@ -24257,7 +24276,7 @@ token per caller (25 for holders of 1,000,000 $BOBAI) and costs nothing.
 | Where | What |
 |-------|------|
 | \`GET https://brainonbnb.com/api/preflight?address=0x…&usd=250\` | Before a trade of any BSC token, at your size: what stops it, what to weigh, the route, the slippage it needs and the round trip with the measured tax — one short answer. MCP tool \`bsc_token_preflight\` |
-| \`POST https://agent.brainonbnb.com/rug-watch\` | A rug-pull and honeypot alarm for a token you hold: the preflight read again every 15 minutes, your own https callback POSTed (signed) when the sell stops going through, the liquidity is pulled, a tax rises or the owner or proxy changes. Webhook only; one watch free per caller, 25 per wallet holding 1,000,000 $BOBAI. Terms at \`GET /rug-watch\`, MCP tool \`bsc_rug_watch\` |
+| \`POST https://agent.brainonbnb.com/rug-watch\` | A rug-pull and honeypot alarm for a token you hold: the preflight read again every 15 minutes, your own https callback POSTed (signed) when the sell stops going through, the liquidity is pulled, a tax rises or the owner or proxy changes. Without a callback the alerts wait at \`GET /rug-watch/<id>?since=<your last look>\`; one watch free per caller, 25 per wallet holding 1,000,000 $BOBAI. Terms at \`GET /rug-watch\`, MCP tool \`bsc_rug_watch\` |
 | \`https://brainonbnb.com/mcp\` | MCP server, read-only except bsc_rug_watch, which registers a watch: measure any BSC pool before trading it, search the ERC-8004 registry, read the census |
 | \`https://brainonbnb.com/api/*\` | The same tools as plain GET, for agents that do not speak MCP |
 | \`https://brainonbnb.com/scanner\` | The measurement in a browser |

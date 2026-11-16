@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4283 lines.
+# one fetch. 5 files, 4305 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -483,7 +483,7 @@ const AGENT_GUIDE = {
     { action: 'Get the raw DEX execution parameters (router, pair, paths, slippage, methods)', call: 'bobai_dex_info' },
     { action: 'Get ready-to-run code to BUY $BOBAI with BNB', call: 'bobai_purchase_guide' },
     { action: 'EARN an on-chain collectible: any buy >= $100 auto-mints a capped-supply NFT to the buying wallet — live remaining supply + steps', call: 'bobai_nft_drop' },
-    // 2026-10-09: the one tool here that stores something (a watch); free, webhook only.
+    // 2026-10-09: the one tool here that stores something (a watch); free, a webhook or (since 5.11.) polled.
     { action: 'Be ALERTED (by webhook, or read the alerts back without one) when a BSC token you hold turns dangerous — the sell stops going through, the liquidity is pulled, a tax goes up, the owner or the proxy changes. Re-read every 15 minutes; one watch free, 25 for wallets holding 1,000,000 $BOBAI', call: 'bsc_rug_watch', args: { token: '0x…' } },
   ],
   // Everything above is free. What is not, named once and plainly (2026-09-24,
@@ -848,7 +848,7 @@ const MCP_TOOLS = [
   // THE RUG WATCH (2026-10-09): the preflight's answer is one block; this keeps reading it for a token the agent
   // holds and POSTs the agent's own callback when it turns dangerous. Registered on agent.brainonbnb.com
   // (worker-agent/rug-watch.js), proxied here. The one tool on this server that is not read-only: it stores a watch.
-  { name: 'bsc_rug_watch', description: 'Rug-pull and honeypot ALARM for a BSC token you hold. Give just the token: every 15 minutes the token is read again with bsc_token_preflight and compared with the read before, and an alert is raised as soon as something dangerous changes: the sell stops going through (honeypot), the liquidity is pulled (pool hard side down 50%; a warning at 25%), LP is withdrawn, the buy or sell tax rises by 2 points or more, the owner changes (renounced to an owner again is the worst case), the proxy is upgraded, the deployer or a top holder starts selling, or the owner can now change the tax — and the way tokens are rugged today, read from the watch\'s own 24 h history of reads: fake volume (many swaps from a handful of wallets, or an hour\'s volume far over the pool from few of them — it looks like wash trading, it is not proven), a pump (price up 40% within 6 h) and the dump after it (down 30% from that high), a slow rug (price down 25% over the day with no single big step while sells dominate and insiders sell), liquidity draining slowly, and insider sells adding up. HOW YOU GET THE ALERTS: with a callback (your public https URL) each alert is POSTed there; without one, call this tool again with {"watch":"<id>","since":"<ISO time of your last look>"} and new_events lists what fired since. A POSTed alert is signed: x-bobai-signature: sha256=HMAC-SHA256 of the raw body with the secret returned once at registration. One active watch is free per caller; wallets holding 1,000,000 $BOBAI or more get unlimited — 25 active watches per wallet — by adding wallet, issued (ISO time) and an EIP-191 personal_sign signature of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <issued>" (a signature, no transaction). A watch runs 30 days; register the same token and callback again to renew. Status: GET https://agent.brainonbnb.com/rug-watch/<id>; terms: GET https://agent.brainonbnb.com/rug-watch. Measurement, not advice: an alert says what changed between two reads.', inputSchema: { type: 'object', properties: { token: { type: 'string', description: 'The BSC token to watch (0x + 40 hex). It must trade in a pool. Leave out when reading a watch with "watch".' }, callback: { type: 'string', description: 'Optional: your public https endpoint; alerts are POSTed there as JSON. Without it, read them with "watch".' }, watch: { type: 'string', description: 'Read a watch instead of registering one: the id you got at registration' }, since: { type: 'string', description: 'With watch: an ISO 8601 time; new_events lists only the alerts after it' }, wallet: { type: 'string', description: 'Optional, holder tier: the wallet holding 1,000,000 $BOBAI or more' }, issued: { type: 'string', description: 'Optional, holder tier: the ISO 8601 UTC time in the signed message, within the last 10 minutes' }, signature: { type: 'string', description: 'Optional, holder tier: the personal_sign signature of the message by that wallet' } }, required: [], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
+  { name: 'bsc_rug_watch', description: 'Rug-pull and honeypot ALARM for a BSC token you hold. Give just the token: every 15 minutes the token is read again with bsc_token_preflight and compared with the read before, and an alert is raised as soon as something dangerous changes: the sell stops going through (honeypot), the liquidity is pulled (pool hard side down 50%; a warning at 25%), LP is withdrawn, the buy or sell tax rises by 2 points or more, the owner changes (renounced to an owner again is the worst case), the proxy is upgraded, the deployer or a top holder starts selling, or the owner can now change the tax — and the way tokens are rugged today, read from the watch\'s own 24 h history of reads: fake volume (many swaps from a handful of wallets, or an hour\'s volume far over the pool from few of them — it looks like wash trading, it is not proven), a pump (price up 40% within 6 h) and the dump after it (down 30% from that high), a slow rug (price down 25% over the day with no single big step while sells dominate and insiders sell), liquidity draining slowly, and insider sells adding up. HOW YOU GET THE ALERTS: with a callback (your public https URL) each alert is POSTed there; without one, call this tool again with {"watch":"<id>","since":"<ISO time of your last look>"} and new_events lists what fired since. A POSTed alert is signed: x-bobai-signature: sha256=HMAC-SHA256 of the raw body with the secret returned once at registration. One active watch is free per caller; wallets holding 1,000,000 $BOBAI or more get up to 25 active watches per wallet by adding wallet, issued (ISO time) and an EIP-191 personal_sign signature of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <issued>" (a signature, no transaction). A watch runs 30 days; register the same token and callback again to renew. Status: GET https://agent.brainonbnb.com/rug-watch/<id>; terms: GET https://agent.brainonbnb.com/rug-watch. Measurement, not advice: an alert says what changed between two reads.', inputSchema: { type: 'object', properties: { token: { type: 'string', description: 'The BSC token to watch (0x + 40 hex). It must trade in a pool. Leave out when reading a watch with "watch".' }, callback: { type: 'string', description: 'Optional: your public https endpoint; alerts are POSTed there as JSON. Without it, read them with "watch".' }, watch: { type: 'string', description: 'Read a watch instead of registering one: the id you got at registration' }, since: { type: 'string', description: 'With watch: an ISO 8601 time; new_events lists only the alerts after it' }, wallet: { type: 'string', description: 'Optional, holder tier: the wallet holding 1,000,000 $BOBAI or more' }, issued: { type: 'string', description: 'Optional, holder tier: the ISO 8601 UTC time in the signed message, within the last 10 minutes' }, signature: { type: 'string', description: 'Optional, holder tier: the personal_sign signature of the message by that wallet' } }, required: [], additionalProperties: false }, annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
   // Brain Plaza first in the list. An agent that loads this server should be
   // able to ask "who else is out there on this chain" without knowing that we
   // measured it — and this is the only tool here that is about somebody other
@@ -1787,7 +1787,7 @@ const A2A_CARD = {
       tags: ['defi', 'bsc', 'trading', 'risk', 'pancakeswap', 'four.meme'] },
     // The rug watch (2026-10-10), on the MCP since 2026-10-09 and missing here.
     { id: 'rug_watch', name: 'Rug-pull and honeypot alarm for a token you hold',
-      description: 'Webhook only. Registers a BSC token and your own https callback; every 15 minutes the token is read again with the preflight and your callback is POSTed (signed, HMAC-SHA256) when something dangerous changes: the sell stops going through, the liquidity is pulled or drains, LP is withdrawn, a tax rises, the owner or proxy changes, the deployer or a top holder sells — and, from its own 24 h history, fake volume, a pump and the dump after it, a slow rug. One active watch free per caller; wallets holding 1,000,000 $BOBAI or more get 25, by signing a message (no transaction). A watch runs 30 days. MCP: bsc_rug_watch. REST: POST https://agent.brainonbnb.com/rug-watch (terms: GET the same URL). Measurement, not advice.',
+      description: 'Registers a BSC token, with your own https callback or without one; every 15 minutes the token is read again with the preflight, and when something dangerous changes the alert is POSTed to your callback (signed, HMAC-SHA256), or, without one, kept for you at the watch\'s status URL (?since=<your last look>): the sell stops going through, the liquidity is pulled or drains, LP is withdrawn, a tax rises, the owner or proxy changes, the deployer or a top holder sells — and, from its own 24 h history, fake volume, a pump and the dump after it, a slow rug. One active watch free per caller; wallets holding 1,000,000 $BOBAI or more get 25, by signing a message (no transaction). A watch runs 30 days. MCP: bsc_rug_watch. REST: POST https://agent.brainonbnb.com/rug-watch (terms: GET the same URL). Measurement, not advice.',
       tags: ['defi', 'bsc', 'risk', 'monitoring', 'webhook', 'rug-pull', 'honeypot'] },
     { id: 'best_route', name: 'Which pool to swap through',
       description: 'Which of the pools a pair lives in returns the most at your size, and the round trip with the measured transfer tax applied between the legs. REST: /api/best-route?address=0x…&usd=250',
@@ -2840,7 +2840,23 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // says is written where the page waits; without an answer the page stands as before. The browser draws it all anyway.
     if ((response.headers.get('content-type') || '').includes('text/html') && RECORD_PAGES[url.pathname.replace(/.html$/, '')]) {
       const rp = RECORD_PAGES[url.pathname.replace(/.html$/, '')];
-      const ask = (u) => fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(2500) }).then((x) => (x.ok ? x.json() : null)).catch(() => null);
+      // a record source is kept 2 minutes at the edge (2026-11-16, measured: /services waited ~1 s on every load for one
+      // number of /stats, /registry 2.6 s, and /buys at 3.3 s never made the 2.5 s limit, so "paid us" was never written);
+      // a slow one goes on in the background and fills the cache for the next reader, the page waits at most 2.5 s
+      // (the Cache API, not cf.cacheTtl: these sources are Workers, and a Worker answers before the edge cache would)
+      const ask = async (u) => {
+        const key = new Request(u), cache = caches.default;
+        const hit = await cache.match(key).catch(() => null);
+        if (hit) return hit.json().catch(() => null);
+        const f = fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(15000) }).then(async (x) => {
+          if (!x.ok) return null;
+          const body = await x.text();
+          await cache.put(key, new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' } })).catch(() => {});
+          return JSON.parse(body);
+        }).catch(() => null);
+        ctx.waitUntil(f);
+        return Promise.race([f, new Promise((res) => setTimeout(() => res(null), 2500))]);
+      };
       const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
       if (lines) {
@@ -3210,6 +3226,11 @@ async function boardThreadPage(id) {
   const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
   const headers = secureHeaders(new Headers({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' }));
+  // A POLICY FOR OTHER PEOPLE'S WORDS (2026-11-16, Liste A): every page from the assets carries the site's CSP; this one,
+  // built here and holding what strangers wrote, carried none. Its own needs only: our scripts and the inline language
+  // switch, /i18n/ar.json on /ar, our fonts and styles. Nothing from elsewhere loads, nothing is framed, no form posts.
+  headers.set('Content-Security-Policy', BOARD_THREAD_CSP);
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   const shell = (title, desc, body, extra = '') => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">${extra}<link rel="stylesheet" href="/fonts.css?v=1"><style>:root{--bg:#0c0b0c;--fg:#e8e4da;--muted:#a0a2c0;--gold:#f0b90b;--line:rgba(255,255,255,.08)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:28px 16px 64px}a{color:var(--gold)}h1{font:700 26px/1.3 'Space Grotesk',Inter,sans-serif;color:#f3efe6;margin:10px 0 8px;overflow-wrap:anywhere}.m{color:var(--muted);font-size:14px;overflow-wrap:anywhere}.b{white-space:pre-wrap;overflow-wrap:anywhere;margin:18px 0}.r{border-left:2px solid rgba(240,185,11,.25);padding:2px 0 2px 14px;margin:18px 0}.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-right:6px}nav{font-size:14px}ul{padding-left:20px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:28px 0}</style></head><body><main>${body}</main></body></html>`;
   if (!t || t.error || !t.id || t.hidden) {
     return new Response(shell(`Thread #${id} — Brain Board`, 'This thread does not exist or is hidden.', `<nav><a href="/board">Brain Board</a></nav><h1>Thread #${escHtml(id)} is not on the board</h1><p class="m">It does not exist, or the operator hid it (spam or a test). Every thread: <a href="/board">brainonbnb.com/board</a> · as text: <a href="${BOARD_API}.md">board.md</a></p>`, '<meta name="robots" content="noindex">'), { status: 404, headers });
@@ -3240,6 +3261,7 @@ ${more ? `${more}<p class="m"><a href="/board">The whole library</a> · search i
 }
 
 // The four headers every page gets at the end of fetch(); the Brain page's own routes above return before it.
+const BOARD_THREAD_CSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'self'";
 function secureHeaders(h) {
   h.set('X-Content-Type-Options', 'nosniff');
   h.set('X-Frame-Options', 'SAMEORIGIN');

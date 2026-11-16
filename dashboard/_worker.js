@@ -243,6 +243,10 @@ async function getLiquidity() {
     dex: 'PancakeSwap V2',
     reserves: { bobai: (rBOBAI / BigInt(1e18)).toString(), wbnb: Number(wbnb.toFixed(4)) },
     liquidity_usd: Math.round(liqUsd),
+    // WHAT THE FIGURE COUNTS (2026-11-16, Liste A): both sides, while the preflight and the rug watch read the hard
+    // (WBNB) side alone — an agent comparing the two saw half and took it for a drain
+    wbnb_side_usd: Math.round(wbnb * bnbUsd),
+    liquidity_basis: 'liquidity_usd counts both sides of the pair at the pool price: 2 × the WBNB reserve × BNB/USD. wbnb_side_usd is the WBNB side alone, the "hard side" bsc_token_preflight and bsc_rug_watch measure — half of liquidity_usd by construction, not a loss.',
     lp_burned_percent: Number(lpBurnedPct.toFixed(2)),
     lp_note: 'LP tokens sit at the dead address — permanently locked, nobody can pull this liquidity. Verify: balanceOf(0x…dEaD) on the pair.',
     price_impact_estimate: { '0.1 BNB buy': impact(0.1), '0.5 BNB buy': impact(0.5), '1 BNB buy': impact(1), '5 BNB buy': impact(5) },
@@ -884,7 +888,7 @@ const MCP_TOOLS = [
   { name: 'bobai_purchase_guide', description: 'Ready-to-run viem code for a $BOBAI purchase with BNB on PancakeSwap V2. Reports a live on-chain quote, the slippage a buy needs (about 6% at any size, from the measured tax) and the fee-on-transfer method name, so an agent has everything it needs zero-shot. Returns text; this tool holds no key and moves nothing. Use it when you want working code; for the raw parameters only, bobai_dex_info.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_tokenomics', description: 'Neutral, verifiable value-accrual mechanics of $BOBAI: the 3% tax and how it is split (burns, permanent liquidity with the LP burned, the creator share, dated campaign slices) + trust properties (renounced, LP burned, fair launch). Describes how the token works, NOT a buy recommendation. Use it to explain how the token works, to a user or in a report; for live numbers use bobai_token_info, bobai_activity or bobai_smart_money.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_price', description: 'Live $BOBAI price in USD and BNB + market cap, computed fully on-chain (PancakeSwap V2 pair reserves × Chainlink BNB/USD feed) — no off-chain price API to trust. Use it for the price now; for depth and price impact at a size use bobai_liquidity.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD, LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB). Use it to size a trade; for the price alone use bobai_price, for any other BSC token bsc_pool_scan.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
+  { name: 'bobai_liquidity', description: 'Live $BOBAI liquidity depth: pool reserves, liquidity in USD (both sides, and the WBNB side alone that other tools call the hard side), LP-burned percentage (perma-locked), and price-impact estimates for common buy sizes (0.1–5 BNB). Use it to size a trade; for the price alone use bobai_price, for any other BSC token bsc_pool_scan.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_activity', description: 'Proof the tax bot (it splits the 3% tax into burns, permanent liquidity and the creator share) is actually running: last burn (with BscScan tx), burns over the last 7/30 days, total bot runs — from the public audit log, every entry verifiable on-chain. Use it to verify that burns really happen and how often; for the next buyback and whale flows use bobai_smart_money, for the burned total bobai_burned.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_nft_drop', description: 'On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. Live remaining supply per buy-tier and rarity, plus the exact steps to earn one. Use it before a buy of $100 or more to see which NFT it would mint; for the buy itself use bobai_purchase_guide.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum. All verifiable, no API key. Use it to read buy pressure and what large holders do; for proof of past burns use bobai_activity, for one wallet’s balance bobai_wallet_balance.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
@@ -1136,7 +1140,12 @@ async function runTool(rawName, args, caller = {}) {
         throw new Error(j?.error ? `${j.error}${j.speaks_values ? ` — speaks takes ${j.speaks_values.join(', ')}` : ''}` : 'Brain Plaza search refused the request');
       }
       if (!r.ok) throw new Error('Brain Plaza search is unavailable right now');
-      return await r.json();
+      // the answer's own hints in this tool's arguments (2026-11-16, Liste A): "add &limit=25" and "Add &hireable=1" are
+      // the URL's words; an MCP caller sends {"limit": 25} and {"hireable": true}
+      const j = await r.json();
+      const asArgs = (s) => typeof s === 'string' ? s.replace(/add &limit=25/gi, 'call again with "limit": 25').replace(/Add &hireable=1/g, 'Send "hireable": true').replace(/&hireable=1/g, '"hireable": true') : s;
+      if (j && typeof j === 'object') { if (j.more) j.more = asArgs(j.more); if (j.escrow_note) j.escrow_note = asArgs(j.escrow_note); if (j.only) j.only = asArgs(j.only); }
+      return j;
     }
     case 'bsc_pool_scan': {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
@@ -2449,17 +2458,13 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // agent charts (score above zero, a day of pulse, or ours) are written into the static file's marked block from the
     // live screener on every request (cached an hour); the screener down, the static block as last written stays.
     if (url.pathname === '/sitemap.xml' && request.method === 'GET') {
-      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#agents-board-ar' + (AR_LIVE ? '1' : '0'));
+      const cache = caches.default, key = new Request(url.origin + '/sitemap.xml#board-ar-noagents' + (AR_LIVE ? '1' : '0'));
       const hit = await cache.match(key); if (hit) return hit;
       const base = await env.ASSETS.fetch(new Request(url.origin + '/sitemap.xml', request));
       let xml = await base.text();
-      try {
-        const j = await (await fetch('https://agent.brainonbnb.com/screener', { signal: AbortSignal.timeout(8000) })).json();
-        const F = j.fields, day = new Date().toISOString().slice(0, 10);
-        const ids = j.rows.map((r) => Object.fromEntries(F.map((f, i) => [f, r[i]]))).filter((a) => a.score > 0 || a.days > 0 || a.ours).sort((a, b) => b.score - a.score || a.id - b.id).map((a) => a.id);
-        const S = '<!-- agent charts: scripts/sitemap-agents.mjs -->', E = '<!-- /agent charts -->', i = xml.indexOf(S), k = xml.indexOf(E);
-        if (ids.length && i >= 0 && k > i) xml = xml.slice(0, i) + S + '\n' + ids.map((id) => `  <url>\n    <loc>https://brainonbnb.com/agent/${id}</loc>\n    <lastmod>${day}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.6</priority>\n  </url>`).join('\n') + '\n  ' + xml.slice(k);
-      } catch { /* the static block stands */ }
+      // NO AGENT CHARTS (2026-11-16, operator's choice "b"): /agent/<id> has said noindex since it was built (12.10.), so 873
+      // of them in the sitemap asked a search engine to read pages it was told not to keep — they are out of it now
+
       // every library entry, one page each (2026-10-27): the words of an error are what an agent searches for
       const lib = await boardLibrary();
       if (lib.length && xml.includes('</urlset>')) xml = xml.replace('</urlset>', lib.map((t) => `  <url>\n    <loc>https://brainonbnb.com/board/${t.id}</loc>\n    <lastmod>${boardDay(t.updated || t.created)}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`).join('\n') + '\n</urlset>');

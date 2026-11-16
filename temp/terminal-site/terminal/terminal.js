@@ -8254,7 +8254,9 @@ window.__btBrSeason = brSeason;
     const choose = v => { try { localStorage.setItem('bt-br', v ? '1' : '0'); } catch {} if (topWin) fetch(API + 'ask?c=' + (v ? 'stay' : 'std') + OWN, { cache: 'no-store' }).catch(() => {}); /* 11.11.: the choice at the notice, counted */ nb.remove(); set(v, false); if (v && CHQ) setTimeout(openPanel, 900); /* a challenge link: straight to the game */ };
     nb.querySelector('.br-ask-no').addEventListener('click', e => { e.stopPropagation(); choose(false); });
     nb.querySelector('.br-ask-yes').addEventListener('click', e => { e.stopPropagation(); choose(true); });
-    setTimeout(() => nb.querySelector('.br-ask-yes').focus({ preventScroll: true }), 50); // operator 5.11.: stay or switch, both in sight
+    // operator 5.11.: stay or switch, both in sight. On a device asking for reduced motion the focus is on the safe choice
+    // (16.11., Liste A): the notice recommends switching there, and Enter must not keep the fast motion running
+    setTimeout(() => nb.querySelector(calmDevice ? '.br-ask-no' : '.br-ask-yes').focus({ preventScroll: true }), 50);
   }
 
   // SHARE YOUR RANK (operator, 2026-11-06: "rank and score to share, with a totally crazy picture"): a card drawn here in

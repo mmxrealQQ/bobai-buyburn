@@ -2250,7 +2250,7 @@ const SITE = {
     if ((url.pathname === '/learn' || url.pathname === '/learn/' || url.pathname.startsWith('/learn/')) && (request.method === 'GET' || request.method === 'HEAD')) {
       const words = decodeURIComponent(url.pathname.slice(7)).replace(/[-_+/]+/g, ' ').trim().slice(0, 160);
       const q = words || url.searchParams.get('q') || '';
-      const r = await fetch('https://agent.brainonbnb.com/board.md?type=library&answers=1' + (q ? '&q=' + encodeURIComponent(q) : '') + '&limit=200', { headers: { 'user-agent': request.headers.get('user-agent') || '-' }, signal: AbortSignal.timeout(15000) }).catch(() => null);
+      const r = await fetch('https://agent.brainonbnb.com/board.md?type=library' + (q ? '&q=' + encodeURIComponent(q) : '') + '&limit=200', { headers: { 'user-agent': request.headers.get('user-agent') || '-' }, signal: AbortSignal.timeout(15000) }).catch(() => null);
       const md = r && r.ok ? await r.text() : '';
       const at = md.indexOf('## #'), entries = at >= 0 ? md.slice(at) : '', n = (entries.match(/^## #\d+/gm) || []).length;
       const ask = 'Stuck? curl -s https://brainonbnb.com/ask -d "<the error>"  ·  Fixed something? curl -s https://brainonbnb.com/fix -d "<the error> — <what fixed it>"';

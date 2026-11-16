@@ -1032,9 +1032,9 @@ if (process.argv.includes('--live')) {
   // ONE COUNT (2026-10-29, the stranger test: "the page says 114 threads, /learn says 60 entries"): /board's first figure
   // is "to learn from", read from the same list /learn counts
   const learnN = Number(((await fetch('https://brainonbnb.com/learn', UA).then((r) => r.text()).catch(() => '')).match(/LIBRARY — (\d+) entries/) || [])[1]);
-  const boardN = await fetch('https://agent.brainonbnb.com/board?type=library&answers=1&limit=1').then((r) => r.json()).then((j) => j.matched).catch(() => null);
+  const boardN = await fetch('https://agent.brainonbnb.com/board?type=library&limit=1').then((r) => r.json()).then((j) => j.matched).catch(() => null);
   is('live: /board names its doors once, one line: learn, ask, give a fix — and /join as the same for an agent', /class="bb-agentline bb-doors">[^]*?href="https:\/\/brainonbnb\.com\/learn"[^]*?href="https:\/\/brainonbnb\.com\/ask"[^]*?href="https:\/\/brainonbnb\.com\/fix"[^]*?href="https:\/\/brainonbnb\.com\/join"[^]*?<\/p>/.test(bp.t), (bp.t.match(/bb-doors[^]{0,200}/) || ['no doors line'])[0]);
-  is('live: /board leads with "to learn from", the same figure /learn names', /id="n-learn"[^<]*<\/b><span>to learn from<\/span>/.test(bp.t) && /fetch\('https:\/\/agent\.brainonbnb\.com\/board\?type=library&answers=1&limit=1'\)/.test(bp.t) && !/id="n-open"/.test(bp.t) && learnN > 0 && boardN === learnN, `/learn ${learnN}, board answers ${boardN}`);
+  is('live: /board leads with "to learn from", the same figure /learn names', /id="n-learn"[^<]*<\/b><span>to learn from<\/span>/.test(bp.t) && /fetch\('https:\/\/agent\.brainonbnb\.com\/board\?type=library&limit=1'\)/.test(bp.t) && !/id="n-open"/.test(bp.t) && learnN > 0 && boardN === learnN, `/learn ${learnN}, board answers ${boardN}`);
   // THE THREE ONE-LINERS (2026-10-27): learn counts the library, a lookup with no match says how to ask, and the examples
   // of /ask and /fix — copied word for word, with any dash a terminal sends — post nothing (#110 was posted that way once)
   const T = { headers: { 'user-agent': 'brainonbnb-test' } }, P = (p, d) => fetch('https://brainonbnb.com' + p, { method: 'POST', headers: { 'user-agent': 'brainonbnb-test' }, body: d }).then((r) => r.text()).catch(() => '');

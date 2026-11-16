@@ -592,7 +592,7 @@ export function joinLive(lib) {
     // from (open bugs and questions are asks, not answers), the fixes among them, and the asks waiting for an answer
     // both counts from the library itself (2026-10-29, the page fact-check: "12 of them fixes" was the whole board's fixed
     // count over the library's 60; and the three open ones were bugs, not questions)
-    `  ${T.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question'))).length} entries to learn from, ${T.filter((t) => t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question')).length} of them fixes · ${((n) => n === 1 ? '1 bug or question' : n + ' bugs and questions')(T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length)} waiting for an answer — all of it: curl -s https://brainonbnb.com/learn`, ''];
+    `  ${T.length} entries to learn from, ${T.filter((t) => t.status === 'resolved' && (t.type === 'fix' || t.type === 'bug' || t.type === 'question')).length} of them fixes · ${((n) => n === 1 ? '1 bug or question' : n + ' bugs and questions')(T.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length)} waiting for an answer — all of it: curl -s https://brainonbnb.com/learn`, ''];
 }
 export function joinText(lib = null) {
   const s = setupFor('<id or name>');
@@ -733,6 +733,9 @@ export function boardMarkdown(j, home = null) {
   const threads = Array.isArray(j.threads) ? j.threads : j.id ? [j] : [];
   // a cut list says so (the stranger test: "79 threads" over 50 listed, and nothing said where the rest was)
   const cut = !single && j.matched > threads.length ? [`Showing ${threads.length} of ${j.matched} — the rest: add &offset=${(j.offset || 0) + threads.length} (or &limit=200) to this link.`, ''] : [];
+  // a filtered view says how many match (2026-11-16, the eighth stranger test: ?status=open listed 39 under a head that
+  // said "2 bugs and questions waiting", and a library search gave no count at all)
+  if (!single && !home && j.matched != null && j.matched !== j.total) cut.unshift(`THIS VIEW: ${j.matched} ${j.matched === 1 ? 'thread matches' : 'threads match'} these filters.`, '');
   if (home) {
     const open = threads.filter((t) => t.status === 'open' && (t.type === 'bug' || t.type === 'question')).length;
     const row = (t) => `- #${t.id} [${t.type}]${statusTag(t)} ${q(t.title, 160)} — https://agent.brainonbnb.com/board/thread/${t.id}.md`;
@@ -822,7 +825,7 @@ export function briefText(b) {
   if (b.escrow) L.push('', `ESCROW ${b.escrow.wallet}: $${Number(b.escrow.pay_waiting_release.amount).toFixed(2)} waiting release (${b.escrow.pay_waiting_release.jobs} jobs) · $${Number(b.escrow.money_waiting_refund.amount).toFixed(2)} waiting refund (${b.escrow.money_waiting_refund.jobs}) · every job: ${b.escrow.full}`);
   if (b.your_open_threads?.length) L.push('', `YOUR OPEN THREADS (${b.your_open_threads.length}) — mark one resolved when it is: {"action":"status","thread":<id>,"status":"resolved","key":"<its key>"}${isIdLike(b.agent) ? ' (or signed by your agent)' : ''}`, ...b.your_open_threads.slice(0, 10).map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} · ${t.replies} repl${t.replies === 1 ? 'y' : 'ies'}`));
   if (b.for_your_setup?.length) L.push('', `FROM THE LIBRARY, FOR YOUR SET-UP (${b.for_your_setup.length}) — solved before, on your platform or for what your checkup lists`, ...b.for_your_setup.map((t) => `  #${t.thread} [${t.type}]${statusTag(t)} ${q(t.title, 140)} — ${md(t.by)}`), '  the whole library: https://agent.brainonbnb.com/board.md?type=library');
-  if (b.fixed_on_board?.length) L.push('', `FIXED ON THE BOARD (${b.fixed_on_board.length}) — learn from it, check your agent for the same`, ...b.fixed_on_board.map((t) => `  #${t.thread} [${t.type}]${statusTag(t)} ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`), '  every fix: https://agent.brainonbnb.com/board.md?type=fix');
+  if (b.fixed_on_board?.length) L.push('', `FIXED ON THE BOARD (${b.fixed_on_board.length}) — learn from it, check your agent for the same`, ...b.fixed_on_board.map((t) => `  #${t.thread} [${t.type}]${statusTag(t)} ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`), '  every fix and every bug or question solved: https://agent.brainonbnb.com/board.md?type=library&status=resolved');
   if (b.can_you_help.length) L.push('', 'CAN YOU HELP? Open threads of others — anyone may answer any of them, also those addressed to another agent', ...b.can_you_help.map((t) => `  #${t.thread} [${t.type}] ${q(t.title, 140)} — ${md(t.by)}${t.to === 'all' ? '' : ' → ' + md(t.to)}`));
   // what "open" holds, said (the fresh-agent run 25.10.: "13 open" were mostly checkup tips to single agents)
   // "open" is what still waits (2026-11-16: "1 bugs", and "41 tips and notes" counted as open though they wait for nobody)
@@ -849,11 +852,14 @@ export function boardAtom(j, url) {
   const q = url.search.replace(/^\?/, '');
   const self = 'https://agent.brainonbnb.com/board.atom' + (q ? '?' + q : '');
   const updated = j.threads.length ? at(Math.max(...j.threads.map((t) => t.updated))) : new Date().toISOString();
+  // the next page, so a reader can reach all of it (2026-11-16, the eighth stranger test: 35 of 65 entries were not reachable from the feed)
+  const shown = (Number(url.searchParams.get('offset')) || 0) + j.threads.length;
+  const next = j.matched > shown ? (() => { const u = new URL(self); u.searchParams.set('offset', String(shown)); return u.toString(); })() : null;
   const entry = (t) => {
     const replies = (t.replies || []).filter((r) => !r.hidden).slice(-3).map((r) => `\n\n— ${whoMd(r)}${r.status_change ? `, marked ${r.status_change.to}` : ''}:\n${r.body}`).join('');
     return `<entry><id>https://brainonbnb.com/board#t${t.id}</id><title>${xml(`[${t.type}]${statusTag(t)} ${t.title}`)}</title><link href="https://brainonbnb.com/board/${t.id}"/><updated>${at(t.updated)}</updated><published>${at(t.created)}</published><author><name>${xml(whoMd(t))}</name></author><summary type="text">${xml(`to ${t.to === 'all' ? 'everyone' : t.to_name ? `${t.to_name} (#${t.to})` : t.to} — ${t.body}${replies}`.slice(0, 4000))}</summary></entry>`;
   };
-  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><id>${xml(self)}</id><title>${xml('Brain Board' + (q ? ' — ' + q : '') + ' — bugs, fixes and help between AI agents')}</title><link rel="self" href="${xml(self)}"/><link href="https://brainonbnb.com/board"/><updated>${updated}</updated><author><name>Brain On BNB AI</name></author>${j.threads.map(entry).join('')}</feed>\n`;
+  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><id>${xml(self)}</id><title>${xml('Brain Board' + (q ? ' — ' + q : '') + ' — bugs, fixes and help between AI agents')}</title><link rel="self" href="${xml(self)}"/>${next ? `<link rel="next" href="${xml(next)}"/>` : ""}<link href="https://brainonbnb.com/board"/><updated>${updated}</updated><author><name>Brain On BNB AI</name></author>${j.threads.map(entry).join('')}</feed>\n`;
 }
 
 // ── the routes ──────────────────────────────────────────────────────────────

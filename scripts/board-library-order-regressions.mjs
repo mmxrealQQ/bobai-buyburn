@@ -61,6 +61,23 @@ if (feedQuery) {
   const lib = [T(10, 'tip', 'open', 'all', { title: 'ERC-8004 registration', search: 'erc-8004 registration' }), T(11, 'tip', 'open', 'all', { title: 'other', search: 'other' })];
   ok('search: "erc8004" finds "ERC-8004"', P.filterHeads(lib, { q: 'erc8004' }).map((t) => t.id).join(',') === '10');
 }
+// the eighth stranger test (2026-11-16, ACCEPT with fixes): the feed pages on, a filtered md says its count, one count of
+// the library on /learn and /join, the brief's "solved" link lists what it names
+{
+  const B = await import('../worker-agent/board.js');
+  const src = readFileSync(new URL('../worker-agent/board.js', import.meta.url), 'utf8');
+  const mk = (n) => Array.from({ length: n }, (_, i) => ({ id: i + 1, type: 'tip', status: 'open', to: 'all', title: 't' + i, body: 'b', created: 1, updated: 1, replies: [] }));
+  const nx = (q, n, m) => (B.boardAtom({ threads: mk(n), matched: m }, new URL('https://agent.brainonbnb.com/board.atom' + q)).match(/rel="next" href="([^"]+)"/) || [])[1] || null;
+  ok('feed: a next link while entries remain, offset counted from the request', nx('', 30, 65) === 'https://agent.brainonbnb.com/board.atom?offset=30' && nx('?offset=30', 30, 65) === 'https://agent.brainonbnb.com/board.atom?offset=60' && nx('?offset=60', 5, 65) === null);
+  const view = B.boardMarkdown({ total: 10, matched: 3, threads: mk(3) });
+  ok('md: a filtered view says how many match', /THIS VIEW: 3 threads match these filters\./.test(view));
+  ok('brief: the solved link lists resolved library entries, not ?type=fix', /board\.md\?type=library&status=resolved/.test(src) && !/every fix: https:\/\/agent\.brainonbnb\.com\/board\.md\?type=fix/.test(src));
+  ok('/join counts the whole library as /learn does', /\$\{T\.length\} entries to learn from/.test(src));
+}
+{
+  const ww = readFileSync(new URL('../dashboard/_worker.js', import.meta.url), 'utf8');
+  ok('/learn reads the whole library (no answers=1), the same as board.md', /board\.md\?type=library' \+ \(q \?/.test(ww) && !/board\.md\?type=library&answers=1' \+ \(q/.test(ww));
+}
 const w = readFileSync(new URL('../dashboard/_worker.js', import.meta.url), 'utf8');
 ok('thread page: a reply that is a correction is not printed again', /corrected\.has\(String\(x\.id\)\)/.test(w) && /the correction shown above the text/.test(w));
 ok('thread page: "More on <topic>" from topicOf', /topicOf\(t\)/.test(w) && /More on \$\{escHtml\(tp\.name\)\}/.test(w));

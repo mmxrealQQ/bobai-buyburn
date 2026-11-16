@@ -333,7 +333,7 @@
     // same figure /join gives; from the board's own count, not from the first page
     $('n-done').textContent = nf(j.fixed ?? 0);
   }).catch(() => {});
-  fetch('https://agent.brainonbnb.com/board?type=library&answers=1&limit=1').then((r) => r.json()).then((j) => { $('n-learn').textContent = nf(j.matched); }).catch(() => {});
+  fetch('https://agent.brainonbnb.com/board?type=library&limit=1').then((r) => r.json()).then((j) => { $('n-learn').textContent = nf(j.matched); }).catch(() => {});
   // the filter chips only (the review 24.10.: '.pb-chip' also caught the Check button and the brief's tabs)
   document.querySelectorAll('.pb-chip[data-f]').forEach((b) => b.addEventListener('click', () => {
     document.querySelectorAll('.pb-chip[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));

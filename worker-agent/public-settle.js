@@ -172,6 +172,10 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
     return known.length ? Math.max(...known) : null;
   };
   let nonce = null;
+  // THE BOOKS ARE ALWAYS WRITTEN (2026-11-16, A-Z review 15.11.): a throw outside a send's own try (a balance read no
+  // node answered) ended the run before the list, the log and the totals below — jobs settled on chain were missing
+  // from the record and stayed candidates. Now it stops the loop like any other stop, and everything below still runs.
+  try {
   for (const id of due) {
     const bal = await pub.getBalance({ address: account.address });
     if (bal < RESERVE_BNB + GAS_PER_SETTLE * GAS_PRICE) { stopped = `the provider wallet holds ${formatEther(bal)} BNB; ${formatEther(RESERVE_BNB)} stays for our own deliveries`; break; }
@@ -192,6 +196,7 @@ export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } =
       done.push({ id, settled: false, ...(hash ? { tx: hash } : {}), why: String(e.shortMessage || e.message).slice(0, 140) });
     }
   }
+  } catch (e) { stopped = `the run stopped: ${String(e.shortMessage || e.message || e).slice(0, 140)}; the rest waits for the next run`; }
   // the list: settled and finished jobs leave it
   const left = { ...cand };
   for (const id of drop) delete left[id];

@@ -15,7 +15,8 @@
 //
 // Needs anvil (~/.foundry/bin) and BSC_RPC_KEYED_URL_2 in .env.   node scripts/public-settle-fork-test.mjs
 import 'dotenv/config';
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -116,6 +117,52 @@ const env = { AGENT_PROVIDER_PRIVATE_KEY: key, AGENT: { get: async (k) => (kv.ha
 const U = ERC8183.paymentToken, ERC20 = parseAbi(['function balanceOf(address) view returns (uint256)']);
 const provs = [...new Set(pick.map((id) => cand[id].provider))];
 const before = Object.fromEntries(await Promise.all(provs.map(async (p) => [p, await pub.readContract({ address: U, abi: ERC20, functionName: 'balanceOf', args: [p] })])));
+
+// THE BOOKS ARE ALWAYS WRITTEN (2026-11-16, A-Z review 15.11.): a node that stops answering the balance read in the
+// middle of the run. Through a proxy in front of the fork that refuses the second eth_getBalance: the first job is
+// settled on chain, then the run stops — and the list, the totals and the day's mark must still say so.
+{
+  const http2 = await import('node:http');
+  let balances = 0;
+  const proxy = http2.createServer((req, res) => {
+    let body = ''; req.on('data', (d) => (body += d)); req.on('end', async () => {
+      let j = null; try { j = JSON.parse(body); } catch { /* forwarded as is */ }
+      if (j && !Array.isArray(j) && j.method === 'eth_getBalance' && ++balances === 2) { res.setHeader('content-type', 'application/json'); return res.end(JSON.stringify({ jsonrpc: '2.0', id: j.id, error: { code: -32000, message: 'proxy: this node stopped answering' } })); }
+      const r = await fetch(LOCAL, { method: 'POST', headers: { 'content-type': 'application/json' }, body }).then((x) => x.text());
+      res.setHeader('content-type', 'application/json'); res.end(r);
+    });
+  });
+  await new Promise((r) => proxy.listen(PORT + 1, r));
+  const PROXY = `http://127.0.0.1:${PORT + 1}`;
+  const attempt = async (mod) => {
+    const snap = await test.snapshot();
+    // eight days on: the dispute windows of the submitted jobs pass, several are due, and the refusal falls between two
+    await test.increaseTime({ seconds: 8 * 86400 }); await test.mine({ blocks: 1 });
+    balances = 0;
+    const kv2 = new Map([[S.CANDIDATES_KEY, JSON.stringify(cand)], [S.FARMS_KEY, JSON.stringify([FARM])]]);
+    const env2 = { ...env, AGENT: { get: async (k) => (kv2.has(k) ? kv2.get(k) : null), put: async (k, v) => { kv2.set(k, v); }, delete: async (k) => { kv2.delete(k); } } };
+    let out = null, err = null; try { out = await mod.runPublicSettle(env2, { rpcUrl: PROXY, now: new Date(Date.now() + 8 * 86400e3) }); } catch (e) { err = e; }
+    const left = JSON.parse(kv2.get(S.CANDIDATES_KEY));
+    const onChain = [];
+    for (const id of Object.keys(cand)) { const j = await readJob(id); if (j?.status === 'COMPLETED') onChain.push(id); }
+    const totals = JSON.parse(kv2.get('settle:public:totals') || 'null');
+    await test.revert({ id: snap });
+    return { out, err, onChain, stillListed: onChain.filter((id) => left[id]), totals, marked: [...kv2.keys()].some((k) => k.startsWith('settle:public:day:')) };
+  };
+  const now2 = await attempt(S);
+  ok('a node stops answering mid-run: the job settled before it is on chain, and the run says it stopped', now2.onChain.length >= 1 && /the run stopped/.test(now2.out?.stopped || ''), now2.err ? String(now2.err.message).slice(0, 120) : `${now2.onChain.length} on chain · ${now2.out?.stopped}`);
+  ok('… and the books say so: it left the list, the totals count it, the day is marked', !now2.err && now2.stillListed.length === 0 && now2.totals?.jobs === now2.onChain.length && now2.marked, `still listed ${now2.stillListed.join(',') || 'none'} · totals ${JSON.stringify(now2.totals)}`);
+  let headSrc = null; try { headSrc = execSync('git show HEAD:worker-agent/public-settle.js', { cwd: ROOT, maxBuffer: 1e8 }).toString(); } catch { /* not in a repo */ }
+  if (headSrc && !/THE BOOKS ARE ALWAYS WRITTEN/.test(headSrc)) {
+    const headCopy = path.join(ROOT, 'worker-agent', '.public-settle-head-fork.mjs');
+    fs.writeFileSync(headCopy, headSrc);
+    try {
+      const old = await attempt(await import(pathToFileURL(headCopy).href));
+      ok('… and the code before threw, a settled job still on the list and in no total (the check sees the fault)', !!old.err && old.onChain.length >= 1 && old.stillListed.length >= 1 && !old.totals, `${old.err ? 'threw' : 'did not throw'} · on chain ${old.onChain.length} · still listed ${old.stillListed.length}`);
+    } finally { fs.rmSync(headCopy, { force: true }); }
+  }
+  proxy.close();
+}
 
 const run = await S.runPublicSettle(env, { rpcUrl: LOCAL });
 const settled = run.done.filter((d) => d.settled).map((d) => String(d.id));

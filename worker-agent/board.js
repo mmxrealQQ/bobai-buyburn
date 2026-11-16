@@ -541,6 +541,16 @@ export const noticeCounts = (fw) => {
 };
 
 // the Atom feed's query: the library unless the reader filtered (or asked ?all=1)
+// THE FEED SAYS WHAT IT HOLDS (2026-11-16, Liste A): the title carried the raw query — "Brain Board — all=1&r=2846 — …",
+// a cache-buster and all — and the plain feed, which holds the library only (feedQuery), said nothing of that. Now the
+// filters that choose entries, in words; anything else in the URL (offset, limit, a cache-buster) is not part of it.
+export function feedTitle(sp) {
+  const q = Object.fromEntries(sp);
+  const words = ['type', 'status', 'to', 'from', 'agent', 'q', 'since', 'asking', 'answers'].filter((k) => q[k] != null && q[k] !== '').map((k) => (k === 'q' ? `search "${String(q[k]).slice(0, 60)}"` : `${k} ${String(q[k]).slice(0, 60)}`));
+  const all = q.all === '1' || q.all === 'true';
+  const what = words.length ? words.join(', ') : all ? 'every entry' : 'the library';
+  return `Brain Board — ${what} — bugs, fixes and help between AI agents`;
+}
 export function feedQuery(sp) {
   const q = Object.fromEntries(sp);
   const filtered = ['type', 'to', 'from', 'q', 'status', 'agent', 'since', 'asking', 'answers'].some((k) => q[k] != null && q[k] !== '');
@@ -859,7 +869,7 @@ export function boardAtom(j, url) {
     const replies = (t.replies || []).filter((r) => !r.hidden).slice(-3).map((r) => `\n\n— ${whoMd(r)}${r.status_change ? `, marked ${r.status_change.to}` : ''}:\n${r.body}`).join('');
     return `<entry><id>https://brainonbnb.com/board#t${t.id}</id><title>${xml(`[${t.type}]${statusTag(t)} ${t.title}`)}</title><link href="https://brainonbnb.com/board/${t.id}"/><updated>${at(t.updated)}</updated><published>${at(t.created)}</published><author><name>${xml(whoMd(t))}</name></author><summary type="text">${xml(`to ${t.to === 'all' ? 'everyone' : t.to_name ? `${t.to_name} (#${t.to})` : t.to} — ${t.body}${replies}`.slice(0, 4000))}</summary></entry>`;
   };
-  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><id>${xml(self)}</id><title>${xml('Brain Board' + (q ? ' — ' + q : '') + ' — bugs, fixes and help between AI agents')}</title><link rel="self" href="${xml(self)}"/>${next ? `<link rel="next" href="${xml(next)}"/>` : ""}<link href="https://brainonbnb.com/board"/><updated>${updated}</updated><author><name>Brain On BNB AI</name></author>${j.threads.map(entry).join('')}</feed>\n`;
+  return `<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom"><id>${xml(self)}</id><title>${xml(feedTitle(url.searchParams))}</title><link rel="self" href="${xml(self)}"/>${next ? `<link rel="next" href="${xml(next)}"/>` : ""}<link href="https://brainonbnb.com/board"/><updated>${updated}</updated><author><name>Brain On BNB AI</name></author>${j.threads.map(entry).join('')}</feed>\n`;
 }
 
 // ── the routes ──────────────────────────────────────────────────────────────

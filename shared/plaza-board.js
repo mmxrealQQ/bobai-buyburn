@@ -181,12 +181,14 @@ const hasAll = (text, terms) => terms.every((w) => text.includes(w));
 // A WORD AND ITS FORMS (2026-10-27): "remove liquidity v3" missed "Removing liquidity …" (#104) — "remove" is not inside
 // "removing". A single word of five letters or more is matched by its stem: -ing, -ed, -es, -e and -s come off, as long
 // as four letters stay ("remov" finds remove, removed, removing; "token" finds tokens). Quoted phrases stay as typed.
-export const stemOf = (w) => (w.includes(' ') || w.length < 5 ? w : w.replace(/(ing|ed|es|e|s)$/, (m, _e, i) => (i >= 4 ? '' : m)));
+// the irregular past of the verbs errors are told in (2026-11-16: "who paid me" never met "payment" or "payer")
+const IRREGULAR = { paid: 'pay', sent: 'send', sold: 'sell', bought: 'buy', spent: 'spend', withdrew: 'withdraw', withdrawn: 'withdraw', ran: 'run', went: 'go', took: 'take', taken: 'take' };
+export const stemOf = (w) => (IRREGULAR[w] || (w.includes(' ') || w.length < 5 ? w : w.replace(/(ing|ed|es|e|s)$/, (m, _e, i) => (i >= 4 ? '' : m))));
 // every word first; else the most words (`near` on the list), then title hits, then the newest
 const matchTerms = (list, textOf, terms0) => {
   const terms = terms0.map(stemOf);
   const all = list.filter((t) => hasAll(textOf(t), terms));
-  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf);
+  if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf, list);
   // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
   // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
   // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
@@ -207,11 +209,19 @@ const matchTerms = (list, textOf, terms0) => {
 const flat = (s) => ` ${String(s || '').toLowerCase().replace(/[^\p{L}\p{N}$]+/gu, ' ').trim()} `;
 // THEN HOW OFTEN THE WORDS STAND (2026-10-27, the fourth stranger test: "?q=slippage put #97 (USDT approve) first" — no
 // title holds "slippage", so the newest came first, and #97 names it once in passing; the threads about it name it often)
-const byTitleHits = (list, terms, typed = terms, textOf = null) => {
+// A RARE WORD WEIGHS MORE (2026-11-16, the sixth stranger test: "x402 who paid" put #44 and #94 over #143, the entry
+// about who paid — "who" stands in half the library and counted as much as "paid"): each word weighs by how few of all
+// the threads hold it (log N/df), in the title and in how often it stands.
+const byTitleHits = (list, terms, typed = terms, textOf = null, corpus = list) => {
   const row = typed.length > 1 ? flat(typed.join(' ')) : null;
-  const hits = (t) => terms.filter((w) => String(t.title || '').toLowerCase().includes(w)).length + (row && flat(t.title).includes(row) ? 100 : 0);
-  const times = new Map(textOf ? list.map((t) => { const s = textOf(t); return [t, terms.reduce((a, w) => a + Math.min(10, s.split(w).length - 1), 0)]; }) : []);
-  return list.sort((a, b) => hits(b) - hits(a) || (times.get(b) || 0) - (times.get(a) || 0) || b.updated - a.updated);
+  const texts = textOf ? corpus.map(textOf) : [];
+  const w8 = new Map(terms.map((w) => { const df = texts.filter((s) => s.includes(w)).length; return [w, Math.log((texts.length + 1) / (df + 1)) + 0.1]; }));
+  const weigh = (w) => (textOf ? w8.get(w) : 1);
+  const hits = (t) => terms.reduce((a, w) => a + (String(t.title || '').toLowerCase().includes(w) ? weigh(w) : 0), 0) + (row && flat(t.title).includes(row) ? 100 : 0);
+  const times = new Map(textOf ? list.map((t) => { const s = textOf(t); return [t, terms.reduce((a, w) => a + weigh(w) * Math.min(10, s.split(w).length - 1), 0)]; }) : []);
+  // the title first, then the body: a title's rare word outweighs a body that repeats a common one
+  const score = (t) => hits(t) * 10 + (times.get(t) || 0);
+  return list.sort((a, b) => score(b) - score(a) || b.updated - a.updated);
 };
 
 // FILTERS OVER THE STORED HEADS (2026-10-23, the storage keeps each thread's head small and its body and replies apart):

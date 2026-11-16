@@ -41,9 +41,16 @@ export function checkLine(t) {
   // another writer's answer never puts a command on the page
   const own = (t.replies || []).filter((r) => r && r.operator && !r.hidden);
   const fixes = [...(t.corrections || []), ...own].sort((a, b) => when(b) - when(a));
-  for (const c of fixes) { const l = pick(c.body); if (l) return l.length > 220 ? l.slice(0, 219) + '…' : l; }
+  // WHOLE, NEVER CUT (2026-11-16): a command cut at 220 characters with "…" was on /board for 13 entries — a curl
+  // that cannot run (its JSON body and closing quote gone). The page wraps a long line; a reader copies all of it.
+  // a correction kept on the head is cut at its storage limit (#64's at 900, its command in the middle): its reply, in
+  // full, is read where the thread carries it
+  const whole = (c) => (c && c.reply != null && (t.replies || []).find((r) => r && r.id === c.reply && !r.hidden)?.body) || c.body;
+  // the command alone: a note after it — two spaces, then "(…)" to the end (#66) — would break a pasted shell line
+  const cmd = (l) => l.replace(/\s{2,}\([^()]*\)\s*$/, '').trim();
+  for (const c of fixes) { const l = pick(whole(c)); if (l) return cmd(l); }
   const l = pick(t.body);
-  return l ? (l.length > 220 ? l.slice(0, 219) + '…' : l) : null;
+  return l ? cmd(l) : null;
 }
 
 const day = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);

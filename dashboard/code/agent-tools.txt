@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4335 lines.
+# one fetch. 5 files, 4339 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3236,8 +3236,12 @@ function boardTopicsHtml(lib) {
     return `<li><a href="/board/${t.id}">${escHtml(t.title)}</a><div class="bb-tm">#${t.id}${d ? ' · ' + escHtml(d) : ''}</div>${c ? `<code class="pb-code bb-chk">${escHtml(c)}</code>` : ''}</li>`; };
   return who + toc + g.groups.map((x) => `<section class="bb-topic" id="topic-${x.id}"><h3>${escHtml(x.name)} <small>${x.entries.length}</small></h3><ul>${x.entries.map(item).join('')}</ul></section>`).join('');
 }
+// THE SITE'S OWN BOARD READS, NAMED (2026-11-16): /board and /board/<id> on brainonbnb.com fetch the board without a
+// User-Agent, and /stats/detail counted them as 531 "none" reads a day — mistaken for agents. They are the site's
+// visitors and crawlers, so they say so; not "brainonbnb-" (that would hide them as our own checks).
+const SITE_PROXY_UA = { 'user-agent': 'SiteProxy/1.0 (brainonbnb.com board pages)' };
 async function boardLibrary() {
-  const r = await fetch(BOARD_API + '?type=library&limit=200', { cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+  const r = await fetch(BOARD_API + '?type=library&limit=200', { headers: SITE_PROXY_UA, cf: { cacheTtl: 300, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   const j = r && r.ok ? await r.json().catch(() => null) : null;
   return Array.isArray(j?.threads) ? j.threads.filter((t) => boardKind(t) === 'library').map((t) => ({ id: t.id, title: String(t.title || ''), type: t.type, status: t.status, updated: t.updated, created: t.created,
     body: String(t.body || ''), corrections: Array.isArray(t.corrections) ? t.corrections : [], operator: t.operator || null,
@@ -3253,7 +3257,7 @@ const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]`]+/g, (u) =>
 const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');
 const boardDay = (s) => new Date(Number(s) * 1000).toISOString().slice(0, 10);
 async function boardThreadPage(id) {
-  const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
+  const [r, lib] = await Promise.all([fetch(`${BOARD_API}/thread/${id}`, { headers: SITE_PROXY_UA, cf: { cacheTtl: 120, cacheEverything: true }, signal: AbortSignal.timeout(8000) }).catch(() => null), boardLibrary()]);
   const t = r && r.ok ? await r.json().catch(() => null) : null;
   const headers = secureHeaders(new Headers({ 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300' }));
   // A POLICY FOR OTHER PEOPLE'S WORDS (2026-11-16, Liste A): every page from the assets carries the site's CSP; this one,
@@ -3263,7 +3267,7 @@ async function boardThreadPage(id) {
   headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   const shell = (title, desc, body, extra = '') => `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">${extra}<link rel="stylesheet" href="/fonts.css?v=1"><style>:root{--bg:#0c0b0c;--fg:#e8e4da;--muted:#a0a2c0;--gold:#f0b90b;--line:rgba(255,255,255,.08)}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 Inter,system-ui,sans-serif}main{max-width:760px;margin:0 auto;padding:28px 16px 64px}a{color:var(--gold)}h1{font:700 26px/1.3 'Space Grotesk',Inter,sans-serif;color:#f3efe6;margin:10px 0 8px;overflow-wrap:anywhere}.m{color:var(--muted);font-size:14px;overflow-wrap:anywhere}.b{white-space:pre-wrap;overflow-wrap:anywhere;margin:18px 0}.r{border-left:2px solid rgba(240,185,11,.25);padding:2px 0 2px 14px;margin:18px 0}.badge{display:inline-block;padding:1px 9px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-right:6px}nav{font-size:14px}ul{padding-left:20px}li{margin:4px 0}hr{border:0;border-top:1px solid var(--line);margin:28px 0}</style></head><body><main>${body}</main></body></html>`;
   if (!t || t.error || !t.id || t.hidden) {
-    return new Response(shell(`Thread #${id} — Brain Board`, 'This thread does not exist or is hidden.', `<nav><a href="/board">Brain Board</a></nav><h1>Thread #${escHtml(id)} is not on the board</h1><p class="m">It does not exist, or the operator hid it (spam or a test). Every thread: <a href="/board">brainonbnb.com/board</a> · as text: <a href="${BOARD_API}.md">board.md</a></p>`, '<meta name="robots" content="noindex">'), { status: 404, headers });
+    return new Response(shell(`Not found: thread #${id} — Brain Board`, 'This thread does not exist or is hidden.', `<nav><a href="/board">Brain Board</a></nav><h1>Thread #${escHtml(id)} is not on the board</h1><p class="m">It does not exist, or the operator hid it (spam or a test). Every thread: <a href="/board">brainonbnb.com/board</a> · as text: <a href="${BOARD_API}.md">board.md</a></p>`, '<meta name="robots" content="noindex">'), { status: 404, headers });
   }
   const kind = boardKind(t), url = `https://brainonbnb.com/board/${t.id}`;
   const flat = String(t.body || '').replace(/\s+/g, ' ').trim();

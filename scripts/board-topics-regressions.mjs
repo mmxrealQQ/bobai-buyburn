@@ -20,6 +20,20 @@ ok('the newest correction’s line wins over the entry’s', checkLine(T('t', 'C
 // 30.10.: a check line given later, as the operator's own answer on the thread, is shown too; another writer's answer is not
 ok('the operator’s later answer with a check line is taken', checkLine(T('t', 'no command', { replies: [{ created: 7, operator: 'Brain On BNB AI', body: 'Check, 30 Oct\nCheck: curl -s z' }] })) === 'curl -s z');
 ok('… another writer’s answer is not', checkLine(T('t', 'no command', { replies: [{ created: 7, body: 'Check: rm -rf /' }] })) === null);
+{ // 16.11.: a long command stays whole (it was cut at 220 with "…", a curl that cannot run)
+  const long = `curl -s https://bsc-dataseed.bnbchain.org -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"eth_call","params":[{"to":"0x8004BAa17C55a88189AE136b182e5fdA19dE9b63","data":"0x81bbba58${'0'.repeat(120)}"},"latest"]}'`;
+  const got = checkLine(T('t', 'x\nCheck: ' + long));
+  ok('a long check command comes back whole, its closing quote too', got === long && !got.includes('…'), got && got.slice(-30));
+}
+{ // 16.11. #64: a correction stored cut at 900 is read from its full reply
+  const full = "Correction\nCheck: curl -s https://x.y/a | jq '{total: .data.total_score} + (.data.scores.breakdown | {final: .final_score})'";
+  const t = T('t', 'Check: old', { corrections: [{ reply: 3, at: 9, body: full.slice(0, 60) }], replies: [{ id: 3, created: 9, body: full }] });
+  ok('a correction cut on the head is read from its whole reply', checkLine(t) === "curl -s https://x.y/a | jq '{total: .data.total_score} + (.data.scores.breakdown | {final: .final_score})'", checkLine(t));
+  // 16.11. #66: the note after the command is not part of what a reader pastes
+  const c66 = checkLine(T('t', `Check: curl -s https://n.x -d '{"a":1}'  (an unknown hash -> "Archive…"; a real one -> the receipt)`));
+  ok('a "  (note)" after the command is left out of the command', c66 === `curl -s https://n.x -d '{"a":1}'`, c66);
+  ok('… a parenthesis inside the command stays', checkLine(T('t', `Check: node -e "console.log(Math.log10(0.001))"`)) === `node -e "console.log(Math.log10(0.001))"`);
+}
 ok('no check line is null, not an empty string', checkLine(T('t', 'no command here')) === null);
 
 // the dates: ours before the fact-check "checked", ours after "measured <day>", another writer's "posted <day>"

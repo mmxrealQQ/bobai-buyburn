@@ -2,6 +2,9 @@
 <html lang="en" style="background:#0c0b0c">
 <head>
   <meta charset="UTF-8">
+  <!-- one read per record (2026-11-16): the page's own script and app.js each read burns.json, the liq log, /api/price
+       and /board, measured twice a load (headless Chrome, fresh profile) -->
+  <script src="/fetch-once.js?v=2"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- One of the pages the homepage was cut down to on 2026-09-02. The block
        markup is the same the classic page carries (styles.css owns it);

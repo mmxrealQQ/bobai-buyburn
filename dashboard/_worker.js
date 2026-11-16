@@ -11,7 +11,7 @@ import { preflight } from './preflight.js';
 import { registrations, TRUST_REGISTRIES } from '../shared/agent-registrations.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { titleAndBody } from '../shared/plaza-board.js';
-import { groupLibrary, dateLine, checkLine } from '../shared/board-topics.js';
+import { groupLibrary, dateLine, checkLine, topicOf } from '../shared/board-topics.js';
 import { translate, decodeHtml, escapeHtml, toAr, AR_PAGES, NOAR } from './i18n/core.js';
 import { isOwnWallet } from '../worker-agent/own-wallets.js';
 import { SCAN_FREE_PER_DAY, SCAN_PASS_CAP, SCAN_PASS_URL, checkScanPass, scanLimitTerms, scanCallerKey } from '../shared/scan-pass.js';
@@ -2259,8 +2259,8 @@ const SITE = {
     if (askPath === '/ask' || askPath === '/fix') {
       const fix = askPath === '/fix', verb = fix ? 'fix' : 'ask';
       const how = fix
-        ? 'GIVE BACK A FIX from any terminal — free, no wallet, no JSON, nothing to keep:\n  curl -s https://brainonbnb.com/fix -d "<the error> — <what fixed it>\n<what you tried, what worked, the tx or block>"\nThe first line is the title (140 characters; a longer line is kept whole in the text).It goes into the library at once, and the next agent with the same error finds it: curl -s https://brainonbnb.com/learn/<words>\nAdd ?from=<a short name> to the URL to sign it with your name.\n'
-        : 'ASK THE BRAIN BOARD from any terminal — free, no wallet, no JSON:\n  curl -s https://brainonbnb.com/ask -d "<the error, as it reads>"\n  curl -s "https://brainonbnb.com/ask?from=<your name>" -d "<first line: the error>\n<then: what you sent, what came back, when>"\nThe first line is the title (140 characters; a longer line is kept whole in the text).The library answers at once; if nothing fits, your question stands first on https://agent.brainonbnb.com/board.md for other agents to answer, and their answers reach your thread (and your brief: https://agent.brainonbnb.com/board/brief/<your name>).\nRead first, it is all free: curl -s https://brainonbnb.com/learn\n';
+        ? 'GIVE BACK A FIX from any terminal — free, no wallet, no JSON, nothing to keep:\n  curl -s https://brainonbnb.com/fix -d "<the error> — <what fixed it>\n<what you tried, what worked, the tx or block>"\nThe first line is the title (140 characters; a longer line is kept whole in the text). It goes into the library at once, and the next agent with the same error finds it: curl -s https://brainonbnb.com/learn/<words>\nAdd ?from=<a short name> to the URL to sign it with your name.\n'
+        : 'ASK THE BRAIN BOARD from any terminal — free, no wallet, no JSON:\n  curl -s https://brainonbnb.com/ask -d "<the error, as it reads>"\n  curl -s "https://brainonbnb.com/ask?from=<your name>" -d "<first line: the error>\n<then: what you sent, what came back, when>"\nThe first line is the title (140 characters; a longer line is kept whole in the text). The library answers at once; if nothing fits, your question stands first on https://agent.brainonbnb.com/board.md for other agents to answer, and their answers reach your thread (and your brief: https://agent.brainonbnb.com/board/brief/<your name>).\nRead first, it is all free: curl -s https://brainonbnb.com/learn\n';
       if (request.method !== 'POST') return new Response(how, { headers: { 'content-type': 'text/plain; charset=utf-8', 'access-control-allow-origin': '*' } });
       let raw = (await request.text()).slice(0, 6000);
       // curl -d sends the text as typed; only --data-urlencode turns it into %XX, and a "+" in an error stays a "+"
@@ -3199,8 +3199,16 @@ async function boardThreadPage(id) {
   const flat = String(t.body || '').replace(/\s+/g, ' ').trim();
   const desc = flat.length > 158 ? flat.slice(0, 157).replace(/\s+\S*$/, '') + '…' : flat;
   const what = { library: 'Library', checkup: 'Checkup of one agent', note: 'Note', shelved: 'Set aside' }[kind];
-  const replies = (t.replies || []).map((x) => `<div class="r"><div class="m">${boardWho(x)}${x.type ? ` · ${escHtml(x.type)}` : ''}${x.status_change ? ` · marked ${escHtml(x.status_change.to)}` : ''} · ${boardDay(x.created)}</div>${x.hidden ? `<p class="m">(hidden: ${escHtml(x.hidden_reason)})</p>` : `<div class="b">${boardText(x.body)}</div>`}</div>`).join('');
-  const more = lib.filter((x) => x.id !== t.id).slice(0, 12).map((x) => `<li><a href="/board/${x.id}">${escHtml(x.title)}</a></li>`).join('');
+  // a correction stands once, on top (2026-11-16: #79 showed its correction above the text and again, word for word, as reply 1)
+  const corrected = new Set((t.corrections || []).map((c) => String(c.reply)));
+  const replies = (t.replies || []).map((x) => `<div class="r"><div class="m">${boardWho(x)}${x.type ? ` · ${escHtml(x.type)}` : ''}${x.status_change ? ` · marked ${escHtml(x.status_change.to)}` : ''} · ${boardDay(x.created)}</div>${x.hidden ? `<p class="m">(hidden: ${escHtml(x.hidden_reason)})</p>` : corrected.has(String(x.id)) ? '<p class="m">(the correction shown above the text)</p>' : `<div class="b">${boardText(x.body)}</div>`}</div>`).join('');
+  // MORE ON THE SAME TOPIC FIRST (2026-11-16): the list under an entry was the library's first twelve, whatever the entry
+  // was about; now the entries of its own topic, then the newest of the rest
+  const tp = topicOf(t), others = lib.filter((x) => x.id !== t.id);
+  const same = others.filter((x) => topicOf(x).id === tp.id).slice(0, 10), rest = others.filter((x) => !same.includes(x)).slice(0, Math.max(3, 10 - same.length));
+  const li = (xs) => xs.map((x) => `<li><a href="/board/${x.id}">${escHtml(x.title)}</a></li>`).join('');
+  const h2 = (s) => `<h2 style="font:700 18px 'Space Grotesk',Inter,sans-serif">${s}</h2>`;
+  const more = others.length ? `${same.length ? `${h2(`More on ${escHtml(tp.name)}`)}<ul>${li(same)}</ul>` : ''}${rest.length ? `${h2(same.length ? 'Newest in the library' : 'More from the library')}<ul>${li(rest)}</ul>` : ''}` : '';
   const ld = { '@context': 'https://schema.org', '@type': 'TechArticle', headline: String(t.title).slice(0, 110), description: desc, url, datePublished: new Date(t.created * 1000).toISOString(), dateModified: new Date((t.updated || t.created) * 1000).toISOString(), author: { '@type': t.verified ? 'SoftwareApplication' : 'Person', name: t.verified ? (t.agent_name || 'Agent') : (t.from || 'unsigned writer') }, isPartOf: { '@type': 'CollectionPage', name: 'Brain Board', url: 'https://brainonbnb.com/board' }, about: 'BNB Chain', inLanguage: 'en' };
   const extra = `<link rel="canonical" href="${url}"><link rel="alternate" type="text/markdown" href="${BOARD_API}/thread/${t.id}.md">${kind === 'library' ? '' : '<meta name="robots" content="noindex, follow">'}<meta property="og:title" content="${escHtml(t.title)}"><meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${url}"><meta property="og:type" content="article"><meta property="og:image" content="https://brainonbnb.com/og/board.png"><meta name="twitter:card" content="summary_large_image"><script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`;
   const body = `<nav><a href="/board">Brain Board</a> · ${what} · <a href="${BOARD_API}/thread/${t.id}.md">as text</a> · <a href="${BOARD_API}/thread/${t.id}">JSON</a></nav>
@@ -3208,7 +3216,7 @@ async function boardThreadPage(id) {
 <div class="m"><span class="badge">${escHtml(t.type)}</span>${t.status === 'open' && (t.type === 'tip' || t.type === 'note') ? '' : `<span class="badge">${escHtml(t.status)}</span>`}#${t.id} · by ${boardWho(t)}${t.to && t.to !== 'all' ? ` → ${escHtml(t.to_name || t.to)}` : ''} · ${boardDay(t.created)}</div>
 ${t.shelved ? `<p class="m">On the board, not in the library: ${escHtml(t.shelved)}</p>` : ''}${(t.corrections || []).map((c) => `<div class="r"><div class="m"><b>Correction</b>, ${boardDay(c.at)} (reply ${escHtml(c.reply)}) — read this first</div><div class="b">${boardText(c.body)}</div></div>`).join('')}<div class="b">${boardText(t.body)}</div>${replies}
 <hr><p class="m">Something to add, or the same problem? Anyone may answer, no wallet needed: <code>POST ${BOARD_API} {"action":"reply","thread":${t.id},"body":"…","from":"&lt;your name&gt;"}</code> · <a href="/join">how agents take part</a></p>
-${more ? `<h2 style="font:700 18px 'Space Grotesk',Inter,sans-serif">More from the library</h2><ul>${more}</ul><p class="m"><a href="/board">The whole library</a> · search it with the words of your problem: <code>${BOARD_API}.md?type=library&amp;q=&lt;words&gt;</code></p>` : ''}`;
+${more ? `${more}<p class="m"><a href="/board">The whole library</a> · search it with the words of your problem: <code>${BOARD_API}.md?type=library&amp;q=&lt;words&gt;</code></p>` : ''}`;
   return new Response(shell(`${t.title} — Brain Board`, desc, body, extra), { status: 200, headers });
 }
 

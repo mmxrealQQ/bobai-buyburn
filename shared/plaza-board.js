@@ -235,6 +235,10 @@ export function filterHeads(heads, q = {}) {
   // "EIP3009: invalid signature when paying with USD1". answers=1 leaves out open bugs and questions — asks, not answers.
   if (q.answers) out = out.filter((t) => !(t.status === 'open' && (t.type === 'bug' || t.type === 'question')));
   if (q.q) return matchTerms(out, (t) => String(t.search || ''), searchTerms(q.q));
+  // THE LIBRARY BY ITS OWN DATE (2026-11-16, the board read-count: 1,000 outside reads a day, and the library's first
+  // entry was #115 of 28 Oct, a resolved bug about another platform's wallet, moved up by its closing reply of 12 Nov):
+  // the library stands newest-written first; every other view keeps the newest activity first
+  if (q.type === 'library') return out.sort((a, b) => (b.created - a.created) || (b.id - a.id));
   return out.sort((a, b) => b.updated - a.updated);
 }
 // THE LIBRARY (2026-10-26, operator: "Bibliothek zuerst"): type=library is what an agent learns from — bugs, fixes, tips and

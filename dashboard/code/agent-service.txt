@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24835 lines.
+# one fetch. 75 files, 24867 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4112,7 +4112,7 @@ import { handleHire, readJobNow, ERC8183 } from './hire.js';
 import { accountForAgent } from './agent-wallets.js';
 
 export const HIRES = [
-  { by: 302257, slug: 'health-factor', seller: 341556, sellerName: 'Keel', site: 'Marque',
+  { by: 302257, slug: 'health-factor', seller: 341556, sellerName: 'Keel', site: 'Marque', needsOwn: 'its own health factor (the Venus log of the 05:00 run)',
     task: (w) => `Venus health factor of ${w} on BNB Chain: health factor, liquidation price and the repay that restores a safe level` },
   // PAUSED 23.10. (operator: "ja, 1"): Sluicegate accepted job 57047 (22.10.) and job 57055 (23.10.) — "delivery
   // started" — and submitted neither; Keel and Bound deliver within minutes. Nothing more is paid to it; both budgets
@@ -4127,7 +4127,7 @@ export const HIRES = [
       : `Best stablecoin yield on Venus on BNB Chain for the USDC and USDT of wallet ${w}: which market pays more today` },
   // Plinth keeper (#363619, 0.01 $U) was hired once on 22.10. (job 57045) and answered that it cannot read PancakeSwap
   // positions at all: paying it daily would buy nothing. Bound is Marque's own rebalancing reference (warranted MCS-REB-1).
-  { by: 363709, slug: 'defi-agent', seller: 341553, sellerName: 'Bound', site: 'Marque',
+  { by: 363709, slug: 'defi-agent', seller: 341553, sellerName: 'Bound', site: 'Marque', needsOwn: 'its own position and range (/lp/portfolio)',
     task: (_w, ctx) => `PancakeSwap V3 position ${ctx.position || ''} in pool 0xafb2da14056725e3ba3a30dd846b6bbbd7886c56 (CAKE/BNB 0.05%) on BNB Chain: is it in range, how far to each bound, does it need a rebalance` },
 ];
 export const MAX_U = parseEther('0.15'); // Bound asks 0.15 (22.10.)
@@ -4207,12 +4207,36 @@ export function healthFactorIn(reply) {
   return m ? Number(m[1]) : null;
 }
 
+// pure: the reason a hire that needs its agent's own reading is not bought without it (null = go on)
+export function ownUnread(h, ctx = {}) {
+  if (!h.needsOwn) return null;
+  if (ctx.own == null) return `${h.needsOwn} was not read — nothing to set the answer beside, nothing paid; tried again tomorrow`;
+  if (h.by === 363709 && !/^\d+$/.test(String(ctx.position || ''))) return `${h.needsOwn} named no position — the brief would ask about nothing, nothing paid; tried again tomorrow`;
+  return null;
+}
+// After a send that stopped: the job as the chain holds it, if our wallet funded it (FUNDED or later), else null.
+export const FUNDED_OR_LATER = ['FUNDED', 'SUBMITTED', 'COMPLETED', 'REJECTED'];
+export async function jobAfterFailure(jobId, client, { read = readJobNow, tries = 3, waitMs = 30000, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  for (let i = 0; i < tries; i++) {
+    if (i) await sleep(waitMs);
+    const job = await read(jobId).catch(() => null);
+    if (job && String(job.client).toLowerCase() === String(client).toLowerCase() && FUNDED_OR_LATER.includes(job.status)) return job;
+    if (job && job.status !== 'OPEN') return null; // expired or otherwise closed: nothing in escrow
+  }
+  return null;
+}
+
 // One hire. ctx: { own } — the hiring agent's own reading to stand beside the answer; { position } for the DeFi agent.
 export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false } = {}) {
   const at = now.toISOString(), day = at.slice(0, 10);
   const base = { at, by: h.by, seller: h.seller, seller_name: h.sellerName, site: h.site };
   const dayKey = `hires:day:${day}:${h.by}:${h.seller}`;
   if (!dry && await env.AGENT.get(dayKey)) return { ...base, status: 'skipped', reason: 'already hired today' };
+  // NOTHING TO SET IT BESIDE, NOTHING PAID (2026-11-16, A-Z review 15.11.): a hire is bought to stand beside the agent's
+  // own reading; when that reading was not read (the Venus log without a health factor, /lp/portfolio down — the
+  // DeFi brief then named no position at all) the seller would be paid for a comparison that cannot be made.
+  const ownMissing = ownUnread(h, ctx);
+  if (ownMissing) return log(env, { ...base, status: 'refused', reason: ownMissing });
   const self = await accountForAgent(env, h.slug);
   if (!self.account) return log(env, { ...base, status: 'refused', reason: self.reason || 'no key for this agent\'s wallet' });
   const me = self.account;
@@ -4244,8 +4268,9 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
   const send = async (label, to, data) => {
     await pub.call({ account: me, to, data }); // simulated first: a call that would revert costs nothing
     const hash = await wal.sendTransaction({ to, data, gasPrice: GAS_PRICE, nonce: nonce++ });
+    const row = { what: label, tx: hash, ok: null }; txs.push(row); // kept before the receipt: a wait that times out still names the tx
     const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
-    txs.push({ what: label, tx: hash, ok: rc.status === 'success' });
+    row.ok = rc.status === 'success';
     if (rc.status !== 'success') throw new Error(`${label} reverted (${hash})`);
     return rc;
   };
@@ -4258,7 +4283,14 @@ export async function hireOnce(env, h, { ctx = {}, now = new Date(), dry = false
     if (!job || job.client.toLowerCase() !== me.address.toLowerCase() || job.provider.toLowerCase() !== String(q.provider).toLowerCase()) throw new Error(`the created job could not be read back as ours (${jobId})`);
     for (const c of rest) await send(c.what, c.to, c.data || c.data_template.replace('<JOBID>', BigInt(jobId).toString(16).padStart(64, '0')));
   } catch (e) {
-    return log(env, { ...plan, status: 'failed', job: jobId, txs, reason: String(e.shortMessage || e.message || e).slice(0, 240) });
+    const reason = String(e.shortMessage || e.message || e).slice(0, 240);
+    // THE JOB SAYS WHAT HAPPENED (2026-11-16, A-Z review 15.11.): a receipt that did not come within 90 s is not a fund
+    // that failed — the fund may land a block later, and a job logged 'failed' was never collected nor refunded (both
+    // read only open hires): the $U in escrow and the answer, both lost to the record. The job is read back from the
+    // chain (twice more, 30 s apart, while it is still OPEN); escrow funded by our wallet = the hire went through.
+    const job = jobId ? await jobAfterFailure(jobId, me.address) : null;
+    if (!job) return log(env, { ...plan, status: 'failed', job: jobId, txs, reason });
+    plan.fund_note = `the send stopped (${reason.slice(0, 120)}) but the chain holds the job ${job.status}: the hire went through`;
   }
   // most sellers accept at once and deliver on chain a minute or two later (collectDeliveries picks the answer up)
   const reply = await notifyFunded(q.endpoint, jobId);

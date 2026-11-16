@@ -246,10 +246,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1794835215007">
+<link rel="stylesheet" href="brain/brain.css?v=1794837169097">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1794832694">
+<link rel="stylesheet" href="terminal/terminal.css?v=1794836880">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -275,10 +275,12 @@
   line.querySelector('.ca').addEventListener('click', (e) => { const b = e.currentTarget, s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); });
   const fit = () => {
     order.forEach((e) => e.classList.remove('bl-off'));
-    if (innerWidth < 1180) { line.style.right = ''; return; }
     // never under the icons (2026-11-08, operator: "the line runs over the Telegram logo"): its right edge stops 12 px
     // before the first icon of the header's right side, however wide the buttons there are
-    const soc = document.querySelector('.bp-soc'); if (soc) line.style.right = Math.max(0, innerWidth - soc.getBoundingClientRect().left + 12) + 'px';
+    if (innerWidth >= 1180) { const soc = document.querySelector('.bp-soc'); if (soc) line.style.right = Math.max(0, innerWidth - soc.getBoundingClientRect().left + 12) + 'px'; }
+    else line.style.right = '';
+    // WHOLE ON A PHONE TOO (2026-11-16, Liste A): below 1180 the line only scrolled, and at 344-430 px a field stood cut
+    // in half at the edge (MC or Liq) — the 30.10. rule, whole or not at all, now holds at every width, same order
     for (const e of order) { if (line.scrollWidth <= line.clientWidth) break; e.classList.add('bl-off'); }
   };
   const set = (k, t) => { const e = document.querySelector('[data-bl="' + k + '"]'); if (e && t && e.textContent !== t) { e.textContent = t; fit(); } };
@@ -1513,9 +1515,9 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1794832694')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1794836880')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1794835215007" defer></script>
-<script src="brain/cards.js?v=1794835215007" defer></script>
-<script src="brain/hero.js?v=1794835215007" defer></script>
+<script src="brain/brain.js?v=1794837169097" defer></script>
+<script src="brain/cards.js?v=1794837169097" defer></script>
+<script src="brain/hero.js?v=1794837169097" defer></script>
 </body></html>

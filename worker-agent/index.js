@@ -392,7 +392,12 @@ const rpc = async (method, params, endpoints) => {
 // $BOBAI quote's reads waiting on a node that hung from this worker before the next was asked; MANDATE logged "HTTP 402
 // in 3109 ms"): the first node at once, the next 400 ms later if none has answered, and so on — the first good answer
 // counts. For read-only calls (prices, reserves); a payment's receipt keeps its own list and order.
-const rpcRace = (method, params, list = RPCS, stagger = 400) => new Promise((resolve, reject) => {
+// THE QUICK READS ASK THE QUICK NODES FIRST (2026-11-17): measured from Cloudflare's edge, publicnode answered 15 ms or
+// held the request 3.0 s and then said 429 "Rate limit"; defibit and Binance's dataseed answered in 30-120 ms every time.
+// And a Worker keeps at most six connections open per request: four races that each opened publicnode first, then the
+// next node 400 ms later, queued their second wave behind the hung four — an unpaid /answer still took 3.1 s.
+const QUICK_RPCS = ['https://bsc-dataseed1.defibit.io', 'https://bsc-dataseed.bnbchain.org', 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-rpc.publicnode.com', 'https://bsc.publicnode.com'];
+const rpcRace = (method, params, list = QUICK_RPCS, stagger = 400) => new Promise((resolve, reject) => {
   let left = list.length, done = false, lastErr = null;
   list.forEach((endpoint, i) => setTimeout(async () => {
     if (done) { left--; return; }
@@ -402,7 +407,7 @@ const rpcRace = (method, params, list = RPCS, stagger = 400) => new Promise((res
   }, i * stagger));
 });
 const callQuick = (to, data) => rpcRace('eth_call', [{ to, data }, 'latest']);
-export { rpcRace };   // held by scripts/x402-quote-speed-regressions.mjs (2026-11-16)
+export { rpcRace, QUICK_RPCS };   // held by scripts/x402-quote-speed-regressions.mjs (2026-11-16)
 
 const hexToBig = (h) => (h && h !== '0x' ? BigInt(h) : 0n);
 const addrFromTopic = (t) => '0x' + String(t).slice(26).toLowerCase();
@@ -648,6 +653,7 @@ export function transferredIn(receipt, asset, payTo) {
 const BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff';
 export const BOBAI_SHARE = 0.5; // an answer paid in $BOBAI costs half its USD1 price (2026-10-14)
 const BOBAI_PAIR = '0x6eadd4cb786898b34929444988380ed0cc6fd9a6';
+const BOBAI_PAIR_TOKEN0 = '0x245c386dcfed896f5c346107596141e5edcbffff'; // token0() of BOBAI_PAIR, immutable
 // THE INPUT AS AN AGENT NATURALLY SENDS IT (2026-10-13): the documented body is {"params":{…}}, but {"token":"0x…"}
 // on its own came back "grid_plan needs `token`" with the token right there. Fields beside task/inputs/params count
 // too; params and inputs still win where both name one.
@@ -661,13 +667,13 @@ function bareFields(body) {
 // well inside the tenth of slack the payment already allows for a price that moves; quoted_at says when it was read.
 let BOBAI_QUOTE = null; // { at, usdPerBobai }
 export const QUOTE_KEEP_MS = 30000;
-async function usdPerBobaiNow() {
+export async function usdPerBobaiNow() {   // exported for scripts/x402-quote-speed-regressions.mjs
   if (BOBAI_QUOTE && Date.now() - BOBAI_QUOTE.at < QUOTE_KEEP_MS) return BOBAI_QUOTE;
-  const [res, t0, price] = await Promise.all([callQuick(BOBAI_PAIR, SEL.getReserves), callQuick(BOBAI_PAIR, SEL.token0), bnbUsd()]);
+  // token0 is fixed when a V2 pair is created: $BOBAI is token0 of BOBAI_PAIR (read 2026-11-17), so two reads, not four
+  const [res, price] = await Promise.all([callQuick(BOBAI_PAIR, SEL.getReserves), bnbUsd()]);
   const b = res.slice(2);
   const r0 = Number(BigInt('0x' + b.slice(0, 64))) / 1e18, r1 = Number(BigInt('0x' + b.slice(64, 128))) / 1e18;
-  const bobaiIs0 = ('0x' + t0.slice(26)).toLowerCase() === BOBAI;
-  const bnbPerBobai = bobaiIs0 ? r1 / r0 : r0 / r1;
+  const bnbPerBobai = BOBAI_PAIR_TOKEN0 === BOBAI ? r1 / r0 : r0 / r1;
   const usdPerBobai = bnbPerBobai * price;
   if (!(usdPerBobai > 0)) throw new Error('could not price $BOBAI');
   BOBAI_QUOTE = { at: Date.now(), usdPerBobai };
@@ -717,16 +723,13 @@ async function poolDepthUsd(pair, quoteToken, quoteUsd) {
 // uses so that one number does not disagree with itself across surfaces.
 const BNB_PAIR = '0x58f876857a02d6762e0101bb5c46a8c1ed44dc16';
 const WBNB = '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c';
+const BNB_PAIR_TOKEN0 = WBNB; // token0() of BNB_PAIR (WBNB/USDT), immutable — read 2026-11-17
 async function bnbUsd() {
-  const [res, t0] = await Promise.all([
-    callQuick(BNB_PAIR, SEL.getReserves),
-    callQuick(BNB_PAIR, SEL.token0),
-  ]);
+  const res = await callQuick(BNB_PAIR, SEL.getReserves);
   const b = res.slice(2);
   const r0 = Number(BigInt('0x' + b.slice(0, 64))) / 1e18;
   const r1 = Number(BigInt('0x' + b.slice(64, 128))) / 1e18;
-  const bnbIs0 = ('0x' + t0.slice(26)).toLowerCase() === WBNB;
-  return bnbIs0 ? r1 / r0 : r0 / r1;
+  return BNB_PAIR_TOKEN0 === WBNB ? r1 / r0 : r0 / r1;
 }
 
 // ---------------------------------------------------------------- watches

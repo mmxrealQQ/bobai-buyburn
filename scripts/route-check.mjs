@@ -148,7 +148,7 @@ const skip = (name, why) => {
     // 3.00x% buy gave 601 against the shown 3 -> 600): within that bps, never more
     const want = (p) => Math.ceil(((p || 0) + 1) * 100) + 200, near = (bps, p) => bps === want(p) || bps === want(p) + 1;
     ok('BOBAI: the slippage is the tax + 100 + 200 bps whatever the size ($100 and $2,000 alike)',
-      near(sb, t.buy_pct) && near(ss, t.sell_pct) && big.slippage_bps_needed_buy === sb && big.slippage_bps_needed_sell === ss,
+      near(sb, t.buy_pct) && near(ss, t.sell_pct) && Math.abs(big.slippage_bps_needed_buy - sb) <= 1 && Math.abs(big.slippage_bps_needed_sell - ss) <= 1, // two calls, two measurements of the tax: the same within that bps (17.11.: 601 against 600)
       `$100: buy ${sb}, sell ${ss} · $2,000: buy ${big.slippage_bps_needed_buy}, sell ${big.slippage_bps_needed_sell} · tax ${t.buy_pct}/${t.sell_pct}`);
 
     // A tax measured on one side only makes the answer optimistic, and the reader

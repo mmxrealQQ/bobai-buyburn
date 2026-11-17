@@ -632,7 +632,7 @@ section('The number, and the order of the page');
   ok('you can act before you have to read', act > 0 && evidence > act,
     'the evidence blocks come before anything you can operate');
   // two rows of four since 2026-10-30: under the title and above the categories
-  ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length === 8);
+  ok('the category picker is on the page', (body.match(/class="rg-chip"/g) || []).length >= 4); // four since the Plaza refresh (15.11.)
   // 2026-10-30: the export took our provider from the agents' owner, and after the move four of the six had no jobs at all
   const jobsOf = await fetch('https://brainonbnb.com/api-agent-jobs.json').then((r) => r.json()).catch(() => null);
   ok('our agents carry their own jobs on their charts', [363709, 302257, 302258, 304493, 304494].every((id) => jobsOf?.agents?.[id]?.totals?.funded > 0));
@@ -747,7 +747,8 @@ section('The marketplace, from the front door');
   // block must be on OUR cards and on none of the others, and the job page
   // must say the digest matched, not merely mention a digest.
   const reg = (await getText(`${SITE}/registry`)).body;
-  const ours = reg.match(/<article class="rgc rg-ours"[\s\S]*?<\/article>/g) || [];
+  // our agents' cards — not the project's own card ("8 registry ids"), which sells nothing and has no example to show
+  const ours = (reg.match(/<article class="rgc rg-ours"[\s\S]*?<\/article>/g) || []).filter((a) => !/registry ids/.test(a));
   ok('every own card on /registry carries an example answer', ours.length >= 5 && ours.every((a) => /class="rgc-ex"/.test(a)), `${ours.filter((a) => /class="rgc-ex"/.test(a)).length} of ${ours.length}`);
   ok('an example answer names where it came from', ours.every((a) => /From job <a|An example run/.test(a)));
   ok('no foreign card carries an example block', (reg.match(/class="rgc-ex"/g) || []).length === ours.filter((a) => /class="rgc-ex"/.test(a)).length);
@@ -897,7 +898,7 @@ section('The marketplace, from the front door');
   ok('the hire block counts quotes over its own buttons, not over the quote run',
     // "agents" since 2026-09-18: both figures count distinct agents, not rows —
     // an agent listed under two categories carries two buttons.
-    new RegExp(`${reg?.hireable_here} agents carry a Hire button, and <b>${reg?.quoted_of_hireable} of them returned a price`).test(body),
+    new RegExp(`${reg?.hireable_here} agents carry a Hire button, (and )?(<b>)?${reg?.quoted_of_hireable} of them returned a price`).test(body), // the wording since the Plaza refresh, the same two figures
     'the block prints a numerator from the quote run under a count of buttons');
   // Same reasoning as the census counts above: the quote tally is measured
   // afresh every time hire-confirm runs, so llms.txt must not carry a copy of

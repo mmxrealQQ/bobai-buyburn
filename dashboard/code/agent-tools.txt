@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4340 lines.
+# one fetch. 5 files, 4348 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3539,7 +3539,7 @@ This file is a factual summary for assistants and crawlers. It is descriptive, n
 // trading). `why` stays the same sentence.
 import { scan, ScanError } from './scanner-scan.js';
 import { swapRoute } from './swap-route.js';
-import { readControl } from './scanner-chain.js';
+import { readControl, knownHolder, FOURMEME_MANAGER } from './scanner-chain.js';
 
 export class PreflightError extends Error {
   constructor(headline, detail, code) { super(headline); this.headline = headline; this.detail = detail; if (code) this.code = code; }
@@ -3592,7 +3592,10 @@ export function shape(s, r, usd, routeError = null, control = null) {
   // the control read's head otherwise.
   const kind = s.quotable ? 'pool' : s.curve ? 'curve' : 'unquotable';
   // the scanned pool's spot price (2026-10-30: get_token_price was asked for, and no tool gave a BSC token's price)
-  const priceUsd = Number(s.price?.usd) > 0 ? Number(Number(s.price.usd).toPrecision(6)) : null;
+  // A token still on its launch curve has no pool price: the curve's own (2026-11-17, a stranger: preflight said
+  // null while pool-scan gave curve.priceUsd for the same token, and llms.txt points bots at token.price_usd).
+  const rawPrice = [s.price?.usd, s.curve?.priceUsd].map(Number).find((v) => v > 0);
+  const priceUsd = rawPrice ? Number(rawPrice.toPrecision(6)) : null;
   const head = { tool: 'bsc_token_preflight', kind, token: { address: s.address, symbol: s.symbol ?? null, name: s.name ?? null, price_usd: priceUsd }, size_usd: usd,
     block: s.block ?? (control?.read ? control.block : null) ?? null, measured_at: s.measuredAt ?? new Date().toISOString() };
   const ctl = controlBlock(control);
@@ -3909,10 +3912,15 @@ export function shape(s, r, usd, routeError = null, control = null) {
 export function controlBlock(c) {
   if (!c) return null;
   if (!c.read) return { read: false, reason: c.reason || 'not read' };
+  const oa = String(c.owner?.address || '').toLowerCase();
+  const ownerName = oa === FOURMEME_MANAGER ? 'four.meme’s token manager, the contract that runs the launch curve' : knownHolder(oa)?.name ?? null;
   return {
     read: true,
-    owner: c.owner ? { address: c.owner.address, kind: c.owner.kind, source: c.owner.source } : null,
-    owner_note: c.owner ? ({ renounced: 'The owner is the zero or dead address: ownership was given up.', eoa: 'The owner is a plain wallet: one private key.', contract: 'The owner is a contract (a multisig, a timelock or anything else — not read further).', unread: 'Whether the owner has code could not be read.' })[c.owner.kind] ?? null
+    owner: c.owner ? { address: c.owner.address, kind: c.owner.kind, source: c.owner.source, ...(ownerName ? { name: ownerName } : {}) } : null,
+    // A contract the scanner knows by name is named, as the page does (2026-11-17: four.meme's manager and
+    // MasterChef v1 were "anything else — not read further" here while the page said "Owned by four.meme").
+    owner_note: c.owner ? (c.owner.kind === 'contract' && ownerName ? `The owner is a contract: ${ownerName}.`
+      : ({ renounced: 'The owner is the zero or dead address: ownership was given up.', eoa: 'The owner is a plain wallet: one private key.', contract: 'The owner is a contract (a multisig, a timelock or anything else — not read further).', unread: 'Whether the owner has code could not be read.' })[c.owner.kind] ?? null)
       : 'Neither owner() nor getOwner() answers: no owner function of the usual name (powers held another way are not seen here).',
     proxy: c.proxy ? { standard: c.proxy.standard, implementation: c.proxy.implementation, admin: c.proxy.admin ?? null, admin_kind: c.proxy.admin_kind ?? null } : null,
     mint_selector: !!c.mint_selector,

@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7970 lines.
+# one fetch. 6 files, 7973 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2310,18 +2310,21 @@ export async function lpCustody({pair,lpTot,feeTo=null,gp=null,head}){
     const k=knownHolder(a),code=codes?!!(codes[i]&&codes[i]!=='0x'):null;
     const kind=k&&k.kind==='burn'?'burned':a===feeTo?'exchange_fee':k&&k.kind==='locker'?'locked'
       :gpLocked.has(a)&&code?'locked':k&&k.kind==='staking'?'farm':code===null?'unclassified':code?'contract':'wallet';
-    return {address:a,pct:Math.floor(Number(hx(bals[i]))/1e18/lpTot*1e6)/1e4,kind,
+    return {address:a,pct:Number(hx(bals[i]))/1e18/lpTot*100,kind,
       ...(k&&k.kind!=='burn'?{name:k.name}:{}),...(a===creator?{tokenCreator:true}:{}),
       ...(a===firstLp?{addedFirstLiquidity:true}:{}),...(a===owner&&owner!==NULLA?{tokenOwner:true}:{})};
   }).filter(r=>r.pct>0).sort((a,b)=>b.pct-a.pct);
-  const sum=k=>+rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0).toFixed(4);
+  // Summed unrounded, floored once (2026-11-17: CAKE's dead 0.000138% + zero 0.000069% were floored row by row to
+  // 0.0001 + 0, so custody.burnedPct said 0.0001 beside lp.burnedPct 0.0002 in the same answer).
+  const fl4=v=>Math.floor(v*1e4+1e-9)/1e4;
+  const sum=k=>fl4(rows.filter(r=>r.kind===k).reduce((s,r)=>s+r.pct,0));
   const read=rows.reduce((s,r)=>s+r.pct,0);
-  const lw=rows.find(r=>r.kind==='wallet'||r.kind==='unclassified')||null;
+  const lw=rows.find(r=>(r.kind==='wallet'||r.kind==='unclassified')&&r.pct>=0.0001)||null;
   // The pair's logs of the hour (LP Transfers and Mints) ride along for readFlow, not enumerable.
   return Object.defineProperty({
     read:complete?'complete':'partial',
     burnedPct:sum('burned'),lockedPct:sum('locked'),farmPct:sum('farm'),exchangeFeePct:sum('exchange_fee'),
-    walletPct:+(sum('wallet')+sum('unclassified')).toFixed(4),contractPct:sum('contract'),
+    walletPct:fl4(rows.filter(r=>r.kind==='wallet'||r.kind==='unclassified').reduce((s,r)=>s+r.pct,0)),contractPct:sum('contract'),
     unreadPct:complete?0:Math.max(0,+(100-read).toFixed(2)),
     largestWallet:lw?{address:lw.address,pct:+lw.pct.toFixed(2),deployer:!!(lw.tokenCreator||lw.addedFirstLiquidity),
       ...(lw.tokenCreator?{tokenCreator:true}:{}),...(lw.addedFirstLiquidity?{addedFirstLiquidity:true}:{})}:null,

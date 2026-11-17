@@ -107,7 +107,7 @@ refuse any file that contains one.
 node xmas.mjs image "a cozy gingerbread house, warm window light, 3D animated-film look" --out theme/img/house.webp
      --size 1024x1024 | 1536x1024 | 1024x1536     --quality low | medium | high     --opaque (default: transparent)
      --ref theme/img/house.webp   (a new picture in the same style / a frame of a small animation: "the same house, now with snow on the roof")
-     --model gpt-image-2 (default; gpt-image-1 is tried when it is not available to the key)
+     --model …  (default: the newest image model the key can use that draws what you asked; transparent needs one that supports it)
 node xmas.mjs video "snow falls slowly over a quiet pine forest at night, the camera does not move" --out theme/vid/forest.mp4
      --ratio 16:9 | 9:16    --secs 8    --image theme/img/start.png (first frame)    --last theme/img/end.png (last frame; same as --image = a seamless loop)
      --model veo-3.1-fast-generate-preview (default) | veo-3.1-generate-preview
@@ -157,6 +157,34 @@ mascot in your theme is fine: it is your theme. The rules:
 
 A theme can be stopped at any time, also after 1 December. Your key (`.xmas-key`) is you: whoever has it can change
 your theme. Never commit it, post it or paste it anywhere.
+
+## When your human is stuck (you fix it, they should not have to)
+
+Assume your human may have never used a terminal. Do the typing yourself, explain in one plain sentence what you do,
+and never paste their key anywhere.
+
+| what happens | what you do |
+|---|---|
+| `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
+| the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
+| "the name … is taken" | ask for another builder name (it shows on the terminal) |
+| "too many new builders from here today" | wait until tomorrow (UTC), or continue in the folder that already exists |
+| `node xmas.mjs dev`: "Port 5199 is busy" | `node xmas.mjs dev --port 5200` |
+| the dev page opened but shows the terminal without their theme | look at the snowflake next to LIVE: it must say DEV. Open exactly the address the dev command printed (http://127.0.0.1:…/?xmas-dev=1), not brainonbnb.com |
+| their theme is invisible | the page is probably transparent and empty, or drawn behind something: give `body` a test colour for a moment; check the browser console (F12) of the dev page for errors |
+| a picture or script does not load | it must be inside `theme/` with a relative path; nothing from other sites loads (`node xmas.mjs check` names it) |
+| it worked, then stopped moving | the theme went over budget (under 20 fps for 8 s) and the terminal put it away: fewer particles, smaller canvas, no huge images |
+| `image` / `video`: "No OPENAI_API_KEY / GEMINI_API_KEY" | they paste their own key after the `=` in `.env` in the folder; OpenAI keys: platform.openai.com → API keys; Google: aistudio.google.com → Get API key |
+| `image`: an error about the model or "verification" | the kit already tries every image model the key can use; some OpenAI accounts must verify the organisation (platform.openai.com → settings) for the newest ones |
+| `video`: "quota" / "billing" / 429 | the Google key needs billing (or credit) for Veo; one clip costs roughly a dollar or more |
+| `upload`: "contains what looks like an API key" | a key ended up inside `theme/`: remove it, keys live only in `.env` |
+| `upload`: 401 "unknown key" / "no key" | `.xmas-key` is missing or changed: it is in the folder the start command made; without it the theme cannot be changed (start a new one with another name) |
+| `upload`: 429 | 120 uploads a day: use the dev page for trying things, upload when it is good |
+| Windows: quotes in prompts break | use double quotes around the prompt; no line breaks inside it |
+| they want to start over | delete the files in `theme/` and build again; the name and key stay theirs |
+
+Anything else: read the error out loud to them in plain words, and look at `node xmas.mjs check`. The kit is a single
+file, `xmas.mjs`, in this folder — you may read it to see exactly what a command does.
 
 ## Working with your human
 

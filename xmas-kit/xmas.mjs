@@ -222,7 +222,15 @@ async function image(dir) {
   const fmt = /\.png$/i.test(out) ? 'png' : /\.jpe?g$/i.test(out) ? 'jpeg' : 'webp';
   const opaque = has('opaque') || fmt === 'jpeg', size = flag('size') || '1024x1024', quality = flag('quality') || 'medium';
   const ref = flag('ref');
-  const models = flag('model') ? [flag('model')] : [env('OPENAI_IMAGE_MODEL') || 'gpt-image-2', 'gpt-image-1'];
+  // WHICH MODEL (learned 2026-11-17 on our own theme: gpt-image-2 refuses a transparent background, gpt-image-1 is gone):
+  // the models this key can use, newest first, each tried until one draws it — or the one the builder names
+  let models = flag('model') ? [flag('model')] : env('OPENAI_IMAGE_MODEL') ? [env('OPENAI_IMAGE_MODEL')] : null;
+  if (!models) {
+    const ver = (id) => (id.match(/gpt-image-(\d+(?:\.\d+)?)/) || [])[1] * 1 || 0;
+    try { const l = await (await fetch('https://api.openai.com/v1/models', { headers: { Authorization: 'Bearer ' + key } })).json();
+      models = (l.data || []).map((m) => m.id).filter((id) => /^gpt-image-[\d.]+(-[a-z]+)?$/.test(id)).sort((a, b) => ver(b) - ver(a) || a.localeCompare(b)); } catch {}
+    if (!models?.length) models = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1-mini'];
+  }
   for (const model of [...new Set(models)]) {
     say(`  ${model} · ${size} · ${quality}${opaque ? '' : ' · transparent'}${ref ? ' · from ' + ref : ''} …`);
     let r;
@@ -238,7 +246,7 @@ async function image(dir) {
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.data?.[0]?.b64_json) { fs.writeFileSync(out, Buffer.from(j.data[0].b64_json, 'base64')); return say(`  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB)`); }
     const msg = j.error?.message || 'OpenAI answered ' + r.status;
-    if (models.length > 1 && /model/i.test(msg) && model !== models[models.length - 1]) { say('  ' + msg + ' — trying the next model'); continue; }
+    if (models.length > 1 && /model|transparent|background|not supported|verif/i.test(msg) && model !== models[models.length - 1]) { say('  ' + msg + ' — trying the next model'); continue; }
     die(msg);
   }
 }

@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBAI's Sweet Xmas — back</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  /* the winter night: the 3D ring of the next buyback shows through a soft hole */
+  #sky { position: absolute; inset: 0; background: url(img/back-wide.webp) center bottom / cover no-repeat; opacity: 0;
+    transition: opacity 1.8s ease, filter 6s ease; -webkit-mask-image: var(--hole, none); mask-image: var(--hole, none); }
+  body.tall #sky { background-image: url(img/back-tall.webp); }
+  #sky.in { opacity: .9; }
+  body.pump #sky { filter: saturate(1.25) brightness(1.1); }
+  body.up #sky { filter: saturate(1.1) brightness(1.04); }
+  body.down #sky { filter: saturate(.9) brightness(.95); }
+  body.dump #sky { filter: saturate(.8) brightness(.9); }
+  /* the stations, each a sweet thing on its own light */
+  .p { position: absolute; left: 0; top: 0; width: var(--s, 80px); height: var(--s, 80px); margin: calc(var(--s, 80px) * -.62) 0 0 calc(var(--s, 80px) * -.5);
+    opacity: 0; transition: opacity 1.4s ease; will-change: transform; }
+  .p.in { opacity: 1; }
+  .p img { position: relative; width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: 50% 90%;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .45)); animation: bob var(--t, 5.5s) ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .p i { position: absolute; inset: -30%; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent 72%); opacity: 0; transition: opacity .5s ease; }
+  .p.hot i { opacity: .6; }
+  .p.hot img { animation: hop 1s ease; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4%) rotate(1.5deg); } }
+  @keyframes hop { 0% { transform: scale(1); } 30% { transform: scale(1.16) translateY(-9%); } 60% { transform: scale(.95); } 100% { transform: scale(1); } }
+  body.calm .p img, body.calm .p.hot img { animation: none; }
+  body.calm .p.hot i { opacity: .4; }
+  body.off * { animation-play-state: paused !important; }
+</style>
+</head>
+<body>
+<div id="sky"></div>
+<script>
+  // BOBAI's Sweet Xmas by mmx_QQ — the world behind BOBAI.
+  const STATIONS = {
+    burnA:   { img: 'burnA',   c: 'rgba(255,160,60,.9)' },   // the candle lantern: $BOBAI burned
+    burnB:   { img: 'burnB',   c: 'rgba(255,200,80,.9)' },   // the little stove: $BOB burned
+    liq:     { img: 'liq',     c: 'rgba(90,240,210,.85)' },  // the cocoa: liquidity
+    defi:    { img: 'defi',    c: 'rgba(110,170,255,.85)' }, // the elf workshop: the DeFi agent
+    giggle:  { img: 'giggle',  c: 'rgba(255,140,200,.85)' }, // the present sack: the Giggle Academy pot
+    creator: { img: 'creator', c: 'rgba(255,225,170,.85)' }, // the cookie jar: the creator
+  };
+  const sky = document.getElementById('sky'), P = {};
+  let calm = false, L = null;
+  for (const [k, s] of Object.entries(STATIONS)) {
+    const d = document.createElement('div'); d.className = 'p'; d.style.setProperty('--c', s.c);
+    d.style.setProperty('--t', (5 + Math.random() * 2).toFixed(2) + 's'); d.style.setProperty('--d', (-Math.random() * 5).toFixed(2) + 's');
+    d.innerHTML = '<i></i><img alt="" src="img/' + s.img + '.webp">'; document.body.appendChild(d); P[k] = d;
+  }
+  function place(m) {
+    L = m;
+    document.body.classList.toggle('tall', m.portrait || m.h > m.w);
+    const s = m.portrait ? Math.max(42, Math.min(72, m.w * 0.13)) : Math.max(64, Math.min(124, m.w * 0.095));
+    for (const [k, d] of Object.entries(P)) {
+      const p = m.stations && m.stations[k];
+      if (!p) { d.classList.remove('in'); continue; }
+      d.style.setProperty('--s', s + 'px'); d.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px)'; d.classList.add('in');
+    }
+    if (m.ring) { const r = Math.min(m.w, m.h) * (m.portrait ? 0.075 : 0.105);
+      sky.style.setProperty('--hole', 'radial-gradient(circle at ' + m.ring.x + 'px ' + m.ring.y + 'px, transparent 0, transparent ' + r + 'px, #000 ' + (r + 70) + 'px)'); }
+    sky.classList.add('in');
+  }
+  const hot = (k, delay = 0) => setTimeout(() => { const d = P[k]; if (!d) return; d.classList.remove('hot'); void d.offsetWidth; d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 1600); }, delay);
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); }
+    else if (m.type === 'layout') place(m);
+    else if (m.type === 'visible') document.body.classList.toggle('off', !m.on);
+    else if (m.type === 'mood') { document.body.classList.remove('pump', 'up', 'down', 'dump'); if (m.mood !== 'flat') document.body.classList.add(m.mood); }
+    else if (m.type === 'event') {
+      // a burn: the tax splits, so every station gets its part — one after the other, the way the money goes
+      if (m.kind === 'burn') ['burnA', 'burnB', 'liq', 'defi', 'giggle', 'creator'].forEach((k, i) => hot(k, i * 260));
+      else if (m.kind === 'liq') hot('liq');
+      else if (m.kind === 'tax') hot('defi');
+      else if (m.kind === 'buy' && m.alert) Object.keys(P).forEach((k) => hot(k, 0));
+    }
+    else if (m.type === 'moment' && m.kind === 'buy') Object.keys(P).forEach((k, i) => hot(k, i * 90));
+  });
+</script>
+</body>
+</html>

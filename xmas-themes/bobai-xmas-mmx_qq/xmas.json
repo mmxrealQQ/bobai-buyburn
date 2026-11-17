@@ -1,0 +1,8 @@
+{
+  "title": "BOBAI's Sweet Xmas",
+  "builder": "mmx_QQ",
+  "slug": "mmx_qq",
+  "preview": "https://xmas.bobai-dashboard.pages.dev/?xmas=mmx_qq",
+  "api": "https://bobai-xmas.bobbuildonbnb.workers.dev",
+  "sandbox": "https://xmas.bobai-dashboard.pages.dev"
+}

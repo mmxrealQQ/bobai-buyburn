@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBAI's Sweet Xmas — front</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  // BOBAI's Sweet Xmas by mmx_QQ — soft snow in front of BOBAI, and the sparkle of the chain.
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  let W = 0, H = 0, D = 1, run = true, calm = false, mood = 'flat', L = null, last = performance.now();
+  const flakes = [], sparks = [];
+  const rand = (a, b) => a + Math.random() * (b - a);
+  function size() {
+    D = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * D); cv.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0);
+    const want = Math.round((W * H) / (calm ? 22000 : 9000));
+    while (flakes.length < Math.min(want, 170)) flakes.push(flake(true));
+    flakes.length = Math.min(flakes.length, Math.min(want, 170));
+  }
+  function flake(anywhere) {
+    const z = Math.random();                                  // depth: far flakes small and slow
+    return { x: rand(0, W), y: anywhere ? rand(0, H) : rand(-30, -5), r: 0.8 + z * 2.6, v: 12 + z * 30, ph: rand(0, 6.3), sw: rand(8, 26), a: 0.35 + z * 0.55, gold: false };
+  }
+  const COL = { gold: [255, 214, 120], pink: [255, 160, 210], mint: [140, 255, 220], ember: [255, 150, 60], ice: [200, 235, 255] };
+  function burst(x, y, n, kind, spread = 1, from = 0, to = Math.PI * 2) {   // from/to: the directions they fly (radians)
+    if (calm || !run) return;
+    for (let i = 0; i < n; i++) {
+      const a = rand(from, to), sp = rand(30, 120) * spread, c = kind === 'party' ? ['gold', 'pink', 'mint', 'ice'][i % 4] : kind;
+      sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'ember' ? 60 : 30), life: 0, max: rand(1.3, 2.6), r: rand(1.8, 4), c: COL[c], star: kind === 'party' && i % 3 === 0 });
+    }
+    if (sparks.length > 500) sparks.splice(0, sparks.length - 500);
+  }
+  function star(x, y, r) {
+    g.beginPath();
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * 0.38 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    g.closePath(); g.fill();
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!run || document.hidden) return;
+    g.clearRect(0, 0, W, H);
+    const speed = (calm ? 0.45 : 1) * (mood === 'pump' ? 1.25 : 1);
+    for (const f of flakes) {
+      f.y += f.v * dt * speed; f.ph += dt * 0.9;
+      const x = f.x + Math.sin(f.ph) * f.sw;
+      if (f.y > H + 6) Object.assign(f, flake(false), { gold: mood === 'pump' && Math.random() < 0.25 });
+      g.fillStyle = f.gold ? 'rgba(255,220,140,' + f.a + ')' : 'rgba(255,255,255,' + f.a + ')';
+      g.beginPath(); g.arc(x, f.y, f.r, 0, 6.283); g.fill();
+    }
+    g.globalCompositeOperation = 'lighter';                   // sparks glow where they cross
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i]; s.life += dt; if (s.life > s.max) { sparks.splice(i, 1); continue; }
+      s.vy += 40 * dt; s.vx *= 0.985; s.x += s.vx * dt; s.y += s.vy * dt;
+      const k = 1 - s.life / s.max, [r, gg, b] = s.c;
+      g.fillStyle = 'rgba(' + r + ',' + gg + ',' + b + ',' + (k * 0.95).toFixed(3) + ')';
+      if (s.star) star(s.x, s.y, s.r * 3.4 * (0.6 + k * 0.4)); else { g.beginPath(); g.arc(s.x, s.y, s.r * (0.5 + k * 0.5), 0, 6.283); g.fill(); }
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+  // a big buy: a ring of stars around BOBAI, never on his face (from the sides of his figure)
+  function party() {
+    const f = L && L.figure; if (!f) return burst(W / 2, H / 2, 40, 'party', 1.4);
+    const A = Math.PI;                                       // away from him: left, right and down, never across his face
+    burst(f.x + f.w * 0.02, f.y + f.h * 0.5, 40, 'party', 1.5, A * 0.6, A * 1.4); burst(f.x + f.w * 0.98, f.y + f.h * 0.5, 40, 'party', 1.5, -A * 0.4, A * 0.4);
+    burst(f.x + f.w * 0.5, f.y + f.h * 0.98, 28, 'party', 1.3, A * 0.15, A * 0.85);
+  }
+  addEventListener('resize', size);
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'hello') { calm = !!m.reduced; size(); }
+    else if (m.type === 'layout') L = m;
+    else if (m.type === 'visible') run = m.on;
+    else if (m.type === 'mood') mood = m.mood;
+    else if (m.type === 'event' && L) {
+      if (m.kind === 'buy' && m.alert) party();
+      else if (m.kind === 'buy' && L.trades) burst(L.trades.x, L.trades.y, 10 + Math.min(16, Math.round((m.usd || 0) / 12)), 'gold', 0.8);
+      else if (m.kind === 'burn' && L.stations.burnA) { burst(L.stations.burnA.x, L.stations.burnA.y, 40, 'ember', 0.9); if (L.stations.burnB) burst(L.stations.burnB.x, L.stations.burnB.y, 20, 'ember', 0.7); }
+      else if (m.kind === 'liq' && L.stations.liq) burst(L.stations.liq.x, L.stations.liq.y, 16, 'mint', 0.7);
+    }
+    else if (m.type === 'moment' && m.kind === 'buy') party();
+  });
+  size(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -59,7 +59,7 @@
     liq:     { img: 'st-liq',     c: 'rgba(255,215,120,.9)', k: 1,    side: 'left' },  // the cocoa fountain: liquidity poured
     creator: { img: 'st-creator', c: 'rgba(255,120,120,.85)', k: 0.95, side: 'left' }, // the gift table: the creator's share
     santa:   { img: 'girl-santa', c: 'rgba(255,90,130,.8)',  k: 1.25, anim: 'still', vid: 'vid/santa.mp4', at: 'creator' }, // she waves, winks, blows a kiss
-    trades:  { img: 'st-trades',  c: 'rgba(255,215,90,.9)',  k: 0.95, side: 'up' },    // the sled bringing new blocks
+    trades:  { img: 'santa-bobai', c: 'rgba(255,215,90,.9)', k: 1.55, anim: 'still', vid: 'vid/santa-bobai.mp4', side: 'up' }, // Santa BOBAI brings the blocks: he laughs, waves, winks
   };
   const sky = document.getElementById('sky'), ground = document.getElementById('ground'), sleigh = document.getElementById('sleigh'), D = {}, E = [];
   let calm = false, run = true, L = null, flyAt = 0;
@@ -101,10 +101,10 @@
     for (const [k, d] of Object.entries(D)) {
       const s = P[k], at = s.at || k, p = at === 'trades' ? m.trades : m.stations && m.stations[at];
       if (!p) { d.classList.remove('in'); continue; }
-      const h = base * s.k * (k === 'santa' ? 1.45 : 1), w = h * (k === 'santa' ? 0.5 : 0.95);
+      const h = base * s.k * (k === 'santa' ? 1.45 : 1), w = h * (s.vid ? 0.55 : 0.95);
       let x, y;
       if (k === 'santa') { x = p.x - base * 0.55 - w - 2; y = p.y - h * 0.7; }              // beside the gift table, on its left
-      else if (s.side === 'up') { x = p.x - w / 2; y = p.y - h * 1.35; }                   // the sled above the trades label
+      else if (s.side === 'up') { x = p.x - w / 2; y = p.y - h * 1.12; }                   // Santa BOBAI just above the trades label
       else { x = p.x - w / 2; y = p.y - h * 0.62; }                                        // on its own light, where the orb was
       x = Math.max(4, Math.min(m.w - w - 4, x)); y = Math.max(topMin, Math.min(m.h - h - 4, y));
       d.style.setProperty('--h', h + 'px'); d.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; d.classList.add('in');
@@ -129,7 +129,9 @@
       e.ph += dt * sp;
       const a = e.ph + (i / n) * Math.PI * 2, h = parseFloat(e.el.style.getPropertyValue('--eh')) || 40;
       const x = b.x + Math.cos(a) * b.r * 1.05 - h * 0.4, y = b.y + Math.sin(a) * b.r * 0.42 - h * 0.5 + Math.sin(now / 500 + i) * 3;
-      e.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scaleX(' + (Math.sin(a) > 0 ? -1 : 1) + ')';
+      // they face the way they fly (the picture faces right: moving left is sin(a) > 0), nearer = larger, a little tilt into the turn
+      const left = Math.sin(a) > 0, depth = 0.8 + 0.3 * (Math.sin(a) + 1) / 2, tilt = Math.cos(a) * 8;
+      e.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + (left ? -depth : depth).toFixed(3) + ',' + depth.toFixed(3) + ') rotate(' + (left ? -tilt : tilt).toFixed(1) + 'deg)';
       e.el.style.zIndex = Math.sin(a) > 0 ? 3 : 1; e.el.classList.add('in');
     });
   })(last);
@@ -145,14 +147,14 @@
   (function idle() { setTimeout(() => { if (!document.hidden && run) fly(); idle(); }, 50000 + Math.random() * 50000); })();
   addEventListener('message', (e) => {
     const m = e.data; if (!m || m.bobai !== 'xmas') return;
-    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); }
+    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); alive('trades'); }
     else if (m.type === 'layout') place(m);
     else if (m.type === 'visible') { run = m.on; document.body.classList.toggle('off', !m.on); }
     else if (m.type === 'mood') { document.body.classList.remove('pump', 'up', 'down', 'dump'); if (m.mood !== 'flat') document.body.classList.add(m.mood); }
     else if (m.type === 'event') {
       if (m.kind === 'burn') { pulse('burnA'); pulse('liq', 300); pulse('creator', 600); }   // the tax splits: burn, add liq, creator
       else if (m.kind === 'liq') pulse('liq');
-      else if (m.kind === 'buy') { pulse('trades'); if (m.alert) { fly(); pulse('santa', 200); } }
+      else if (m.kind === 'buy') { pulse('trades'); if (m.alert) { fly(); pulse('santa', 200); } }   // every buy: Santa BOBAI glows
       else if (m.kind === 'sell') pulse('trades');
     }
     else if (m.type === 'moment' && m.kind === 'buy') { fly(); pulse('santa'); }

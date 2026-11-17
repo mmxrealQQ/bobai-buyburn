@@ -3,135 +3,137 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Men's Xmas Dream — back</title>
+<title>BOBAI Builds Xmas on BNB — back</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-  #sky { position: absolute; inset: 0; background: url(img/back-wide.webp) center bottom / cover no-repeat; opacity: 0; transform: scaleX(-1); /* the hot tub on the right: the log box sits bottom left */
+  /* Christmas on BNB Chain: a tree of golden blocks behind BOBAI, the elves decorating it */
+  /* the night sky, and in it the picture: wide, the whole of it at the bottom, melting upward into the sky; tall (a phone), filling it */
+  #sky { position: absolute; inset: 0; background: linear-gradient(#060a1a, #0d1931); opacity: 0;
     transition: opacity 1.8s ease, filter 6s ease; -webkit-mask-image: var(--hole, none); mask-image: var(--hole, none); }
-  body.tall #sky { background-image: url(img/back-tall.webp); transform: none; }
-  #sky.in { opacity: .92; }
-  body.pump #sky { filter: saturate(1.3) brightness(1.12); }
-  body.up #sky { filter: saturate(1.12) brightness(1.05); }
-  body.down #sky, body.dump #sky { filter: saturate(.88) brightness(.94); }
-  /* BOBAI's stage: red velvet and gold under his feet */
-  #stage { position: absolute; left: 0; top: 0; opacity: 0; transition: opacity 1.4s ease; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .55)); }
-  #stage.in { opacity: 1; }
-  /* the girls: each on her station */
-  .g { position: absolute; left: 0; top: 0; height: var(--h, 120px); opacity: 0; transition: opacity 1.4s ease; will-change: transform; }
-  .g.in { opacity: 1; }
-  .g canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .5)); }
-  .g.vid img { visibility: hidden; }
-  .g.vid canvas { display: block; }
-  .g img { height: 100%; width: auto; display: block; transform-origin: 50% 90%; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .5));
-    animation: var(--anim, sway) var(--t, 4.5s) ease-in-out infinite; animation-delay: var(--d, 0s); }
-  .g i { position: absolute; inset: -14% -34%; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent 70%); opacity: 0; transition: opacity .5s ease; }
-  .g.hot i { opacity: .7; }
-  .g.hot img { animation: twirl 1.1s ease; }
-  .g.hop img { animation: hop .8s ease; }
-  @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg) translateY(-2%); } }
-  @keyframes dance { 0%, 100% { transform: rotate(-4deg) translateX(-2%); } 25% { transform: rotate(0) translateY(-3%); } 50% { transform: rotate(4deg) translateX(2%); } 75% { transform: rotate(0) translateY(-3%); } }
-  @keyframes twirl { 0% { transform: scale(1) rotate(0); } 40% { transform: scale(1.16) rotate(-9deg) translateY(-7%); } 70% { transform: scale(.97) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
-  @keyframes hop { 0% { transform: translateY(0); } 35% { transform: translateY(-12%) scale(1.04); } 65% { transform: translateY(0) scale(.98, 1.02); } 100% { transform: none; } }
-  /* the fairies: the bots on their ring around the hologram brain */
-  .f { position: absolute; left: 0; top: 0; height: var(--fh, 46px); opacity: 0; transition: opacity 1.2s ease; filter: drop-shadow(0 0 6px var(--c)); will-change: transform; }
-  .f.in { opacity: 1; }
-  /* the sleigh: across the sky on a big buy (and now and then just so) */
-  #sleigh { position: absolute; left: 0; top: 0; width: var(--sw, 260px); opacity: 0; pointer-events: none; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
+  #pic { position: absolute; left: 0; right: 0; bottom: 0; height: var(--picH, 66%); background: url(img/back-wide.webp) center bottom / cover no-repeat;
+    -webkit-mask-image: linear-gradient(transparent 0, #000 22%); mask-image: linear-gradient(transparent 0, #000 22%); }
+  body.tall #pic { top: 0; height: auto; background-image: url(img/back-tall.webp); -webkit-mask-image: none; mask-image: none; }
+  #sky.in { opacity: .93; }
+  body.pump #sky { filter: saturate(1.25) brightness(1.12); }
+  body.up #sky { filter: saturate(1.1) brightness(1.05); }
+  body.down #sky, body.dump #sky { filter: saturate(.9) brightness(.95); }
+  /* the snow under his feet */
+  #ground { position: absolute; left: 0; top: 0; opacity: 0; transition: opacity 1.4s ease; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .4)); }
+  #ground.in { opacity: 1; }
+  /* the stations and the Santa girl */
+  .p { position: absolute; left: 0; top: 0; height: var(--h, 90px); opacity: 0; transition: opacity 1.4s ease; will-change: transform; }
+  .p.in { opacity: 1; }
+  .p img { height: 100%; width: auto; display: block; transform-origin: 50% 90%; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .45));
+    animation: var(--anim, bob) var(--t, 5s) ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .p canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
+  .p.vid img { visibility: hidden; }
+  .p.vid canvas { display: block; }
+  .p i { position: absolute; inset: -22% -28%; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent 70%); opacity: 0; transition: opacity .5s ease; }
+  .p.hot i { opacity: .7; }
+  .p.hot img { animation: hop 1s ease; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4%) rotate(1.5deg); } }
+  @keyframes still { 0%, 100% { transform: none; } }
+  @keyframes hop { 0% { transform: scale(1); } 30% { transform: scale(1.15) translateY(-9%); } 60% { transform: scale(.96); } 100% { transform: scale(1); } }
+  /* the builder elves: the bots, flying their ring round the hologram brain with a block each */
+  .e { position: absolute; left: 0; top: 0; height: var(--eh, 40px); opacity: 0; transition: opacity 1.2s ease; filter: drop-shadow(0 0 6px rgba(255, 210, 90, .8)); will-change: transform; }
+  .e.in { opacity: 1; }
+  /* the sleigh: across the sky on a big buy, and now and then just so */
+  #sleigh { position: absolute; left: 0; top: 0; width: var(--sw, 260px); opacity: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
   #sleigh.go { animation: fly var(--ft, 5s) cubic-bezier(.45, .05, .55, .95) forwards; }
   @keyframes fly { 0% { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(-4deg); } 10% { opacity: 1; }
     50% { transform: translate(calc((var(--x0) + var(--x1)) / 2), var(--ym)) rotate(3deg); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(-3deg); } }
-  body.calm .g img, body.calm .g.hot img, body.calm .g.hop img { animation: none; }
+  body.calm .p img, body.calm .p.hot img { animation: none; }
   body.calm #sleigh { display: none; }
   body.off * { animation-play-state: paused !important; }
 </style>
 </head>
 <body>
-<div id="sky"></div>
-<img id="stage" alt="" src="img/stage.webp">
+<div id="sky"><div id="pic"></div></div>
+<img id="ground" alt="" src="img/ground.webp">
 <img id="sleigh" alt="" src="img/sleigh.webp">
 <script>
-  // Men's Xmas Dream by mmx_QQ — the world behind BOBAI.
-  // From 1 Dec the terminal has three stations and the trades: the fire dancer at the $BOBAI burn, the champagne girl
-  // at ADD LIQ (liquidity poured), the Santa girl at the creator, the money-gun girl where the trades come in.
-  const GIRLS = {
-    burnA:   { img: 'girl-fire',  c: 'rgba(255,140,40,.9)',  k: 1.15, anim: 'dance' },
-    liq:     { img: 'girl-champ', c: 'rgba(255,220,120,.9)', k: 1.1,  anim: 'sway' },
-    creator: { img: 'girl-santa', c: 'rgba(255,80,120,.85)', k: 1.1,  anim: 'dance', vid: 'vid/santa.mp4' },   // Veo: she dances, winks, blows a kiss
-    trades:  { img: 'girl-cash',  c: 'rgba(120,255,160,.85)', k: 1.1, anim: 'sway' },
+  // BOBAI builds Xmas by mmx_QQ — Christmas on BNB Chain: building and decorating, one block at a time.
+  // From 1 Dec the terminal has three stations and the trades. Each gets its own little thing; the Santa girl waves at the creator.
+  const P = {
+    burnA:   { img: 'st-burn',    c: 'rgba(255,150,50,.9)',  k: 1,    side: 'left' },  // the block stove: $BOBAI burned
+    liq:     { img: 'st-liq',     c: 'rgba(255,215,120,.9)', k: 1,    side: 'left' },  // the cocoa fountain: liquidity poured
+    creator: { img: 'st-creator', c: 'rgba(255,120,120,.85)', k: 0.95, side: 'left' }, // the gift table: the creator's share
+    santa:   { img: 'girl-santa', c: 'rgba(255,90,130,.8)',  k: 1.25, anim: 'still', vid: 'vid/santa.mp4', at: 'creator' }, // she waves, winks, blows a kiss
+    trades:  { img: 'st-trades',  c: 'rgba(255,215,90,.9)',  k: 0.95, side: 'up' },    // the sled bringing new blocks
   };
-  const FAIRIES = [['fairy-fire', 'rgba(255,170,60,.9)', ''], ['fairy-frost', 'rgba(90,240,210,.9)', ''], ['fairy-fire', 'rgba(255,120,200,.9)', 'hue-rotate(-40deg)'],
-    ['fairy-frost', 'rgba(150,160,255,.9)', 'hue-rotate(60deg)'], ['fairy-fire', 'rgba(255,230,120,.9)', 'hue-rotate(20deg) saturate(1.2)']];
-  const sky = document.getElementById('sky'), stage = document.getElementById('stage'), sleigh = document.getElementById('sleigh'), G = {}, F = [];
-  let calm = false, L = null, flyAt = 0, run = true;
-  for (const [k, s] of Object.entries(GIRLS)) {
-    const d = document.createElement('div'); d.className = 'g'; d.style.setProperty('--c', s.c); d.style.setProperty('--anim', s.anim);
-    d.style.setProperty('--t', (3.6 + Math.random() * 1.6).toFixed(2) + 's'); d.style.setProperty('--d', (-Math.random() * 4).toFixed(2) + 's');
-    d.innerHTML = '<i></i><img alt="" src="img/' + s.img + '.webp">'; document.body.appendChild(d); G[k] = d;
+  const sky = document.getElementById('sky'), ground = document.getElementById('ground'), sleigh = document.getElementById('sleigh'), D = {}, E = [];
+  let calm = false, run = true, L = null, flyAt = 0;
+  for (const [k, s] of Object.entries(P)) {
+    const d = document.createElement('div'); d.className = 'p'; d.style.setProperty('--c', s.c); if (s.anim) d.style.setProperty('--anim', s.anim);
+    d.style.setProperty('--t', (4.5 + Math.random() * 2).toFixed(2) + 's'); d.style.setProperty('--d', (-Math.random() * 5).toFixed(2) + 's');
+    d.innerHTML = '<i></i><img alt="" src="img/' + s.img + '.webp">'; document.body.appendChild(d); D[k] = d;
   }
-  for (const [img, c, filt] of FAIRIES) {
-    const f = document.createElement('img'); f.className = 'f'; f.alt = ''; f.src = 'img/' + img + '.webp'; f.style.setProperty('--c', c); if (filt) f.style.filter = 'drop-shadow(0 0 6px ' + c + ') ' + filt;
-    document.body.appendChild(f); F.push({ el: f, ph: Math.random() * 6.28 });
-  }
-  // THE SANTA GIRL ALIVE: a Veo clip on flat green, keyed in a small canvas each frame (the picture stays when the
-  // device asks for calm, or the clip cannot play)
+  for (let i = 0; i < 5; i++) { const e = document.createElement('img'); e.className = 'e'; e.alt = ''; e.src = 'img/elf.webp'; document.body.appendChild(e); E.push({ el: e, ph: Math.random() * 6.28 }); }
+
+  // the Santa girl alive: her clip on flat green, keyed in a small canvas (the picture stays when the device asks for calm)
   function alive(k) {
-    const s = GIRLS[k], d = G[k]; if (!s.vid || calm) return;
-    const v = document.createElement('video'); v.crossOrigin = 'anonymous'; /* the sandbox is its own origin: without CORS the canvas could not read the frames */ v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto'; v.src = s.vid;
+    const s = P[k], d = D[k]; if (!s.vid || calm || d._alive) return; d._alive = true;
+    const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto'; v.src = s.vid;
     const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true }); d.appendChild(cv);
     let ok = false, t0 = 0;
     v.addEventListener('playing', () => { ok = true; d.classList.add('vid'); });
     v.play().catch(() => {});
     (function draw(now) {
       requestAnimationFrame(draw);
-      if (!ok || !run || v.readyState < 2 || now - t0 < 33) return; t0 = now;   // ~30 fps is all a clip needs
+      if (!ok || !run || v.readyState < 2 || now - t0 < 33) return; t0 = now;
       const h = d.clientHeight * 1.32, dpr = Math.min(devicePixelRatio || 1, 1.5), H = Math.round(h * dpr), W = Math.round(H * v.videoWidth / v.videoHeight);
       if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; cv.style.height = h + 'px'; cv.style.width = (h * v.videoWidth / v.videoHeight) + 'px'; }
       g.drawImage(v, 0, 0, W, H);
       const im = g.getImageData(0, 0, W, H), p = im.data;
       for (let i = 0; i < p.length; i += 4) {
         const r = p[i], gg = p[i + 1], b = p[i + 2], m = r > b ? r : b, dom = gg - m;
-        if (dom > 18) { const a = 255 - (dom - 18) * 7; p[i + 3] = a < 0 ? 0 : a; p[i + 1] = m + (dom > 40 ? 0 : (dom - 18) * 0.3); }   // green out, its spill off the edges
+        if (dom > 18) { const a = 255 - (dom - 18) * 7; p[i + 3] = a < 0 ? 0 : a; p[i + 1] = m + (dom > 40 ? 0 : (dom - 18) * 0.3); }
       }
       g.putImageData(im, 0, 0);
     })(0);
-  }  function place(m) {
+  }
+
+  function place(m) {
     L = m;
     document.body.classList.toggle('tall', m.portrait || m.h > m.w);
     const topMin = m.ui && m.ui.top ? m.ui.top.y + m.ui.top.h + 4 : 60;
-    const base = m.portrait ? Math.max(56, Math.min(92, m.w * 0.19)) : Math.max(96, Math.min(160, m.h * 0.17));
-    for (const [k, d] of Object.entries(G)) {
-      const p = k === 'trades' ? m.trades : m.stations && m.stations[k];
+    const base = m.portrait ? Math.max(36, Math.min(60, m.w * 0.12)) : Math.max(60, Math.min(100, m.h * 0.105));
+    for (const [k, d] of Object.entries(D)) {
+      const s = P[k], at = s.at || k, p = at === 'trades' ? m.trades : m.stations && m.stations[at];
       if (!p) { d.classList.remove('in'); continue; }
-      const s = GIRLS[k], h = base * s.k, w = h * 0.62;
-      let x = k === 'trades' ? p.x - w / 2 : p.x - w * 1.2, y = k === 'trades' ? p.y - h * 1.3 : p.y - h * 0.6;
+      const h = base * s.k * (k === 'santa' ? 1.45 : 1), w = h * (k === 'santa' ? 0.5 : 0.95);
+      let x, y;
+      if (k === 'santa') { x = p.x - base * 0.55 - w - 2; y = p.y - h * 0.7; }              // beside the gift table, on its left
+      else if (s.side === 'up') { x = p.x - w / 2; y = p.y - h * 1.35; }                   // the sled above the trades label
+      else { x = p.x - w / 2; y = p.y - h * 0.62; }                                        // on its own light, where the orb was
       x = Math.max(4, Math.min(m.w - w - 4, x)); y = Math.max(topMin, Math.min(m.h - h - 4, y));
       d.style.setProperty('--h', h + 'px'); d.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; d.classList.add('in');
     }
-    // the stage: its top face under his feet
-    if (m.figure) { const sw = m.figure.w * (m.portrait ? 1.7 : 1.9), sh = sw * 222 / 520;
-      stage.style.width = sw + 'px'; stage.style.transform = 'translate(' + Math.round(m.figure.x + m.figure.w / 2 - sw / 2) + 'px,' + Math.round(m.figure.y + m.figure.h - sh * 0.36) + 'px)'; stage.classList.add('in'); }
-    for (const f of F) f.el.style.setProperty('--fh', (m.portrait ? 30 : 46) + 'px');
-    if (m.ring) { const r = Math.min(m.w, m.h) * (m.portrait ? 0.075 : 0.105), hx = document.body.classList.contains('tall') ? m.ring.x : m.w - m.ring.x; // the wide sky is mirrored, its mask with it
-      sky.style.setProperty('--hole', 'radial-gradient(circle at ' + hx + 'px ' + m.ring.y + 'px, transparent 0, transparent ' + r + 'px, #000 ' + (r + 70) + 'px)'); }
+    if (m.figure) { const gw = m.figure.w * (m.portrait ? 1.7 : 1.85), gh = gw * 242 / 640;
+      ground.style.width = gw + 'px'; ground.style.transform = 'translate(' + Math.round(m.figure.x + m.figure.w / 2 - gw / 2) + 'px,' + Math.round(m.figure.y + m.figure.h - gh * 0.5) + 'px)'; ground.classList.add('in'); }
+    for (const e of E) e.el.style.setProperty('--eh', (m.portrait ? 26 : 40) + 'px');
+    if (m.ring) { const r = Math.min(m.w, m.h) * (m.portrait ? 0.07 : 0.095);
+      sky.style.setProperty('--hole', 'radial-gradient(circle at ' + m.ring.x + 'px ' + m.ring.y + 'px, transparent 0, transparent ' + r + 'px, #000 ' + (r + 60) + 'px)'); }
+    sky.style.setProperty('--picH', Math.round(Math.min(m.h, m.w * 1024 / 1536)) + 'px'); // the wide picture's own height at this width
     sleigh.style.setProperty('--sw', Math.round(m.portrait ? m.w * 0.5 : Math.min(320, m.w * 0.26)) + 'px');
     sky.classList.add('in');
   }
-  // the fairies fly their ring around the brain, as the bots do
+  // the elves fly their ring round the brain, as the bots do, each with a block
   let last = performance.now();
   (function orbit(now) {
     requestAnimationFrame(orbit);
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (!run || !L || !L.brain) return;
-    const b = L.brain, n = F.length, sp = calm ? 0.08 : 0.32;
-    F.forEach((f, i) => {
-      f.ph += dt * sp;
-      const a = f.ph + (i / n) * Math.PI * 2, h = parseFloat(f.el.style.getPropertyValue('--fh')) || 46;
-      const x = b.x + Math.cos(a) * b.r * 1.05 - h * 0.3, y = b.y + Math.sin(a) * b.r * 0.42 - h * 0.5 + Math.sin(now / 600 + i) * 3;
-      f.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scaleX(' + (Math.sin(a) > 0 ? -1 : 1) + ')';
-      f.el.style.zIndex = Math.sin(a) > 0 ? 3 : 1; f.el.classList.add('in');
+    const b = L.brain, n = E.length, sp = calm ? 0.08 : 0.3;
+    E.forEach((e, i) => {
+      e.ph += dt * sp;
+      const a = e.ph + (i / n) * Math.PI * 2, h = parseFloat(e.el.style.getPropertyValue('--eh')) || 40;
+      const x = b.x + Math.cos(a) * b.r * 1.05 - h * 0.4, y = b.y + Math.sin(a) * b.r * 0.42 - h * 0.5 + Math.sin(now / 500 + i) * 3;
+      e.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scaleX(' + (Math.sin(a) > 0 ? -1 : 1) + ')';
+      e.el.style.zIndex = Math.sin(a) > 0 ? 3 : 1; e.el.classList.add('in');
     });
   })(last);
-  const pulse = (k, cls = 'hot', delay = 0) => setTimeout(() => { const d = G[k]; if (!d || !d.classList.contains('in')) return; d.classList.remove(cls); void d.offsetWidth; d.classList.add(cls); setTimeout(() => d.classList.remove(cls), 1500); }, delay);
+  const pulse = (k, delay = 0) => setTimeout(() => { const d = D[k]; if (!d || !d.classList.contains('in')) return; d.classList.remove('hot'); void d.offsetWidth; d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 1500); }, delay);
   function fly() {
     if (calm || !L || Date.now() - flyAt < 6000) return; flyAt = Date.now();
     const w = parseFloat(getComputedStyle(sleigh).width) || 260, top = L.portrait ? L.h * 0.12 : L.h * 0.1;
@@ -143,17 +145,17 @@
   (function idle() { setTimeout(() => { if (!document.hidden && run) fly(); idle(); }, 50000 + Math.random() * 50000); })();
   addEventListener('message', (e) => {
     const m = e.data; if (!m || m.bobai !== 'xmas') return;
-    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); if (!calm && !G.creator._alive) { G.creator._alive = true; alive('creator'); } }
+    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); }
     else if (m.type === 'layout') place(m);
     else if (m.type === 'visible') { run = m.on; document.body.classList.toggle('off', !m.on); }
     else if (m.type === 'mood') { document.body.classList.remove('pump', 'up', 'down', 'dump'); if (m.mood !== 'flat') document.body.classList.add(m.mood); }
     else if (m.type === 'event') {
-      if (m.kind === 'burn') { pulse('burnA'); pulse('liq', 'hot', 300); pulse('creator', 'hot', 600); }   // the tax splits: burn, add liq, creator
+      if (m.kind === 'burn') { pulse('burnA'); pulse('liq', 300); pulse('creator', 600); }   // the tax splits: burn, add liq, creator
       else if (m.kind === 'liq') pulse('liq');
-      else if (m.kind === 'buy') { pulse('trades', 'hop'); if (m.alert) { fly(); pulse('creator', 'hot', 200); } }
-      else if (m.kind === 'sell') pulse('trades', 'hop');
+      else if (m.kind === 'buy') { pulse('trades'); if (m.alert) { fly(); pulse('santa', 200); } }
+      else if (m.kind === 'sell') pulse('trades');
     }
-    else if (m.type === 'moment' && m.kind === 'buy') { fly(); pulse('creator'); }
+    else if (m.type === 'moment' && m.kind === 'buy') { fly(); pulse('santa'); }
   });
 </script>
 </body>

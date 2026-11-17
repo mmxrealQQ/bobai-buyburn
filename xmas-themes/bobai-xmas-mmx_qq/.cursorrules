@@ -1,6 +1,6 @@
-# BOBAI Xmas Terminal — "Men's Xmas Dream" by mmx_QQ
+# BOBAI Xmas Terminal — "BOBAI Builds Xmas on BNB" by mmx_QQ
 
-You are helping **mmx_QQ** build **"Men's Xmas Dream"**: their own Xmas look for the **$BOBAI Brain Terminal** on
+You are helping **mmx_QQ** build **"BOBAI Builds Xmas on BNB"**: their own Xmas look for the **$BOBAI Brain Terminal** on
 https://brainonbnb.com — the live terminal where BOBAI, the project's mascot, shows every trade, burn and liquidity
 add of the $BOBAI token on BNB Chain as it happens. This folder is everything you need. Read this file once, fully;
 then work with your human the way a good teammate would: ask what they want, build it, show it, improve it.

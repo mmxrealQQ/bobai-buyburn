@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Men's Xmas Dream — front</title>
+<title>BOBAI Builds Xmas on BNB — front</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -12,7 +12,7 @@
 <body>
 <canvas id="c"></canvas>
 <script>
-  // Men's Xmas Dream by mmx_QQ — soft snow in front of BOBAI, kisses and sparkle on the chain's big moments.
+  // BOBAI builds Xmas by mmx_QQ — soft snow in front of BOBAI; golden blocks, hearts and sparkle on the chain's moments.
   const cv = document.getElementById('c'), g = cv.getContext('2d');
   let W = 0, H = 0, D = 1, run = true, calm = false, mood = 'flat', L = null, last = performance.now();
   const flakes = [], sparks = [];
@@ -28,7 +28,7 @@
     const z = Math.random();                                  // depth: far flakes small and slow
     return { x: rand(0, W), y: anywhere ? rand(0, H) : rand(-30, -5), r: 0.8 + z * 2.6, v: 12 + z * 30, ph: rand(0, 6.3), sw: rand(8, 26), a: 0.35 + z * 0.55, gold: false };
   }
-  const COL = { cash: [130, 225, 150], bubble: [255, 236, 170], heart: [255, 70, 130], gold: [255, 214, 120], pink: [255, 160, 210], mint: [140, 255, 220], ember: [255, 150, 60], ice: [200, 235, 255] };
+  const COL = { cash: [255, 200, 70], bubble: [255, 236, 170], heart: [255, 70, 130], gold: [255, 214, 120], pink: [255, 160, 210], mint: [140, 255, 220], ember: [255, 150, 60], ice: [200, 235, 255] };
   function burst(x, y, n, kind, spread = 1, from = 0, to = Math.PI * 2) {   // from/to: the directions they fly (radians)
     if (calm || !run) return;
     for (let i = 0; i < n; i++) {
@@ -70,7 +70,7 @@
       s.vy += 40 * dt; s.vx *= 0.985; s.x += s.vx * dt; s.y += s.vy * dt;
       const k = 1 - s.life / s.max, [r, gg, b] = s.c;
       g.fillStyle = 'rgba(' + r + ',' + gg + ',' + b + ',' + (k * 0.95).toFixed(3) + ')';
-      if (s.cash) { s.rot += s.spin * dt; g.save(); g.translate(s.x, s.y); g.rotate(s.rot); g.fillRect(-s.r * 2.6, -s.r * 1.3, s.r * 5.2, s.r * 2.6); g.fillStyle = 'rgba(30,90,50,' + (k * 0.8).toFixed(3) + ')'; g.fillRect(-s.r * 0.7, -s.r * 0.7, s.r * 1.4, s.r * 1.4); g.restore(); }
+      if (s.cash) { s.rot += s.spin * dt; g.save(); g.translate(s.x, s.y); g.rotate(s.rot); g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 3.2); g.fillStyle = 'rgba(255,245,200,' + (k * 0.7).toFixed(3) + ')'; g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 0.9);   /* a golden block, its lit top */ g.restore(); }
       else if (s.heart) heart(s.x, s.y, s.r * 3.2 * (0.7 + k * 0.3)); else if (s.star) star(s.x, s.y, s.r * 3.4 * (0.6 + k * 0.4)); else { g.beginPath(); g.arc(s.x, s.y, s.r * (0.5 + k * 0.5), 0, 6.283); g.fill(); }
     }
     g.globalCompositeOperation = 'source-over';
@@ -91,7 +91,7 @@
     else if (m.type === 'mood') mood = m.mood;
     else if (m.type === 'event' && L) {
       if (m.kind === 'buy' && m.alert) { party(); kiss(); }
-      else if (m.kind === 'buy' && L.trades) burst(L.trades.x + 20, L.trades.y - 90, 8 + Math.min(18, Math.round((m.usd || 0) / 12)), 'cash', 0.9, -Math.PI * 0.6, Math.PI * 0.1);   // the money gun
+      else if (m.kind === 'buy' && L.trades) burst(L.trades.x, L.trades.y - 60, 6 + Math.min(16, Math.round((m.usd || 0) / 12)), 'cash', 0.8, -Math.PI * 0.85, -Math.PI * 0.15);   // golden blocks fly off the sled
       else if (m.kind === 'burn' && L.stations.burnA) { burst(L.stations.burnA.x, L.stations.burnA.y, 40, 'ember', 0.9); if (L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 14, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1); }
       else if (m.kind === 'liq' && L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 26, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1);   // champagne
     }

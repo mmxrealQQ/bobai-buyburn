@@ -17,6 +17,8 @@ const LOCAL = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
 // same origin everywhere (2026-09-27): the live site answers /logs and /api itself, the lab's worker hands them on, and a
 // fixed https://brainonbnb.com broke every host that is not brainonbnb.com under the site's own CSP (connect-src 'self')
 const SITE = '', AG = 'https://agent.brainonbnb.com', SITE_URL = 'https://brainonbnb.com';
+// the community Xmas theme hears what BOBAI acts on (the XMAS block at the end; nothing when no theme is on)
+const XM_EMIT = m => { try { window.__btXm?.emit(m); } catch {} };
 const RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc.publicnode.com'];
 const LOGS_RPC = 'https://bsc.publicnode.com'; // dataseed refuses eth_getLogs ranges
 // the same node under its second address: asked when the first one turns a request away (2026-09-27)
@@ -1150,6 +1152,7 @@ function setPose(p, hold = 2.4, urgent = true) {
   p = flowPose(withClip(urgent ? p : varied(p)));
   if (p !== 'idle') { MOVED.set(p, Date.now()); RECENT.push(p); if (RECENT.length > 6) RECENT.shift(); MOVELOG.push([Math.round(performance.now() / 1000), p, urgent ? 'event' : 'own']); if (MOVELOG.length > 60) MOVELOG.shift(); }
   if (p !== 'idle') vidMove(p, urgent);
+  if (p !== pose) XM_EMIT({ type: 'pose', pose: p });
   pose = p; poseT = hold; faceShow(null);
 }
 // the stills stay his standing pose: a move is only ever seen as the clip that leaves it and comes back to it
@@ -2011,6 +2014,7 @@ moodChip.innerHTML = '<span class="mi" aria-hidden="true"><svg viewBox="0 0 16 1
 { const t = document.querySelector('#bt .ttl'); (t || win).appendChild(moodChip); }
 function paintMood() {
   moodEl.style.backgroundColor = MOOD_TINT[LIFE.mood] || MOOD_TINT.flat; moodEl.dataset.mood = LIFE.mood;
+  XM_EMIT({ type: 'mood', mood: LIFE.mood, change_1h_pct: +(+LIFE.d1h || 0).toFixed(2) });
   const f = LIFE.flow || { b: 0, s: 0 }, pc = (LIFE.d1h >= 0 ? '+' : '') + LIFE.d1h.toFixed(1) + '% 1h';
   moodChip.hidden = !LIFE.combo;
   if (moodChip.dataset.key !== (LIFE.combo?.key || '')) { moodChip.dataset.key = LIFE.combo?.key || ''; moodChip.dataset.mood = LIFE.mood; moodChip.classList.remove('turn'); void moodChip.offsetWidth; moodChip.classList.add('turn'); }
@@ -2809,6 +2813,7 @@ function thankSmall(x) {
 // a trade under the alert line, as the chain poll sees it (and __btTestSmall, through the same door)
 function seenSmall(x) {
   tradeDot(x);
+  if (!x.taxSwap) XM_EMIT({ type: 'event', kind: x.buy ? 'buy' : 'sell', usd: +x.usd || null, alert: false, ours: !!x.ours });
   // HE NOTICES THE MIDDLE-SIZED TRADES TOO (2026-09-29): a buy or a sell of $50+ gets a line and a move (the lines were
   // written but never called); react() keeps it to one in 90 s, and never over a scene of the chain
   const free = mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil && !VID.go;
@@ -2816,6 +2821,9 @@ function seenSmall(x) {
   else if (!x.ours && !x.taxSwap && free) thankSmall(x);
 }
 function react(kind, x) {
+  // the theme hears burns, liquidity adds, the token's tax swaps and alert-size buys here; every smaller trade in seenSmall
+  if (kind !== 'sell' && (kind !== 'buy' || +x?.usd >= ALERT_USD))
+    XM_EMIT({ type: 'event', kind: kind === 'run' ? 'burn' : kind, usd: +x?.usd || null, bnb: +x?.bnb || null, bobai_burned: +x?.bobaiBurned || null, alert: kind === 'buy' });
   LIFE.quietSince = Date.now();
   // calm, not nervous (operator, 2026-09-25): in a busy minute every small buy and sell used to swap his pose and
   // his line. Small trades now answer at most every 15 s; burns, liquidity and alert-size buys always do.
@@ -4152,7 +4160,7 @@ function mintArrived(x, n) {
 }
 const LAST_M = { t: -1e15, level: -1 };
 let shownNow = false;
-function moment(kind, usd, sub, t, fast, card, sayKey, ctx) { shownNow = false; momentIn(kind, usd, sub, t, fast, card, sayKey, ctx); return shownNow; }
+function moment(kind, usd, sub, t, fast, card, sayKey, ctx) { shownNow = false; momentIn(kind, usd, sub, t, fast, card, sayKey, ctx); if (shownNow) XM_EMIT({ type: 'moment', kind: String(kind), usd: +usd || null, title: typeof t === 'string' ? t.slice(0, 40) : null }); return shownNow; }
 function momentIn(kind, usd, sub, t, fast, card, sayKey, ctx) {
   if (momentEl.classList.contains('held')) return; // a board the visitor holds is not written over
   const tier = kind === 'buy' && ctx && ctx.n ? buyTierOf(usd, ctx.n) : tierOf(kind === 'burn' ? BURN_TIERS : BUY_TIERS, usd); if (!tier) return;
@@ -7237,6 +7245,8 @@ window.__btBrSeason = brSeason;
 (() => {
   const q = new URLSearchParams(location.search).get('br');
   if (q === '0' || (q !== '1' && !brSeason())) return;
+  // an Xmas theme asked for by link (a builder's preview, the sandbox page) shows on the standard terminal, not on brainrot
+  if (q !== '1' && /[?&]xmas(-dev)?=/.test(location.search) && !/[?&]xmas=0\b/.test(location.search)) return;
   // HEALTH FIRST (operator, 2026-11-05: "a warning when somebody opens the page, so nobody gets serious problems from the
   // brainrot theme — epilepsy and so on — and can go to the standard; health is the most important"): nothing of the look
   // moves until the visitor has chosen. A stored choice is kept; ?br=1 (a link that asks for it, the checks) counts as one;
@@ -8325,6 +8335,166 @@ window.__btBrSeason = brSeason;
   }
   window.__btBr = { get on() { return on; }, card: rotCard, canShare: () => !!LAST || (on && G.score > 0) /* 10.11.: a daily run counts in LAST, not in G (the old tap game): SHARE after a run had handed out the chain card instead */, running: () => !!(RUN && RUN.live), stationAt: (x, y) => { if (!on) return null; for (const s of ST) { const b = s.e.getBoundingClientRect(); if (b.width && x >= b.left + b.width * 0.12 && x <= b.right - b.width * 0.12 && y >= b.top + b.height * 0.08 && y <= b.bottom) return s.k; } return null; }, hud: () => showHud(), popOpen: () => openPanel(), pop: () => ({ v: 2, fin: FIN, run: !!RUN, live: !!RUN?.live, pops: RUN ? RUN.run.S.pops : 0, score: RUN ? RUN.run.S.score : null, misses: RUN ? RUN.run.S.misses : 0, combo: RUN ? RUN.run.S.combo : 0, powers: RUN ? RUN.run.S.used.length : 0, inputs: RUN ? RUN.inputs.length : 0, last: LAST, day: DAY && DAY.day, ch: CH && CH.run }),
     /* for the checks: the arena's box on the page and what is in it now (the plan is public anyway) */ aim: () => RUN && RUN.live && AR ? { box: arena.getBoundingClientRect().toJSON(), alive: RUN.run.alive(tNow()).map(([x, q]) => [x.i, x.rug && !RUN.run.golden(x, tNow()), Math.round(q.x), Math.round(q.y), x.r, x.p]) } : null, set: v => set(!!v, false), hide: v => { if (back) back.visible = !v && on && backLit > 0; }, sky: () => !!back && back.visible && backLit > 0.3, mega, conga, storm, kaiju, orbit, caption, creature: (n, m) => creature(CREW.find(c => c.n === n) || pick(CREW), m), alive: () => alive, crew: CREW.map(c => c.n), escape: () => ST.length && escape(ST[0]), disco: () => discoOn(), party: () => stationParty(), fit: () => { fitScene(); return el.style.bottom; }, game: () => ({ ...G, combo, rank: rankOf(G.score) }), resetGame: () => { G = { score: 0, best: 0 }; combo = 0; save(); }, stations: () => ST.map(s => s.k), costumes: () => ST.map(s => s.k + ':' + s.e.querySelector('img').src.split('/br/')[1].split('.')[0]), circlesOff: () => DEST.filter(d => d.pct > 0).every(d => !(d.obj ? d.obj.visible : d.orb.visible) && !d.halo.visible) && !srcOrb.visible, snail: () => MOVES.run(CREW.find(c => c.n === 'snail')), bots: () => BOTS.length, jump: () => { clearTimeout(tJ); jumpBeat(); }, line: () => { clearTimeout(lineT); rotLine(); }, lines: LINES };
+})();
+// ================= THE COMMUNITY XMAS TERMINAL (2026-11-17) =================
+// Operator: "the community builds the Xmas terminal — anyone, Binance or other platforms too; one command and their own
+// agent knows everything; they build the surroundings and extra animations themselves, BOBAI and the standard stay; from
+// 1 December it is live, and you see how many users use which terminal; clean and hack-free".
+// A theme is two pages of its builder's, back.html (behind BOBAI, z 1 like the Halloween night) and front.html (in front
+// of him, z 4, under every label, button and window), each in an <iframe sandbox="allow-scripts">: an opaque origin, so
+// nothing of this page, its storage or a wallet is in reach; the files come from the theme worker on workers.dev with a
+// CSP of their own (no calls out, no eval, no WebAssembly). The frames take NO pointer events: every click is the
+// terminal's. The page TELLS the theme what happens (layout, BOBAI's place, the stations, each trade, burn and move — the
+// same events BOBAI acts on) and listens to nothing it says. A theme that drags the frame rate down is put away for the
+// visit; the standard terminal is always one click away (the switch at the LIVE pill, the builders by name).
+// Season: December (UTC). ?xmas=<slug> shows one theme at any time (the builder's preview link), ?xmas=0 never;
+// ?xmas-dev=1 loads the builder's own folder from the kit's dev server (/__theme/) — on 127.0.0.1 only, never on
+// brainonbnb.com. The kit and its agent guide: brainonbnb.com/xmas.
+const XM_HOST = 'https://bobai-xmas.bobbuildonbnb.workers.dev';
+const xmSeason = (t = Date.now()) => t >= Date.UTC(2026, 11, 1) && t < Date.UTC(2027, 0, 1);
+window.__btXmSeason = xmSeason;
+(() => {
+  const qs = new URLSearchParams(location.search), want = qs.get('xmas'), devPort = qs.get('xmas-dev');
+  // the kit's dev server mirrors the sandbox page on the builder's own machine and serves their folder beside it at
+  // /__theme/: the theme comes from there only, and only on 127.0.0.1 or localhost — never on brainonbnb.com
+  const devHost = /^(127\.0\.0\.1|localhost)$/i.test(location.hostname);
+  const dev = devHost && devPort != null ? location.origin + '/__theme/' : null;
+  const slugOk = s => /^[a-z0-9_-]{2,24}$/.test(s || '');
+  if (want === '0') return;
+  if (!dev && !slugOk(want) && !xmSeason()) return;
+  const calmDevice = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let stored = null; try { stored = localStorage.getItem('bt-xmas'); } catch {}
+  let THEMES = [], cur = null, note = '';
+  const F = {};
+  const mkFrame = layer => {
+    const f = document.createElement('iframe');
+    f.className = 'xm xm-' + layer; f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+    f.setAttribute('referrerpolicy', 'no-referrer'); f.setAttribute('allow', ''); f.setAttribute('loading', 'eager'); f.title = '';
+    f.addEventListener('load', () => { f._ready = true; post(f, hello(layer)); sendLayout(true); f.classList.add('on'); });
+    return f;
+  };
+  const hello = layer => ({ bobai: 'xmas', v: 1, type: 'hello', layer, reduced: calmDevice || REDUCED, portrait, theme: cur ? { slug: cur.slug, title: cur.title, builder: cur.builder } : null,
+    dev: !!dev, stations: DEST.filter(d => d.pct > 0).map(d => ({ k: d.k, name: d.name, color: d.c, pct: d.pct })) });
+  const post = (f, m) => { try { if (f && f._ready && f.contentWindow) f.contentWindow.postMessage(m, '*'); } catch {} };
+  const emit = m => { if (!cur) return; const msg = { at: Date.now(), ...m, bobai: 'xmas', v: 1 }; post(F.back, msg); post(F.front, msg); }; // the marker last: nothing overwrites it
+  // what the theme may know of the page: where things are, in CSS pixels of the terminal's window
+  const rel = (el, r0) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width ? { x: Math.round(b.left - r0.left), y: Math.round(b.top - r0.top), w: Math.round(b.width), h: Math.round(b.height) } : null; };
+  let lastLay = '';
+  function sendLayout(force) {
+    if (!cur) return;
+    const r0 = win.getBoundingClientRect(); if (!r0.width) return;
+    const pt = v => { const p = toScreen(v); return { x: Math.round(p.x), y: Math.round(p.y) }; };
+    const lay = { type: 'layout', w: Math.round(r0.width), h: Math.round(r0.height), portrait, dpr: Math.min(3, devicePixelRatio || 1),
+      figure: rel(fig, r0), ring: pt(A.core), trades: pt(A.src), // figure, never "bobai": that key is every message's marker
+      // only the stations with a share now (applyPhase hides the rest): from 1 Dec 2026 burnA, liq and creator
+      stations: Object.fromEntries(DEST.filter(d => d.pct > 0 && d.pos).map(d => [d.k, pt(d.pos)])),
+      ui: { top: rel(win.querySelector('.hud'), r0), log: rel(win.querySelector('.term'), r0), timeline: rel(win.querySelector('.tl'), r0) } };
+    const s = JSON.stringify(lay); if (!force && s === lastLay) return; lastLay = s;
+    post(F.back, { ...lay, bobai: 'xmas', v: 1 }); post(F.front, { ...lay, bobai: 'xmas', v: 1 });
+  }
+  setInterval(() => { if (cur && !document.hidden) sendLayout(false); }, 1000);
+  addEventListener('resize', () => setTimeout(() => sendLayout(true), 120));
+  document.addEventListener('visibilitychange', () => emit({ type: 'visible', on: !document.hidden }));
+
+  // A THEME NEVER TAKES THE TERMINAL DOWN: the page's own frame rate, measured while a theme is on; under 20 fps for
+  // 8 seconds in a row (the tab in sight) the theme is put away for this visit, the standard terminal stays
+  let fpsN = 0, slowS = 0;
+  (function tick() { fpsN++; requestAnimationFrame(tick); })();
+  setInterval(() => { const n = fpsN; fpsN = 0; if (!cur || document.hidden || dev) { slowS = 0; return; } slowS = n < 20 ? slowS + 1 : 0;
+    if (slowS >= 8) { note = 'paused: too heavy for this device'; set(null, false); slowS = 0; } }, 1000);
+
+  // the switch: a snowflake at the LIVE pill, its menu names every builder
+  const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw xm-sw'; sw.id = 'bt-xm'; sw.setAttribute('aria-haspopup', 'true');
+  sw.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6M9.6 3.9 12 6.3l2.4-2.4M9.6 20.1 12 17.7l2.4 2.4M3.1 10.4l3.3.9-.9 3.2M20.9 13.6l-3.3-.9.9-3.2M5.5 9.5l.9-3.3 3.2.9M18.5 14.5l-.9 3.3-3.2-.9" fill="none" stroke="var(--hs)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="hw-x" d="M3.5 21.5L20.5 3.5" fill="none" stroke="#9fd8ff" stroke-width="2.2" stroke-linecap="round"/></svg><b class="hw-oo"></b><span class="hw-t"></span>';
+  const menu = document.createElement('div'); menu.className = 'xm-menu'; menu.hidden = true; menu.setAttribute('role', 'menu');
+  const livePill = $('live'); livePill.after(sw); win.appendChild(menu);
+  let flowW = -1, flowOk = false, flowAt = 0;
+  function swPlace() { // the brainrot brain's placing rules, the same classes (hw-flow on a wide row, hw-min pinned, a phone beside the pill)
+    const hud = sw.parentElement, h = hud.getBoundingClientRect(); if (!h.width) return;
+    const wr0 = win.getBoundingClientRect(); if (!wr0.width) return;
+    const portraitW = win.classList.contains('portrait'), settled = portraitW === portraitNow(wr0);
+    if (!portraitW && (flowW !== (h.width | 0) || performance.now() - flowAt < 9000)) {
+      if (flowW !== (h.width | 0)) { flowW = h.width | 0; flowAt = performance.now(); }
+      const tt = hud.querySelector('.ttl'); sw.classList.remove('hw-flow'); const h0 = tt ? tt.offsetHeight : 0;
+      sw.classList.add('hw-flow'); sw.classList.remove('hw-min');
+      const wr = win.getBoundingClientRect().right; flowOk = (!tt || tt.offsetHeight <= h0) && ![...hud.children].some(e => { const b = e.getBoundingClientRect(); return b.width > 0 && getComputedStyle(e).visibility !== 'hidden' && b.right > wr - 8; });
+    }
+    sw.classList.toggle('hw-flow', !portraitW && flowOk); sw.classList.toggle('hw-min', !portraitW && !flowOk);
+    const lv = livePill.getBoundingClientRect(); if (!lv.width) return;
+    if (!portraitW && !flowOk) { sw.style.setProperty('--sx', lv.right - h.left - 22 + 'px'); sw.style.setProperty('--sy', lv.bottom - h.top + 4 + 'px'); }
+    else { sw.style.setProperty('--sx', lv.right - h.left + (portraitW ? 8 : -7) + 'px'); sw.style.setProperty('--sy', lv.top - h.top + (lv.height - 26) / 2 + 'px'); }
+    if (!sw._in && settled) { sw._in = true; requestAnimationFrame(() => sw.classList.add('hw-in')); }
+    const b = sw.getBoundingClientRect(); menu.style.left = Math.max(8, Math.min(wr0.width - 268, b.left - wr0.left)) + 'px'; menu.style.top = (b.bottom - wr0.top + 6) + 'px';
+  }
+  new MutationObserver(swPlace).observe(win, { attributes: true, attributeFilter: ['class'] });
+  { const ro = new ResizeObserver(() => swPlace()); ro.observe(win); ro.observe(sw.parentElement); ro.observe(livePill); addEventListener('resize', swPlace); }
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  function paintMenu() {
+    const row = (slug, t, sub, on) => '<button type="button" role="menuitemradio" aria-checked="' + on + '" data-s="' + esc(slug) + '"' + (on ? ' class="on"' : '') + '><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></button>';
+    menu.innerHTML = '<div class="xm-h">Xmas terminals</div>'
+      + THEMES.map(t => row(t.slug, t.builder, t.title + (t.users_today != null ? ' · ' + nf(t.users_today) + ' using it today' : t.preview ? ' · preview' : ''), cur?.slug === t.slug)).join('')
+      + row('', 'Standard terminal', 'the terminal as always', !cur)
+      + '<a class="xm-make" href="' + SITE_URL + '/xmas" target="_blank" rel="noopener">Build your own →</a>' + (note ? '<p class="xm-note">' + esc(note) + '</p>' : '');
+  }
+  menu.addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; e.stopPropagation(); menu.hidden = true; set(b.dataset.s || null, true); });
+  sw.addEventListener('click', e => { e.stopPropagation(); paintMenu(); menu.hidden = !menu.hidden; swPlace(); });
+  document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target) && e.target !== sw) menu.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') menu.hidden = true; });
+
+  function set(slug, byHand) {
+    for (const k of ['back', 'front']) { if (F[k]) { F[k].remove(); F[k] = null; } }
+    cur = THEMES.find(t => t.slug === slug) || null;
+    win.classList.toggle('xm-on', !!cur);
+    sw.setAttribute('aria-pressed', cur ? 'true' : 'false');
+    sw.querySelector('.hw-oo').textContent = cur ? cur.builder.slice(0, 14) : 'off';
+    sw.title = cur ? cur.title + ' by ' + cur.builder + ' — click for the other Xmas terminals or the standard' : 'The standard terminal — click for the Xmas terminals';
+    sw.setAttribute('aria-label', sw.title); sw.querySelector('.hw-t').dataset.t = cur ? cur.title : 'Xmas terminals';
+    if (byHand) { try { localStorage.setItem('bt-xmas', cur ? cur.slug : '0'); } catch {} }
+    if (cur) {
+      lastLay = '';
+      if (cur.layers.back) { F.back = mkFrame('back'); F.back.src = cur.base + 'back.html'; win.insertBefore(F.back, win.querySelector('.vign')); }
+      if (cur.layers.front) { F.front = mkFrame('front'); F.front.src = cur.base + 'front.html'; win.insertBefore(F.front, win.querySelector('.vign')); }
+      countUse(cur);
+    }
+    swPlace();
+  }
+  // HOW MANY USE WHICH TERMINAL: once a day per browser and theme, a count, never who (the live ones only)
+  function countUse(t) {
+    if (!t.live || dev) return;
+    const day = new Date().toISOString().slice(0, 10), k = day + ':' + t.slug;
+    let done = ''; try { done = localStorage.getItem('bt-xmas-used') || ''; } catch {}
+    if (done === k) return;
+    try { localStorage.setItem('bt-xmas-used', k); } catch {}
+    fetch(XM_HOST + '/use', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ slug: t.slug }), keepalive: true }).catch(() => {});
+  }
+  window.__btXm = { emit, get on() { return !!cur; }, get theme() { return cur && { ...cur }; }, set: s => set(s, false), layout: () => sendLayout(true), themes: () => THEMES.map(t => ({ ...t })) };
+
+  (async () => {
+    if (dev) {
+      THEMES = [{ slug: 'dev', title: 'Your theme (dev)', builder: 'DEV', base: dev, layers: { back: true, front: true }, preview: true }];
+      set('dev', false);
+      // saved in the editor = shown: the dev server counts every change in the folder, the frames load again
+      let seen = null;
+      setInterval(async () => { if (document.hidden) return; try { const v = (await (await fetch('/__theme/__version', { cache: 'no-store' })).text()).trim();
+        if (seen !== null && v !== seen && cur) set('dev', false); seen = v; } catch {} }, 800);
+      return;
+    }
+    try {
+      const j = await (await fetch(XM_HOST + '/themes', { cache: 'no-store' })).json();
+      THEMES = (j.live || []).map(t => ({ ...t, live: true }));
+      if (slugOk(want) && !THEMES.some(t => t.slug === want)) {
+        const p = await (await fetch(XM_HOST + '/theme/' + want, { cache: 'no-store' })).json();
+        if (p.theme && p.theme.base) THEMES.unshift({ ...p.theme, preview: true, users_today: null });
+      }
+    } catch { THEMES = []; }
+    if (!THEMES.length) { sw.remove(); menu.remove(); return; }
+    let pick = null;
+    if (slugOk(want)) pick = want;
+    else if (stored === '0') pick = null;
+    else if (stored && THEMES.some(t => t.slug === stored)) pick = stored;
+    else if (!calmDevice && !REDUCED) pick = THEMES[Math.floor(Date.now() / 864e5) % THEMES.length].slug; // a new visitor: the day's turn
+    set(pick, false);
+  })();
 })();
 // ALWAYS THE NEWEST VERSION (6.11.): a phone restores a page from memory or wakes an old tab; then the page asks which
 // terminal is current and reloads when it is newer (never during a run)

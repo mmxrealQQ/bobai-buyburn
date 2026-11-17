@@ -1,6 +1,6 @@
-# BOBAI Xmas Terminal — "BOBAI's Sweet Xmas" by mmx_QQ
+# BOBAI Xmas Terminal — "Men's Xmas Dream" by mmx_QQ
 
-You are helping **mmx_QQ** build **"BOBAI's Sweet Xmas"**: their own Xmas look for the **$BOBAI Brain Terminal** on
+You are helping **mmx_QQ** build **"Men's Xmas Dream"**: their own Xmas look for the **$BOBAI Brain Terminal** on
 https://brainonbnb.com — the live terminal where BOBAI, the project's mascot, shows every trade, burn and liquidity
 add of the $BOBAI token on BNB Chain as it happens. This folder is everything you need. Read this file once, fully;
 then work with your human the way a good teammate would: ask what they want, build it, show it, improve it.
@@ -47,6 +47,7 @@ terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
   figure: { x, y, w, h },                      // BOBAI's figure (he moves a little: it comes again when it changes)
   ring: { x, y },                              // the next-buyback ring (the "brain" in the middle)
   trades: { x, y },                            // where the trades come in
+  brain: { x, y, r, bots: 5 },                 // the hologram brain; its bots (the project's workers) fly on a ring of radius r around it
   stations: { burnA: {x,y}, liq: {x,y}, creator: {x,y} },   // only the stations on screen (from 1 December these three)
   ui: { top: {x,y,w,h}, log: {x,y,w,h}, timeline: {x,y,w,h} } }   // the terminal's own boxes: keep busy things away from them
                                                // sent after hello, on every resize, and whenever something moved
@@ -119,7 +120,9 @@ node xmas.mjs video "snow falls slowly over a quiet pine forest at night, the ca
 What works well (learned on the terminal): one style for everything, written into every prompt; transparent PNG/WebP
 for things that sit on the scene; a reference picture (`--ref`) to keep a set of pictures matching; for a seamless
 looping clip give the same picture as first and last frame. A clip that must be cut out (a figure over the scene) is
-drawn on a flat green or blue screen and keyed in a `<canvas>` or a small WebGL shader; a whole backdrop in
+drawn on a flat green or blue screen and keyed in a `<canvas>` or a small WebGL shader — **set `video.crossOrigin = 'anonymous'`**
+(and `img.crossOrigin` for pictures you read pixels from): your pages are their own origin, and without it the canvas
+cannot read the frames; a whole backdrop in
 `back.html` needs no keying. Videos play **muted** (`<video autoplay muted loop playsinline>`): the terminal has no
 sound, and a video with sound will not start. Keep clips short and small (720p, a few MB); turn large PNGs into WebP.
 Ask your human before spending credits on many pictures or clips.

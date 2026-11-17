@@ -174,7 +174,7 @@ async function dev(dir) {
         const file = path.resolve(theme, rel);
         if (!file.startsWith(path.resolve(theme) + path.sep)) { res.writeHead(404); return res.end(); }
         const ext = (rel.match(/\.([A-Za-z0-9]+)$/) || [])[1]?.toLowerCase();
-        const headers = { 'content-security-policy': THEME_CSP, 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' };
+        const headers = { 'content-security-policy': THEME_CSP, 'x-content-type-options': 'nosniff', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }; // as live: a canvas may read a video or picture loaded with crossOrigin
         if (!fs.existsSync(file)) { if (/^(back|front)\.html$/.test(rel)) { res.writeHead(200, { ...headers, 'content-type': TYPES.html }); return res.end(EMPTY); } res.writeHead(404, headers); return res.end(); }
         if (!ext || !TYPES[ext]) { res.writeHead(415, headers); return res.end('not a kind of file the terminal serves'); }
         res.writeHead(200, { ...headers, 'content-type': TYPES[ext] }); return res.end(fs.readFileSync(file));
@@ -254,7 +254,20 @@ async function video(dir) {
   const key = env('GEMINI_API_KEY'); if (!key) die('No GEMINI_API_KEY: put a line GEMINI_API_KEY=AIza… into .env in this folder (your own Google AI Studio key, your credits).');
   const prompt = promptArg(); if (!prompt) die('node xmas.mjs video "<what happens>" --out theme/vid/name.mp4 [--image first.png] [--last last.png] [--ratio 16:9|9:16] [--secs 8] [--model veo-3.1-fast-generate-preview]');
   const out = outPath(dir, 'theme/vid/video-' + Date.now() + '.mp4');
-  const model = flag('model') || env('VEO_MODEL') || 'veo-3.1-fast-generate-preview', API = 'https://generativelanguage.googleapis.com/v1beta';
+  const API = 'https://generativelanguage.googleapis.com/v1beta';
+  // WHICH MODEL (learned 2026-11-17: the Veo 3.1 previews are gone; Google's video now comes from Gemini Omni through
+  // /interactions): the models this key can use — the newest Gemini Omni first, a Veo model if one is still served
+  let model = flag('model') || env('VEO_MODEL');
+  if (!model) {
+    let all = [], tok = '';
+    try { do { const j = await (await fetch(`${API}/models?pageSize=100${tok ? '&pageToken=' + tok : ''}`, { headers: { 'x-goog-api-key': key } })).json(); all = all.concat(j.models || []); tok = j.nextPageToken || ''; } while (tok); } catch {}
+    const ids = all.map((m) => ({ id: m.name.replace(/^models\//, ''), lr: (m.supportedGenerationMethods || []).includes('predictLongRunning') }));
+    const ver = (id) => parseFloat((id.match(/(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+    const omni = ids.filter((m) => /^gemini-omni-[\d.]+-flash$/.test(m.id)).sort((a, b) => ver(b.id) - ver(a.id))[0] || ids.find((m) => /^gemini-omni/.test(m.id));
+    const veo = ids.filter((m) => /^veo-/.test(m.id) && m.lr).sort((a, b) => ver(b.id) - ver(a.id))[0];
+    model = omni?.id || veo?.id || 'gemini-omni-1.1-flash';
+  }
+  if (/^gemini-omni/.test(model)) return omniVideo(key, model, out, prompt, dir);
   const img = (p) => ({ bytesBase64Encoded: fs.readFileSync(path.resolve(dir, p)).toString('base64'), mimeType: /\.jpe?g$/i.test(p) ? 'image/jpeg' : /\.webp$/i.test(p) ? 'image/webp' : 'image/png' });
   const inst = { prompt, ...(flag('image') ? { image: img(flag('image')) } : {}), ...(flag('last') ? { lastFrame: img(flag('last')) } : {}) };
   const body = { instances: [inst], parameters: { aspectRatio: flag('ratio') || '16:9', durationSeconds: Number(flag('secs')) || 8, resolution: '720p' } };
@@ -268,6 +281,36 @@ async function video(dir) {
   const v = await fetch(uri, { headers: { 'x-goog-api-key': key }, redirect: 'follow' });
   fs.writeFileSync(out, Buffer.from(await v.arrayBuffer()));
   say(`\n  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB) — Veo clips have sound: the terminal plays every video muted`);
+}
+
+// Gemini Omni: one request to /interactions (a first and a last image, the prompt, "a video"), asked again until the
+// clip is there, then the file downloaded — the same way the BOBAI terminal's own clips are made since 25 Oct 2026
+async function omniVideo(key, model, out, prompt, dir) {
+  const API = 'https://generativelanguage.googleapis.com/v1beta', H = { 'x-goog-api-key': key, 'content-type': 'application/json' };
+  const ratio = flag('ratio') || '16:9', secs = Number(flag('secs')) || 8;
+  const im = (p) => ({ type: 'image', data: fs.readFileSync(path.resolve(dir, p)).toString('base64'), mime_type: /\.jpe?g$/i.test(p) ? 'image/jpeg' : /\.webp$/i.test(p) ? 'image/webp' : 'image/png' });
+  const input = [...(flag('image') ? [im(flag('image'))] : []), ...(flag('last') ? [im(flag('last'))] : []),
+    { type: 'text', text: prompt + ` The clip is exactly ${secs} seconds long${flag('image') && flag('last') ? '; it starts on the first image and ends exactly on the second image' : ''}. No audio needed.` }];
+  say(`  ${model} · ${ratio} · ${secs} s … (a clip takes one to a few minutes)`);
+  const r = await fetch(`${API}/interactions`, { method: 'POST', headers: H, body: JSON.stringify({ model, input, response_format: { type: 'video', aspect_ratio: ratio, resolution: '720p', delivery: 'uri' } }) });
+  let j = await r.json().catch(() => ({})); if (!r.ok) die(j.error?.message || 'Google answered ' + r.status);
+  const find = (o, pred) => { if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { if (pred(k, v)) return v; const f = find(v, pred); if (f) return f; } return null; };
+  const uriOf = (o) => find(o, (k, v) => k === 'uri' && typeof v === 'string' && v.includes('/files/')), dataOf = (o) => find(o, (k, v) => k === 'data' && typeof v === 'string' && v.length > 100000);
+  const id = j.id || j.name;
+  for (let i = 0; i < 120 && !uriOf(j) && !dataOf(j); i++) {
+    if (/fail|cancel|error/i.test(String(j.status || j.state || ''))) die('the clip failed: ' + JSON.stringify(j).slice(0, 300));
+    await new Promise((ok) => setTimeout(ok, 10000)); process.stdout.write('.');
+    try { j = await (await fetch(`${API}/interactions/${id}`, { headers: H })).json(); } catch {}
+  }
+  const uri = uriOf(j);
+  if (uri) {
+    const fid = uri.split('/files/')[1].split(/[:?]/)[0];
+    for (let i = 0; i < 120; i++) { let f = {}; try { f = await (await fetch(`${API}/files/${fid}`, { headers: H })).json(); } catch {} if (f.state === 'ACTIVE') break; if (f.state === 'FAILED') die('the clip file failed'); await new Promise((ok) => setTimeout(ok, 10000)); }
+    const v = await fetch(`${API}/files/${fid}:download?alt=media`, { headers: H, redirect: 'follow' });
+    fs.writeFileSync(out, Buffer.from(await v.arrayBuffer()));
+  } else if (dataOf(j)) fs.writeFileSync(out, Buffer.from(dataOf(j), 'base64'));
+  else die('no clip came back (filtered?): ' + JSON.stringify(j).slice(0, 300));
+  say(`\n  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB) — the terminal plays every video muted`);
 }
 
 // ---------------------------------------------------------------- which

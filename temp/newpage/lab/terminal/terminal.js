@@ -51,7 +51,16 @@ const REDUCED = /[?&]calm\b/.test(location.search);
 // The split in force now (homepage "Tax Allocation Schedule", Sep 20 06:00 UTC → Nov 20, 2026).
 // PREVIEW ONLY: before this ships it must read the phase from the one source the site uses.
 const GIGGLE_DAY = Date.parse('2026-11-20T00:01:00Z');
-const livePhase = () => (typeof window.__bobaiPhase === 'function' && window.__bobaiPhase()) || null;
+// THE SANDBOX PAGE SHOWS 1 DECEMBER (operator, 17.11.: "why does our theme have 6? it is only burn BOBAI, liq BOBAI and
+// creator"): on xmas.bobai-dashboard.pages.dev the stations are the split in force from 1 Dec 2026 (three plus the
+// trades), so a theme is built for the terminal it will live on; everywhere else the split of today
+const XM_SANDBOX_DEC = (/^xmas\./i.test(location.hostname) || (/^(127\.0\.0\.1|localhost)$/i.test(location.hostname) && /[?&]xmas-dev=/.test(location.search))) && Date.now() < Date.UTC(2026, 11, 1, 0, 1); // + the kit's dev page
+const livePhase = () => {
+  if (typeof window.__bobaiPhase !== 'function') return null;
+  if (!XM_SANDBOX_DEC || typeof window.__bobaiNow !== 'function') return window.__bobaiPhase() || null;
+  const real = window.__bobaiNow; window.__bobaiNow = () => Date.UTC(2026, 11, 1, 0, 2);
+  try { return window.__bobaiPhase() || null; } finally { window.__bobaiNow = real; }
+};
 const DEST = [
   { k: 'burnA',   name: 'BURN $BOBAI',    pct: 0.8, c: '#ff8a1f' },
   { k: 'burnB',   name: 'BURN $BOB',      pct: 0.3, c: '#ffc247' },
@@ -511,6 +520,7 @@ function applyPhase() {
   const p = livePhase(); if (!p) { $('phase').textContent = ''; return; }
   const n = v => parseFloat(v) || 0;
   const pct = { burnA: n(p.bobaiPct), burnB: n(p.bobPct), liq: n(p.liqPct), defi: n(p.lpPct), giggle: n(p.gigglePct), creator: n(p.creatorPct) };
+  const was = DEST.map(d => d.pct > 0).join();
   for (const d of DEST) {
     d.pct = pct[d.k]; const on = d.pct > 0;
     if (d.k === 'liq' && d.el.querySelector('.n')) { d.name = liqProg().short; d.el.querySelector('.n').firstChild.textContent = d.name; }
@@ -519,6 +529,7 @@ function applyPhase() {
   }
   const end = isFinite(p.end) ? new Date(p.end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   $('phase').textContent = 'The 3% split in force' + (end ? ' until ' + end : '') + ' — the same split as in window 02, Tokenomics.';
+  if (was !== DEST.map(d => d.pct > 0).join() && A.figW) layout(); // a station came or went: the rest spread evenly again
   buildStreams();
 }
 
@@ -577,8 +588,11 @@ function layout() {
   A.src.set(-viewW / 2 + (portrait ? 0.45 : viewW * 0.12), portrait ? A.fig.y + A.figH * 0.05 : -viewH / 2 + (r.height < 700 ? 250 : 345) / (r.height / viewH), 0);
   brain.position.copy(A.head);
   bMat.uniforms.uScale.value = A.figH * (portrait ? 0.34 : 0.37); // the bots' ring runs around it, not through it (2026-09-28) // wide screen: fits between the edge and him
-  const n = DEST.length;
-  DEST.forEach((d, i) => {
+  // EVENLY OVER THE STATIONS IN FORCE (operator, 17.11.: "burn, add liq and creator should be evenly spaced"): from 1 Dec
+  // three have a share; the hidden ones keep their old place, the live ones share the column (the phone's row) between them
+  const LIVE = DEST.filter(d => d.pct > 0), n = LIVE.length > 1 ? LIVE.length : DEST.length;
+  DEST.forEach((d, i0) => {
+    const i = LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
     if (portrait) {
       // 0.55 below the core, not 0.95: labels that wrap on a 360-390 px phone kept the second row clear of the view tabs (A3, 2026-09-25)
       // a little further apart (operator, 2026-10-05: "give the six points on the phone a bit more distance"): the rows
@@ -3704,7 +3718,7 @@ const BB3_FALLBACK = { start: Date.parse('2026-09-19T18:00:00Z'), end: GIGGLE_DA
 // then the liquidity for good (from Dec 1, 00:01 UTC, no end) — the same switch as the homepage's cards (app.js)
 const LFG_START = Date.parse('2026-12-01T00:01:00Z');
 const pageNow = () => (typeof window.__bobaiNow === 'function' ? window.__bobaiNow() : Date.now());
-const liqProg = () => pageNow() >= GIGGLE_DAY ? { key: 'lfg', name: 'Liquidity for good', short: 'LIQ FOR GOOD', since: 'since Dec 1', total: 'FOR GOOD TOTAL', fb: { start: LFG_START, end: Infinity } }
+const liqProg = () => (pageNow() >= GIGGLE_DAY || XM_SANDBOX_DEC) ? { key: 'lfg', name: 'Liquidity for good', short: 'ADD LIQ', /* operator 17.11.: "it is always add liq now" */ since: 'since Dec 1', total: 'FOR GOOD TOTAL', fb: { start: LFG_START, end: Infinity } }
   : { key: 'bb3', name: 'Liq Boost III', short: 'LIQ BOOST III', since: 'since Sep 19', total: 'BOOST III TOTAL', fb: BB3_FALLBACK };
 function boost3() {
   const p = liqProg(), w = NUMS()[p.key] || p.fb, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
@@ -8390,6 +8404,8 @@ window.__btXmSeason = xmSeason;
     const pt = v => { const p = toScreen(v); return { x: Math.round(p.x), y: Math.round(p.y) }; };
     const lay = { type: 'layout', w: Math.round(r0.width), h: Math.round(r0.height), portrait, dpr: Math.min(3, devicePixelRatio || 1),
       figure: rel(fig, r0), ring: pt(A.core), trades: pt(A.src), // figure, never "bobai": that key is every message's marker
+      // the hologram brain and the ring its bots fly on (operator, 17.11.: "the fairies can be the flying bots")
+      brain: (() => { const c = pt(A.head), e = pt(new THREE.Vector3(A.head.x + bMat.uniforms.uScale.value, A.head.y, A.head.z)); return { ...c, r: Math.max(20, Math.abs(e.x - c.x)), bots: WORKERS.length }; })(),
       // only the stations with a share now (applyPhase hides the rest): from 1 Dec 2026 burnA, liq and creator
       stations: Object.fromEntries(DEST.filter(d => d.pct > 0 && d.pos).map(d => [d.k, pt(d.pos)])),
       ui: { top: rel(win.querySelector('.hud'), r0), log: rel(win.querySelector('.term'), r0), timeline: rel(win.querySelector('.tl'), r0) } };
@@ -8404,7 +8420,7 @@ window.__btXmSeason = xmSeason;
   // 8 seconds in a row (the tab in sight) the theme is put away for this visit, the standard terminal stays
   let fpsN = 0, slowS = 0;
   (function tick() { fpsN++; requestAnimationFrame(tick); })();
-  setInterval(() => { const n = fpsN; fpsN = 0; if (!cur || document.hidden || dev) { slowS = 0; return; } slowS = n < 20 ? slowS + 1 : 0;
+  setInterval(() => { const n = fpsN; fpsN = 0; if (!cur || document.hidden || dev || sandbox) { slowS = 0; return; } // the sandbox page and dev show the theme whatever the device (to look at it) slowS = n < 20 ? slowS + 1 : 0;
     if (slowS >= 8) { note = 'paused: too heavy for this device'; set(null, false); slowS = 0; } }, 1000);
 
   // the switch: a snowflake at the LIVE pill, its menu names every builder
@@ -8436,11 +8452,16 @@ window.__btXmSeason = xmSeason;
   function paintMenu() {
     const row = (slug, t, sub, on) => '<button type="button" role="menuitemradio" aria-checked="' + on + '" data-s="' + esc(slug) + '"' + (on ? ' class="on"' : '') + '><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></button>';
     menu.innerHTML = '<div class="xm-h">Xmas terminals</div>'
-      + THEMES.map(t => row(t.slug, t.builder, t.title + (t.users_today != null ? ' · ' + nf(t.users_today) + ' using it today' : t.preview ? ' · preview' : ''), cur?.slug === t.slug)).join('')
+      // MOST USED FIRST, THE TOP FOUR, THE REST BEHIND A CLICK (operator, 17.11.): ordered by users today, then in all
+      + (() => { const L = THEMES.slice().sort((a, b) => (b.users_today || 0) - (a.users_today || 0) || (b.users_total || 0) - (a.users_total || 0)), top = showAll ? L : L.slice(0, 4);
+        if (cur && !top.includes(cur)) top.push(cur);
+        return top.map(t => row(t.slug, t.builder, t.title + (t.users_today != null ? ' · ' + nf(t.users_today) + ' using it today' : t.preview ? ' · preview' : ''), cur?.slug === t.slug)).join('')
+          + (L.length > 4 ? '<button type="button" class="xm-more" data-more="1"><b>' + (showAll ? 'Show the top 4' : 'Show all ' + L.length + ' Xmas terminals') + '</b></button>' : ''); })()
       + row('', 'Standard terminal', 'the terminal as always', !cur)
       + '<a class="xm-make" href="' + SITE_URL + '/xmas" target="_blank" rel="noopener">Build your own →</a>' + (note ? '<p class="xm-note">' + esc(note) + '</p>' : '');
   }
-  menu.addEventListener('click', e => { const b = e.target.closest('button[data-s]'); if (!b) return; e.stopPropagation(); menu.hidden = true; set(b.dataset.s || null, true); });
+  let showAll = false;
+  menu.addEventListener('click', e => { if (e.target.closest('button[data-more]')) { e.stopPropagation(); showAll = !showAll; paintMenu(); return; } const b = e.target.closest('button[data-s]'); if (!b) return; e.stopPropagation(); menu.hidden = true; set(b.dataset.s || null, true); });
   sw.addEventListener('click', e => { e.stopPropagation(); paintMenu(); menu.hidden = !menu.hidden; swPlace(); });
   document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target) && e.target !== sw) menu.hidden = true; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') menu.hidden = true; });
@@ -8496,7 +8517,7 @@ window.__btXmSeason = xmSeason;
     if (slugOk(want)) pick = want;
     else if (stored === '0') pick = null;
     else if (stored && THEMES.some(t => t.slug === stored)) pick = stored;
-    else if (!calmDevice && !REDUCED) pick = THEMES[Math.floor(Date.now() / 864e5) % THEMES.length].slug; // a new visitor: the day's turn
+    else if (sandbox || (!calmDevice && !REDUCED)) pick = THEMES[Math.floor(Date.now() / 864e5) % THEMES.length].slug; // a new visitor: the day's turn (the sandbox page: always one, it is there to be seen)
     set(pick, false);
   })();
 })();

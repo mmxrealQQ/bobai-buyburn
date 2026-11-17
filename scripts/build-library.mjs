@@ -336,6 +336,28 @@ powers by themselves; combos at 8, 16 and 24; a daily top 10 and an overall boar
   },
   {
     group: 'apps',
+    slug: 'xmas-terminal',
+    title: 'Xmas Terminal — the community builds the terminal\'s look',
+    tagline: 'One npx command, your own AI agent, a sandboxed theme on the live terminal.',
+    about: `Anyone builds an Xmas look for the Brain Terminal (2026-11-17): npx https://brainonbnb.com/xmas/kit.tgz asks
+the terminal's name and the builder, writes the guide every agent reads (AGENTS/CLAUDE/GEMINI/Cursor/Copilot), and gives
+dev (the live terminal mirrored with the folder in it, saved = shown), check, upload, and pictures/clips with the
+builder's own OpenAI and Google keys. Themes live in a worker of their own with storage of its own and are served into
+sandboxed frames (opaque origin, no calls out, no eval, no clicks); the terminal tells them every trade, burn and move.
+Included: the worker, the kit, our own theme as a worked example, and the pins.`,
+    reqs: [
+      {what: 'A worker and a key-value store of their own', ours: 'Cloudflare Workers + KV (bobai-xmas on workers.dev)',
+       alt: 'any server that stores a bundle per version and serves files with a CSP header'},
+      {what: 'A page that can frame the themes', ours: 'the Brain Terminal (terminal.js, the XMAS block): <iframe sandbox="allow-scripts">',
+       alt: 'any page: two sandboxed frames and postMessage are the whole contract'},
+    ],
+    run: ['node scripts/xmas-worker-regressions.mjs', 'node scripts/xmas-kit-regressions.mjs', 'npx wrangler deploy --config worker-xmas/wrangler.toml', 'npm pack ./xmas-kit'],
+    entries: ['worker-xmas/index.js', 'worker-xmas/xmas.js', 'worker-xmas/wrangler.toml', 'xmas-kit/xmas.mjs', 'xmas-kit/guide.md', 'xmas-kit/package.json',
+      'xmas-kit/template/back.html', 'xmas-kit/template/front.html', 'xmas-themes/bobai-xmas-mmx_qq/theme/back.html', 'xmas-themes/bobai-xmas-mmx_qq/theme/front.html',
+      'scripts/xmas-worker-regressions.mjs', 'scripts/xmas-kit-regressions.mjs', 'scripts/xmas-admin.mjs'],
+  },
+  {
+    group: 'apps',
     slug: 'brainscreener',
     title: 'brainScreener',
     tagline: 'Thirteen self-tests. No accounts, no tracking, no backend.',

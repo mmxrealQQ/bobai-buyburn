@@ -550,6 +550,44 @@
    ]
   },
   {
+   "slug": "xmas-terminal",
+   "group": "apps",
+   "title": "Xmas Terminal — the community builds the terminal's look",
+   "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
+   "files": 13,
+   "lines": 1396,
+   "zipBytes": 46289,
+   "txtBytes": 112407,
+   "sha256": "0f3ba748901a8ecd",
+   "reqs": [
+    {
+     "what": "A worker and a key-value store of their own",
+     "ours": "Cloudflare Workers + KV (bobai-xmas on workers.dev)",
+     "alt": "any server that stores a bundle per version and serves files with a CSP header"
+    },
+    {
+     "what": "A page that can frame the themes",
+     "ours": "the Brain Terminal (terminal.js, the XMAS block): <iframe sandbox=\"allow-scripts\">",
+     "alt": "any page: two sandboxed frames and postMessage are the whole contract"
+    }
+   ],
+   "paths": [
+    "scripts/xmas-admin.mjs",
+    "scripts/xmas-kit-regressions.mjs",
+    "scripts/xmas-worker-regressions.mjs",
+    "worker-xmas/index.js",
+    "worker-xmas/wrangler.toml",
+    "worker-xmas/xmas.js",
+    "xmas-kit/guide.md",
+    "xmas-kit/package.json",
+    "xmas-kit/template/back.html",
+    "xmas-kit/template/front.html",
+    "xmas-kit/xmas.mjs",
+    "xmas-themes/bobai-xmas-mmx_qq/theme/back.html",
+    "xmas-themes/bobai-xmas-mmx_qq/theme/front.html"
+   ]
+  },
+  {
    "slug": "brainscreener",
    "group": "apps",
    "title": "brainScreener",

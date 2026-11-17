@@ -23,7 +23,7 @@ ok('an empty theme/ is not ready (back.html or front.html needed)', r.status ===
 write('back.html', '<!doctype html><p>snow</p>');
 r = run('check');
 ok('a page alone is ready', r.status === 0 && /ready to upload/.test(r.stdout), r.stdout);
-for (const [name, text] of [['an OpenAI key', 'const k = "sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345";'], ['a Google key', 'k="AIzaSyA1234567890abcdefghijklmnopqrstu"'], ['the kit key', 'xk_' + 'Q'.repeat(32)], ['a .env line', 'OPENAI_API_KEY=sk-x']]) {
+for (const [name, text] of [['an OpenAI key', 'const k = "' + ['sk', 'proj', 'AbCdEfGhIjKlMnOpQrStUvWxYz012345'].join('-') + '";'], ['a Google key', 'k="' + 'AI' + 'zaSyA1234567890abcdefghijklmnopqrstu' + '"'], ['the kit key', 'xk_' + 'Q'.repeat(32)], ['a .env line', 'OPENAI_API_KEY=sk-x']]) {
   write('leak.js', text); r = run('check');
   ok(`${name} in a file stops the upload`, r.status === 1 && /API key or your \.xmas-key/.test(r.stdout), r.stdout);
 }

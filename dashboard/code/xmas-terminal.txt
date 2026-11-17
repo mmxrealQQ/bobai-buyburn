@@ -1,0 +1,1472 @@
+# Xmas Terminal — the community builds the terminal's look — Brain On BNB AI
+# One npx command, your own AI agent, a sandboxed theme on the live terminal.
+#
+# This is the complete xmas-terminal bundle as a single file, so it can be read in
+# one fetch. 13 files, 1396 lines.
+# Download as a zip: https://brainonbnb.com/code/xmas-terminal.zip
+# Everything else:   https://brainonbnb.com/code/index.txt
+#
+# No secrets are present: they are supplied at runtime through the environment.
+# MIT licensed.
+
+
+==============================================================================
+=== FILE: scripts/xmas-admin.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// The operator's hand on the Xmas workshop (2026-11-17). Reads XMAS_ADMIN from .env.
+//   node scripts/xmas-admin.mjs list
+//   node scripts/xmas-admin.mjs order <slug> <n>           its place on the switch (smaller first; everyone uploaded is on it)
+//   node scripts/xmas-admin.mjs block <slug>               gone at once: files, list, uploads
+//   node scripts/xmas-admin.mjs unblock <slug>
+import 'dotenv/config';
+const API = process.env.BOBAI_XMAS_API || 'https://bobai-xmas.bobbuildonbnb.workers.dev';
+const [action = 'list', slug, order] = process.argv.slice(2);
+if (!process.env.XMAS_ADMIN) { console.error('No XMAS_ADMIN in .env — run: node scripts/xmas-admin-secret.mjs'); process.exit(1); }
+const r = await fetch(API + '/admin', { method: 'POST', headers: { 'content-type': 'application/json', 'x-xmas-admin': process.env.XMAS_ADMIN },
+  body: JSON.stringify({ action, slug, ...(order != null ? { order: Number(order) } : {}) }) });
+const j = await r.json().catch(() => ({}));
+if (!r.ok) { console.error(j.error || r.status); process.exit(1); }
+if (action === 'list') for (const t of j.themes) console.log(`${t.blocked ? 'BLOCKED ' : t.ver ? 'IN      ' : 'empty   '} ${t.slug.padEnd(24)} v${t.ver}  ${String(t.files).padStart(3)} files ${(t.bytes / 1024).toFixed(0).padStart(6)} KB  "${t.title}" by ${t.builder}  ${t.preview}`);
+else console.log(JSON.stringify(j.theme, null, 2));
+
+==============================================================================
+=== FILE: scripts/xmas-kit-regressions.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// The community Xmas terminal (2026-11-17): the kit (xmas-kit/) and the terminal's frame layer, offline.
+//   node scripts/xmas-kit-regressions.mjs
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+let fails = 0;
+const ok = (name, cond, extra = '') => { console.log((cond ? '  ok    ' : '  FAIL  ') + name + (cond || !extra ? '' : ' — ' + extra)); if (!cond) fails++; };
+
+// --- the kit's check, on a folder made here
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'xmkit-'));
+fs.mkdirSync(path.join(tmp, 'theme'));
+fs.writeFileSync(path.join(tmp, 'xmas.json'), JSON.stringify({ title: 'T', builder: 'b', slug: 'b' }));
+fs.writeFileSync(path.join(tmp, '.xmas-key'), 'xk_' + 'Q'.repeat(32));
+fs.copyFileSync(path.join(ROOT, 'xmas-kit', 'xmas.mjs'), path.join(tmp, 'xmas.mjs'));
+const run = (...a) => spawnSync(process.execPath, ['xmas.mjs', ...a], { cwd: tmp, encoding: 'utf8', env: { ...process.env, BOBAI_XMAS_API: 'http://127.0.0.1:9' } });
+const write = (f, t) => { fs.mkdirSync(path.dirname(path.join(tmp, 'theme', f)), { recursive: true }); fs.writeFileSync(path.join(tmp, 'theme', f), t); };
+let r = run('check');
+ok('an empty theme/ is not ready (back.html or front.html needed)', r.status === 1 && /back\.html/.test(r.stdout));
+write('back.html', '<!doctype html><p>snow</p>');
+r = run('check');
+ok('a page alone is ready', r.status === 0 && /ready to upload/.test(r.stdout), r.stdout);
+for (const [name, text] of [['an OpenAI key', 'const k = "' + ['sk', 'proj', 'AbCdEfGhIjKlMnOpQrStUvWxYz012345'].join('-') + '";'], ['a Google key', 'k="' + 'AI' + 'zaSyA1234567890abcdefghijklmnopqrstu' + '"'], ['the kit key', 'xk_' + 'Q'.repeat(32)], ['a .env line', 'OPENAI_API_KEY=sk-x']]) {
+  write('leak.js', text); r = run('check');
+  ok(`${name} in a file stops the upload`, r.status === 1 && /API key or your \.xmas-key/.test(r.stdout), r.stdout);
+}
+fs.rmSync(path.join(tmp, 'theme', 'leak.js'));
+write('a.js', 'fetch("https://x.example"); eval("1"); localStorage.x=1; new Audio("a.mp3")');
+r = run('check');
+ok('calls out, eval, storage and sound are warned about', /calls out/.test(r.stdout) && /eval/.test(r.stdout) && /storage/.test(r.stdout) && /sound/.test(r.stdout));
+write('x.exe', 'MZ'); r = run('check');
+ok('an unknown kind of file is not ready', r.status === 1 && /x\.exe/.test(r.stdout));
+fs.rmSync(path.join(tmp, 'theme', 'x.exe'));
+r = run('image', 'x', '--out', '../outside.webp');
+ok('image/video write only into theme/', r.status === 1 && /(inside theme|OPENAI_API_KEY)/.test(r.stderr + r.stdout));
+fs.rmSync(tmp, { recursive: true, force: true });
+
+// --- the kit's files
+const kit = fs.readFileSync(path.join(ROOT, 'xmas-kit', 'xmas.mjs'), 'utf8'), guide = fs.readFileSync(path.join(ROOT, 'xmas-kit', 'guide.md'), 'utf8');
+ok('the dev server serves theme files with the live CSP (sandbox, no calls out)', /const THEME_CSP = "sandbox allow-scripts;[^"]*connect-src 'none'/.test(kit));
+ok('… and refuses a path out of theme/', /if \(!file\.startsWith\(path\.resolve\(theme\) \+ path\.sep\)\)/.test(kit));
+ok('the start keeps the key out of git and makes .env for the AI keys', /'\.xmas-key\\n\.env\\n/.test(kit) && /OPENAI_API_KEY=\\nGEMINI_API_KEY=/.test(kit));
+ok('every agent finds the guide: AGENTS, CLAUDE, GEMINI, Cursor, Copilot', ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.cursorrules', 'copilot-instructions.md'].every((f) => kit.includes(f)));
+ok('the guide names every message the terminal sends', ['hello', 'layout', 'event', 'moment', 'pose', 'mood', 'visible'].every((t) => guide.includes(`type: '${t}'`)));
+ok('the guide gives the figure as "figure" (the key "bobai" is the marker)', /figure: \{ x, y, w, h \}/.test(guide) && !/^\s+bobai: \{ x/m.test(guide));
+const tgz = path.join(ROOT, 'dashboard', 'xmas', 'kit.tgz');
+ok('the served kit is the built one (kit.tgz exists)', fs.existsSync(tgz) && fs.statSync(tgz).size > 5000);
+
+// --- the terminal's layer
+const T = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.js'), 'utf8'), C = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.css'), 'utf8');
+ok('a theme frame is sandboxed with scripts only', /f\.setAttribute\('sandbox', 'allow-scripts'\)/.test(T) && !/allow-same-origin/.test(T.slice(T.indexOf('COMMUNITY XMAS TERMINAL'))));
+ok('the frames take no pointer events', /#bt \.xm\{[^}]*pointer-events:none/.test(C));
+ok('back under BOBAI (z 1), front under every label and window (z 4)', /#bt \.xm-back\{z-index:1\}/.test(C) && /#bt \.xm-front\{z-index:4\}/.test(C));
+ok('the dev folder loads only on 127.0.0.1 / localhost', /const devHost = \/\^\(127\\\.0\\\.0\\\.1\|localhost\)\$\/i\.test\(location\.hostname\)/.test(T));
+ok('the marker is set last on every message (nothing overwrites it)', /\{ \.\.\.lay, bobai: 'xmas', v: 1 \}/.test(T) && /\.\.\.m, bobai: 'xmas', v: 1 \}/.test(T));
+ok('the layout calls BOBAI "figure"', /figure: rel\(fig, r0\)/.test(T));
+ok('only the stations on screen are named (from 1 Dec: burnA, liq, creator)', /stations: Object\.fromEntries\(DEST\.filter\(d => d\.pct > 0 && d\.pos\)/.test(T) && /stations: DEST\.filter\(d => d\.pct > 0\)\.map/.test(T) && /three stations plus the trades/.test(guide));
+ok('a slow theme is put away (under 20 fps for 8 s)', /slowS = n < 20 \? slowS \+ 1 : 0/.test(T) && /if \(slowS >= 8\)/.test(T));
+ok('the page listens to nothing a theme says', !/addEventListener\('message'/.test(T.slice(T.indexOf('COMMUNITY XMAS TERMINAL'))));
+const H = fs.readFileSync(path.join(ROOT, 'dashboard', '_headers'), 'utf8');
+ok('the page CSP lets in the theme worker and nothing else new', /frame-src 'self' https:\/\/bobai-xmas\.bobbuildonbnb\.workers\.dev;/.test(H) && /connect-src 'self' https:\/\/bobai-xmas\.bobbuildonbnb\.workers\.dev /.test(H));
+
+console.log(fails ? `\n${fails} FAIL` : '\nall pass');
+process.exit(fails ? 1 : 0);
+
+==============================================================================
+=== FILE: scripts/xmas-worker-regressions.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// The community Xmas terminal's worker (worker-xmas/xmas.js, 2026-11-17), offline with a stand-in KV: joining, the key,
+// uploading, serving sandboxed, the operator's approval, counting users — and every way in that must stay shut.
+//   node scripts/xmas-worker-regressions.mjs
+import { handleXmas, THEME_CSP, checkPath, slugOf, XMAS_LIMITS } from '../worker-xmas/xmas.js';
+
+let fails = 0;
+const ok = (name, cond, extra = '') => { console.log((cond ? '  ok    ' : '  FAIL  ') + name + (cond || !extra ? '' : ' — ' + extra)); if (!cond) fails++; };
+
+const store = new Map();
+const KV = {
+  async get(k, o) { const v = store.get(k); if (v == null) return null; const type = typeof o === 'string' ? o : o?.type; if (type === 'json') return JSON.parse(v); if (type === 'arrayBuffer') return v; return v; },
+  async put(k, v) { store.set(k, v instanceof ArrayBuffer ? v.slice(0) : v); },
+  async delete(k) { store.delete(k); },
+};
+const env = { XMAS: KV, XMAS_ADMIN: 'adm1n-secret' };
+const call = async (method, path, { body, headers = {}, ip = '1.1.1.1' } = {}) => {
+  const req = new Request('https://bobai-xmas.example' + path, { method, headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip, ...headers }, body: body == null ? undefined : JSON.stringify(body) });
+  const res = await handleXmas(req, env, new URL(req.url), path);
+  const text = await res.text(); let j = null; try { j = JSON.parse(text); } catch {}
+  return { status: res.status, j, text, h: res.headers };
+};
+const b64 = (s) => Buffer.from(s).toString('base64');
+
+// joining
+let r = await call('POST', '/join', { body: { title: 'Frosty Brain', builder: 'mmx_qq' } });
+const key = r.j?.key;
+ok('join gives a key of 32 characters and the slug of the name', r.status === 200 && /^xk_[A-Za-z0-9]{32}$/.test(key || '') && r.j.slug === 'mmx_qq', JSON.stringify(r.j));
+ok('the key is not kept in the clear', ![...store.keys()].some((k) => k.includes(key)) && ![...store.values()].some((v) => typeof v === 'string' && v.includes(key)));
+r = await call('POST', '/join', { body: { title: 'Copy', builder: 'MMX_QQ' } });
+ok('a name is taken once (case does not make it new)', r.status === 409);
+r = await call('POST', '/join', { body: { title: '<script>x</script>', builder: 'b<img src=x>' } });
+ok('markup in a title or a name is stripped, never stored', r.status === 200 && !/[<>]/.test(r.j.title + r.j.builder), JSON.stringify(r.j));
+for (let i = 0; i < XMAS_LIMITS.joinsPerIpPerDay; i++) await call('POST', '/join', { body: { title: 't', builder: 'spam' + i }, ip: '9.9.9.9' });
+r = await call('POST', '/join', { body: { title: 't', builder: 'spammore' }, ip: '9.9.9.9' });
+ok(`at most ${XMAS_LIMITS.joinsPerIpPerDay} new builders from one address a day`, r.status === 429);
+
+// the key
+r = await call('POST', '/upload', { body: { files: [{ path: 'back.html', b64: b64('<p>x</p>') }] } });
+ok('an upload without a key is refused', r.status === 401);
+r = await call('POST', '/upload', { headers: { 'x-xmas-key': 'xk_' + 'A'.repeat(32) }, body: { files: [{ path: 'back.html', b64: b64('<p>x</p>') }] } });
+ok('an upload with a made-up key is refused', r.status === 401);
+
+// paths
+ok('no way out of the folder', !!checkPath('../x.html').error && !!checkPath('a/../../x.js').error && !!checkPath('/etc/x.html').error && !!checkPath('a//b.png').error);
+ok('no unknown kinds of file (no .exe, .php, .wasm, sound)', ['a.exe', 'a.php', 'a.wasm', 'a.mp3', 'a.html.', 'noext'].every((p) => !!checkPath(p).error));
+ok('the usual kinds are served with their type', checkPath('img/snow.webp').type === 'image/webp' && checkPath('back.html').type.startsWith('text/html') && checkPath('m/tree.glb').type === 'model/gltf-binary');
+ok('a name becomes an address: lower case, safe characters', slugOf('Binance Square') === 'binance-square' && slugOf('x') === null && slugOf('ÄÖ!!') === null);
+
+// uploading
+const html = '<!doctype html><html><body><script src="snow.js"></script></body></html>';
+r = await call('POST', '/upload', { headers: { 'x-xmas-key': key }, body: { files: [{ path: 'back.html', b64: b64(html) }, { path: 'snow.js', b64: b64('console.log(1)') }] } });
+ok('the builder uploads: version 1, preview link', r.status === 200 && r.j.ver === 1 && /\?xmas=mmx_qq$/.test(r.j.preview), JSON.stringify(r.j));
+r = await call('POST', '/upload', { headers: { 'x-xmas-key': key }, body: { files: [{ path: 'style.css', b64: b64('a{}') }] } });
+ok('a theme without back.html or front.html is refused', r.status === 400);
+r = await call('POST', '/upload', { headers: { 'x-xmas-key': key }, body: { files: [{ path: 'back.html', b64: Buffer.alloc(XMAS_LIMITS.fileBytes + 1).toString('base64') }] } });
+ok('a file over the limit is refused', r.status === 400);
+
+// serving
+r = await call('GET', '/t/mmx_qq/1/back.html');
+ok('a file is served with its type', r.status === 200 && r.text === html && r.h.get('content-type').startsWith('text/html'));
+const csp = r.h.get('content-security-policy') || '';
+ok('… sandboxed: its own CSP opens it in an opaque origin (no cookies, storage, page), scripts only', /^sandbox allow-scripts;/.test(csp) && !/allow-same-origin|allow-top-navigation|allow-popups|allow-forms|allow-modals/.test(csp));
+ok('… no calls out, no eval or WebAssembly, no workers, no frames, no forms, no plugins', /connect-src 'none'/.test(csp) && !/unsafe-eval|wasm/.test(csp) && /worker-src 'none'/.test(csp) && /frame-src 'none'/.test(csp) && /form-action 'none'/.test(csp) && /object-src 'none'/.test(csp));
+ok('… and only our pages may frame it', /frame-ancestors https:\/\/brainonbnb\.com /.test(csp) && !/frame-ancestors[^;]*\*(\s|;|$)/.test(csp));
+ok('… nosniff', r.h.get('x-content-type-options') === 'nosniff');
+ok('the CSP the worker sends is the one pinned here', csp === THEME_CSP);
+r = await call('GET', '/t/mmx_qq/1/..%2F..%2Fsecret.js');
+ok('a path climbing out is not found', r.status === 404);
+r = await call('GET', '/t/mmx_qq/7/back.html');
+ok('a version that does not exist is not found', r.status === 404);
+
+// the operator
+r = await call('GET', '/themes');
+ok('everyone is in (17.11.): an uploaded theme is on the list, one with nothing uploaded is not', r.status === 200 && r.j.live.length === 1 && r.j.live[0].slug === 'mmx_qq' && /\/t\/mmx_qq\/1\/$/.test(r.j.live[0].base) && r.j.live[0].users_today === 0, JSON.stringify(r.j.live.map((t) => t.slug)));
+r = await call('GET', '/theme/mmx_qq');
+ok('the preview link reads the theme', r.status === 200 && r.j.theme.ver === 1 && r.j.theme.layers.back === true && r.j.theme.layers.front === false);
+r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'wrong' }, body: { action: 'block', slug: 'mmx_qq' } });
+ok('blocking needs the operator secret', r.status === 401);
+r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'adm1n-secret' }, body: { action: 'approve', slug: 'mmx_qq' } });
+ok('there is no approving any more', r.status === 400);
+
+// counting users
+await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' } });
+r = await call('POST', '/use', { body: { slug: 'spam0' } });
+ok('a theme with nothing uploaded is not counted', r.j?.counted === false);
+r = await call('GET', '/themes');
+ok('users today and in all', r.j.live[0].users_today === 2 && r.j.live[0].users_total === 2 && r.j.users_today_all === 2);
+ok('the count holds no address', ![...store.entries()].some(([k, v]) => k.startsWith('xmas:use') && /1\.1\.1\.1|9\.9\.9\.9/.test(String(v))));
+
+// blocking
+await call('POST', '/admin', { headers: { 'x-xmas-admin': 'adm1n-secret' }, body: { action: 'block', slug: 'mmx_qq' } });
+const g = await call('GET', '/t/mmx_qq/1/back.html'), l = await call('GET', '/themes'), u = await call('POST', '/upload', { headers: { 'x-xmas-key': key }, body: { files: [{ path: 'back.html', b64: b64('x') }] } });
+ok('blocked: its files are gone, it leaves the list, its key uploads nothing', g.status === 404 && l.j.live.length === 0 && u.status === 403);
+
+console.log(fails ? `\n${fails} FAIL` : '\nall pass');
+process.exit(fails ? 1 : 0);
+
+==============================================================================
+=== FILE: worker-xmas/index.js
+==============================================================================
+
+// bobai-xmas: the community Xmas terminal's own worker (2026-11-17). Everything is in xmas.js; this worker holds no
+// key, no wallet and no binding to anything else of the project — on purpose (operator: "clean and hack-free").
+import { handleXmas } from './xmas.js';
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname.replace(/\/+$/, '').replace(/^\/xmas(?=\/|$)/, '') || '/';
+    if (path === '/') return new Response(JSON.stringify({ name: 'BOBAI Xmas terminal workshop', how: 'npx https://brainonbnb.com/xmas/kit.tgz', themes: url.origin + '/themes' }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' } });
+    try { return await handleXmas(request, env, url, path); }
+    catch (e) { return new Response(JSON.stringify({ error: 'something broke on our side; nothing was changed' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }); }
+  },
+};
+
+==============================================================================
+=== FILE: worker-xmas/wrangler.toml
+==============================================================================
+
+name = "bobai-xmas"
+main = "index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# Its own storage: nothing of the agent worker (payments, sessions, the board) is reachable from here.
+[[kv_namespaces]]
+binding = "XMAS"
+id = "<your-kv-namespace-id>"
+
+# Secret XMAS_ADMIN (wrangler secret put XMAS_ADMIN): the operator's approve / block.
+
+==============================================================================
+=== FILE: worker-xmas/xmas.js
+==============================================================================
+
+// THE COMMUNITY XMAS TERMINAL (2026-11-17, operator: "the community builds the Xmas terminal theme — one command,
+// they build it themselves, it works for them as it does for me, they upload it; BOBAI and the standard terminal stay;
+// from 1 December it is live", then: "even better: an X post with the command, whoever wants builds one").
+//
+// Operator, then: "everyone may build, Binance itself or other platforms too; once live you always see how many users
+// use which terminal; as many as want; but it must all be clean and hack-free — a sandbox page like xmas.preview".
+//
+// A WORKER OF ITS OWN, WITH STORAGE OF ITS OWN, ON A DOMAIN OF ITS OWN: nothing here can read or write what the agent
+// worker holds (payments, sessions, the board), and a theme's files come from *.workers.dev, never from brainonbnb.com.
+//
+// Anyone who runs the kit's one command joins (POST /join) and gets a key of their own, kept by the kit on their
+// machine; the key is the builder: every upload is theirs and nobody else's. A theme is a folder (back.html under
+// BOBAI, front.html over him, and whatever they load) stored as ONE bundle per version, served into a sandboxed frame
+// on the terminal: the response's own CSP says `sandbox allow-scripts` (an opaque origin even when a file is opened on
+// its own: no cookies, no storage, no page), `connect-src 'none'` (no calls out, no tracking), no eval and no
+// WebAssembly (no miner), no workers, no forms, no plugins, no frames. The terminal gives the frames no pointer events:
+// a theme can never put a button in front of a visitor. EVERYONE IS IN (operator, 17.11.: "no review, all are allowed —
+// just no racism, terror, hate"): every uploaded theme is on the switch from 1 December; the operator blocks one that
+// crosses that line (POST /admin block). A preview link works for anyone from the first upload:
+// https://xmas.bobai-dashboard.pages.dev/?xmas=<slug>.
+//
+//   POST /join     {title, builder}            -> {key, slug}   (the kit keeps the key; a builder name is taken once)
+//   POST /hello    x-xmas-key                  -> the builder's theme as it stands
+//   POST /upload   x-xmas-key, {files:[{path, b64}], title?} -> {ver, preview}
+//   GET  /themes                               -> every uploaded, unblocked theme with today's users, for the terminal's switch
+//   GET  /theme/<slug>                         -> one theme (the preview link)
+//   GET  /t/<slug>/<ver>/<path>                -> a file of a theme, sandboxed
+//   POST /use      {slug}                      -> a visitor's terminal shows this theme today (counted once a day per browser)
+//   POST /admin    x-xmas-admin, {action: list | block | unblock | order | rename}
+
+export const XMAS_SEASON = { from: '2026-12-01T00:00:00Z', to: '2027-01-01T00:00:00Z' };
+export const XMAS_LIMITS = { files: 300, fileBytes: 5 * 1024 * 1024, totalBytes: 20 * 1024 * 1024, uploadsPerDay: 120, joinsPerIpPerDay: 10, themes: 5000 };
+const EXT = { html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+  json: 'application/json; charset=utf-8', txt: 'text/plain; charset=utf-8', svg: 'image/svg+xml', webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  avif: 'image/avif', mp4: 'video/mp4', webm: 'video/webm', woff2: 'font/woff2', woff: 'font/woff', glb: 'model/gltf-binary', gltf: 'model/gltf+json', bin: 'application/octet-stream' };
+// no sound: a terminal that starts playing music on a visitor is no terminal (videos play muted, the terminal says so)
+// The pages a theme may sit in: the site, its previews, the lab.
+const FRAME_ANCESTORS = "https://brainonbnb.com https://www.brainonbnb.com https://*.bobai-dashboard.pages.dev https://bobai-dashboard.pages.dev https://*.bobai-lab.pages.dev https://bobai-lab.pages.dev";
+export const THEME_CSP = "sandbox allow-scripts; default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors " + FRAME_ANCESTORS;
+
+const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Xmas-Key' };
+const out = (obj, status = 200, extra = {}) => new Response(JSON.stringify(obj, null, 2), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...CORS, ...extra } });
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+const sha = async (s) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s))));
+// previews open on the sandbox page (the live terminal's code with every theme reachable by link), never on brainonbnb.com
+export const SITE = 'https://xmas.bobai-dashboard.pages.dev';
+export const SELF = 'https://bobai-xmas.bobbuildonbnb.workers.dev';
+
+// A builder's name becomes the theme's address: lower case, letters, digits, _ and -, 2-24 long.
+export function slugOf(name) {
+  const s = String(name || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+  return s.length >= 2 ? s : null;
+}
+// What a person typed as a title or a name: plain text, one line, no markup, a sane length.
+export function cleanText(v, max) {
+  const s = String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+  return s || null;
+}
+// A path inside a theme: relative, lower case or not, no way out of the folder, a known kind of file.
+export function checkPath(p) {
+  const s = String(p || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$/.test(s) || s.includes('..') || s.includes('//') || s.endsWith('/')) return { error: `not a usable path: ${String(p).slice(0, 80)}` };
+  const ext = (s.match(/\.([A-Za-z0-9]+)$/) || [])[1]?.toLowerCase();
+  if (!ext || !EXT[ext]) return { error: `${s}: .${ext || '?'} files are not served (html, css, js, json, images, video, fonts, glb)` };
+  return { path: s, type: EXT[ext] };
+}
+const b64bytes = (b64) => { const bin = atob(String(b64 || '')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+export function inSeason(t = Date.now()) { return t >= Date.parse(XMAS_SEASON.from) && t < Date.parse(XMAS_SEASON.to); }
+
+// Checks an upload and packs it: one buffer, an index of [path, type, offset, length].
+export function packUpload(files) {
+  if (!Array.isArray(files) || !files.length) return { error: 'no files: send {files:[{path, b64}]}' };
+  if (files.length > XMAS_LIMITS.files) return { error: `${files.length} files; at most ${XMAS_LIMITS.files}` };
+  const seen = new Set(), parts = [], index = [];
+  let total = 0;
+  for (const f of files) {
+    const c = checkPath(f?.path); if (c.error) return { error: c.error };
+    if (seen.has(c.path)) return { error: `${c.path} twice` };
+    seen.add(c.path);
+    let bytes; try { bytes = b64bytes(f.b64); } catch { return { error: `${c.path}: b64 is not base64` }; }
+    if (bytes.length > XMAS_LIMITS.fileBytes) return { error: `${c.path}: ${(bytes.length / 1048576).toFixed(1)} MB; one file at most ${XMAS_LIMITS.fileBytes / 1048576} MB` };
+    index.push([c.path, c.type, total, bytes.length]); parts.push(bytes); total += bytes.length;
+    if (total > XMAS_LIMITS.totalBytes) return { error: `more than ${XMAS_LIMITS.totalBytes / 1048576} MB in all` };
+  }
+  if (!seen.has('back.html') && !seen.has('front.html')) return { error: 'a theme needs back.html (behind BOBAI) or front.html (in front of him), or both, at the top of the folder' };
+  const buf = new Uint8Array(total); let o = 0; for (const p of parts) { buf.set(p, o); o += p.length; }
+  return { buf, index, total };
+}
+
+const themeKey = (slug) => `xmas:theme:${slug}`, keyKey = (h) => `xmas:key:${h}`, bundleKey = (slug, ver) => `xmas:b:${slug}:${ver}`;
+async function readUse(env) {
+  const day = new Date().toISOString().slice(0, 10);
+  const [today, total] = await Promise.all([env.XMAS.get(`xmas:use:${day}`, 'json', { cacheTtl: 60 }), env.XMAS.get('xmas:use:total', 'json', { cacheTtl: 60 })]);
+  return { day, today: today || {}, total: total || {} };
+}
+async function listSlugs(env) { return (await env.XMAS.get('xmas:index', 'json').catch(() => null)) || []; }
+const publicView = (t) => ({ slug: t.slug, title: t.title, builder: t.builder, ver: t.ver || 0, updated: t.updated || null, live: !t.blocked && !!t.ver,
+  base: t.ver ? `${SELF}/t/${t.slug}/${t.ver}/` : null, layers: { back: !!t.files?.some((f) => f[0] === 'back.html'), front: !!t.files?.some((f) => f[0] === 'front.html') },
+  preview: `${SITE}/?xmas=${t.slug}` });
+
+async function builderOf(request, env) {
+  const key = String(request.headers.get('x-xmas-key') || '').trim();
+  if (!/^xk_[A-Za-z0-9]{32}$/.test(key)) return { error: out({ error: 'no key: run the kit again (it keeps your key in .xmas-key)' }, 401) };
+  const rec = await env.XMAS.get(keyKey(await sha(key)), 'json');
+  if (!rec) return { error: out({ error: 'unknown key' }, 401) };
+  const t = await env.XMAS.get(themeKey(rec.slug), 'json');
+  if (!t) return { error: out({ error: 'unknown theme' }, 404) };
+  if (t.blocked) return { error: out({ error: 'this theme was stopped by the operator' }, 403) };
+  return { t };
+}
+
+export async function handleXmas(request, env, url, path) {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  if (!env.XMAS) return out({ error: 'storage is not bound' }, 503);
+
+  // a file of a theme, sandboxed
+  const fm = path.match(/^\/t\/([a-z0-9_-]{2,24})\/(\d{1,6})\/(.+)$/);
+  if (fm && request.method === 'GET') {
+    const [, slug, ver, rawPath] = fm;
+    const c = checkPath(decodeURIComponent(rawPath)); if (c.error) return new Response('not found', { status: 404 });
+    const t = await env.XMAS.get(themeKey(slug), 'json', { cacheTtl: 60 });
+    if (!t || t.blocked) return new Response('not found', { status: 404 });
+    const idx = Number(ver) === t.ver ? t.files : Number(ver) === t.prevVer ? t.prevFiles : null;
+    const ent = idx?.find((f) => f[0] === c.path);
+    if (!ent) return new Response('not found', { status: 404, headers: { 'Content-Security-Policy': THEME_CSP } });
+    const buf = await env.XMAS.get(bundleKey(slug, ver), { type: 'arrayBuffer', cacheTtl: 3600 });
+    if (!buf) return new Response('not found', { status: 404 });
+    return new Response(buf.slice(ent[2], ent[2] + ent[3]), { headers: { 'Content-Type': ent[1], 'Content-Security-Policy': THEME_CSP, 'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'public, max-age=86400', 'Cross-Origin-Resource-Policy': 'cross-origin', 'Referrer-Policy': 'no-referrer', 'Access-Control-Allow-Origin': '*' } });
+  }
+
+  if (path === '/themes' && request.method === 'GET') {
+    const slugs = await listSlugs(env);
+    const all = (await Promise.all(slugs.map((s) => env.XMAS.get(themeKey(s), 'json', { cacheTtl: 60 })))).filter(Boolean);
+    const live = all.filter((t) => !t.blocked && t.ver).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.created).localeCompare(String(b.created)));
+    const use = await readUse(env);
+    return out({ season: XMAS_SEASON, in_season: inSeason(), day: use.day,
+      live: live.map((t) => ({ ...publicView(t), users_today: use.today[t.slug] || 0, users_total: use.total[t.slug] || 0 })),
+      users_today_all: Object.values(use.today).reduce((a, b) => a + b, 0), builders: all.filter((t) => !t.blocked).length }, 200, { 'Cache-Control': 'public, max-age=60' });
+  }
+
+  // HOW MANY USE WHICH TERMINAL (operator, 2026-11-17): the terminal says once a day per browser which theme it shows.
+  // A count of browsers, never who: no address, no IP kept. Counts go into one value per day (a few lost under a burst
+  // of simultaneous writes is the price of not holding anything about a visitor).
+  if (path === '/use' && request.method === 'POST') {
+    const b = await request.json().catch(() => null), slug = String(b?.slug || '');
+    if (!/^[a-z0-9_-]{2,24}$/.test(slug)) return out({ ok: false }, 400);
+    const t = await env.XMAS.get(themeKey(slug), 'json', { cacheTtl: 60 });
+    if (!t || t.blocked || !t.ver) return out({ ok: false, counted: false });
+    const day = new Date().toISOString().slice(0, 10), k = `xmas:use:${day}`;
+    const m = (await env.XMAS.get(k, 'json')) || {};
+    m[slug] = (m[slug] || 0) + 1;
+    await env.XMAS.put(k, JSON.stringify(m), { expirationTtl: 90 * 86400 });
+    const tot = (await env.XMAS.get('xmas:use:total', 'json')) || {};
+    tot[slug] = (tot[slug] || 0) + 1;
+    await env.XMAS.put('xmas:use:total', JSON.stringify(tot));
+    return out({ ok: true, counted: true });
+  }
+  const one = path.match(/^\/theme\/([a-z0-9_-]{2,24})$/);
+  if (one && request.method === 'GET') {
+    const t = await env.XMAS.get(themeKey(one[1]), 'json', { cacheTtl: 60 });
+    if (!t || t.blocked) return out({ error: 'no such theme' }, 404);
+    return out({ season: XMAS_SEASON, theme: publicView(t) }, 200, { 'Cache-Control': 'public, max-age=30' });
+  }
+
+  if (path === '/join' && request.method === 'POST') {
+    const b = await request.json().catch(() => null);
+    const title = cleanText(b?.title, 48), builder = cleanText(b?.builder, 32), slug = slugOf(builder);
+    if (!title) return out({ error: 'title: what is your terminal called?' }, 400);
+    if (!builder || !slug) return out({ error: 'builder: your name as it should show (2-24 letters or digits)' }, 400);
+    const ip = request.headers.get('cf-connecting-ip') || 'x', day = new Date().toISOString().slice(0, 10), ipKey = `xmas:join:${day}:${await sha(ip)}`;
+    const n = Number(await env.XMAS.get(ipKey)) || 0;
+    if (n >= XMAS_LIMITS.joinsPerIpPerDay) return out({ error: 'too many new builders from here today; try tomorrow' }, 429);
+    const slugs = await listSlugs(env);
+    if (slugs.length >= XMAS_LIMITS.themes) return out({ error: 'the workshop is full' }, 503);
+    if (slugs.includes(slug)) return out({ error: `the name "${builder}" is taken; choose another` }, 409);
+    // 32 characters from 62 by rejection (no modulo bias): about 190 bits
+    const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'xk_';
+    while (key.length < 35) for (const x of crypto.getRandomValues(new Uint8Array(48))) if (x < 248 && key.length < 35) key += A[x % 62];
+    const now = new Date().toISOString();
+    await env.XMAS.put(themeKey(slug), JSON.stringify({ slug, title, builder, ver: 0, files: [], created: now, updated: null, uploads: {} }));
+    await env.XMAS.put(keyKey(await sha(key)), JSON.stringify({ slug, created: now }));
+    await env.XMAS.put('xmas:index', JSON.stringify([...slugs, slug]));
+    await env.XMAS.put(ipKey, String(n + 1), { expirationTtl: 172800 });
+    return out({ key, slug, title, builder, preview: `${SITE}/?xmas=${slug}`, note: 'Keep the key: it is you. The kit stores it in .xmas-key; never post it.' });
+  }
+
+  if (path === '/hello' && request.method === 'POST') {
+    const r = await builderOf(request, env); if (r.error) return r.error;
+    return out({ theme: publicView(r.t), season: XMAS_SEASON, limits: XMAS_LIMITS });
+  }
+
+  if (path === '/upload' && request.method === 'POST') {
+    const r = await builderOf(request, env); if (r.error) return r.error;
+    const t = r.t, day = new Date().toISOString().slice(0, 10);
+    const used = Number(t.uploads?.[day]) || 0;
+    if (used >= XMAS_LIMITS.uploadsPerDay) return out({ error: `${XMAS_LIMITS.uploadsPerDay} uploads today already; the dev page shows your changes without uploading` }, 429);
+    const b = await request.json().catch(() => null);
+    const p = packUpload(b?.files); if (p.error) return out({ error: p.error }, 400);
+    const ver = (t.ver || 0) + 1;
+    await env.XMAS.put(bundleKey(t.slug, ver), p.buf.buffer);
+    const old = t.prevVer;
+    const title = cleanText(b?.title, 48) || t.title;
+    const next = { ...t, title, prevVer: t.ver || null, prevFiles: t.files || [], ver, files: p.index, bytes: p.total, updated: new Date().toISOString(), uploads: { [day]: used + 1 } };
+    await env.XMAS.put(themeKey(t.slug), JSON.stringify(next));
+    if (old) await env.XMAS.delete(bundleKey(t.slug, old)).catch(() => {});   // the version before the previous one
+    return out({ ok: true, ver, files: p.index.length, bytes: p.total, preview: `${SITE}/?xmas=${t.slug}`, live: true,
+      note: 'Uploaded. The preview link shows it to anyone; from 1 December it is on the terminal\'s switch under your name (every upload replaces the last).' });
+  }
+
+  if (path === '/admin' && request.method === 'POST') {
+    if (!env.XMAS_ADMIN || request.headers.get('x-xmas-admin') !== env.XMAS_ADMIN) return out({ error: 'unauthorized' }, 401);
+    const b = await request.json().catch(() => ({}));
+    const slugs = await listSlugs(env);
+    if (b.action === 'list') {
+      const all = (await Promise.all(slugs.map((s) => env.XMAS.get(themeKey(s), 'json')))).filter(Boolean);
+      return out({ themes: all.map((t) => ({ ...publicView(t), blocked: !!t.blocked, order: t.order ?? null, bytes: t.bytes || 0, files: (t.files || []).length, created: t.created })) });
+    }
+    const t = await env.XMAS.get(themeKey(String(b.slug || '')), 'json');
+    if (!t) return out({ error: 'no such theme' }, 404);
+    if (b.action === 'block') { t.blocked = true; t.blockedAt = new Date().toISOString(); }
+    else if (b.action === 'unblock') t.blocked = false;
+    else if (b.action === 'order') t.order = Number(b.order);
+    else if (b.action === 'rename') { t.title = cleanText(b.title, 48) || t.title; }
+    else return out({ error: 'action: list | block | unblock | order | rename' }, 400);
+    await env.XMAS.put(themeKey(t.slug), JSON.stringify(t));
+    return out({ ok: true, theme: { ...publicView(t), blocked: !!t.blocked, order: t.order ?? null } });
+  }
+  return out({ error: 'not found', see: 'POST /join, /hello, /upload, /use; GET /themes, /theme/<slug>' }, 404);
+}
+
+==============================================================================
+=== FILE: xmas-kit/guide.md
+==============================================================================
+
+# BOBAI Xmas Terminal — "{{TITLE}}" by {{BUILDER}}
+
+You are helping **{{BUILDER}}** build **"{{TITLE}}"**: their own Xmas look for the **$BOBAI Brain Terminal** on
+https://brainonbnb.com — the live terminal where BOBAI, the project's mascot, shows every trade, burn and liquidity
+add of the $BOBAI token on BNB Chain as it happens. This folder is everything you need. Read this file once, fully;
+then work with your human the way a good teammate would: ask what they want, build it, show it, improve it.
+
+From **1 December 2026** visitors pick an Xmas terminal by its builder's name at the snowflake next to LIVE, and the
+terminal counts how many use each one, every day. Anyone may build one: people, teams, platforms.
+
+## What you build — and what stays
+
+- **You build the surroundings and your own animations:** a scene, a sky, snow, lights, decorations around the
+  stations, things that react when somebody buys or a burn happens. Your style, your idea. Nothing is given to you
+  and nothing is expected: you start from two empty pages.
+- **What always stays as it is:** BOBAI himself (his figure, moves and words), the terminal's labels, numbers, log,
+  timeline, buttons and windows. Your pages lie in layers *between* them; they cannot cover a button or take a click.
+- **The standard terminal is always one click away** for every visitor.
+
+## The two pages
+
+| file | where it lies | use it for |
+|---|---|---|
+| `theme/back.html` | behind BOBAI, over the terminal's 3D scene | the world: sky, ground, scenery, things around the stations |
+| `theme/front.html` | in front of BOBAI, under every label, button and window | an overlay: snow, sparkles, things flying by |
+
+Either one or both. Both fill the terminal's window (`100% × 100%`) and are **transparent** unless you paint. In
+`front.html` never paint a full opaque background: it is an overlay, not a wall. In `back.html` you may paint a whole
+scene; the 3D stations of the terminal are then behind it — the `layout` message tells you where each one is, so you
+can decorate them in your own way instead.
+
+Put every file you load (images, scripts, fonts, video, 3D models) inside `theme/` and load it with a relative path:
+`<img src="img/tree.webp">`, `<script src="snow.js"></script>`, `import * as THREE from './lib/three.module.min.js'`.
+
+## What the terminal tells your pages
+
+Every message arrives as `window.addEventListener('message', e => …)` with `e.data`:
+`{ bobai: 'xmas', v: 1, type: …, … }`. Ignore anything without `bobai: 'xmas'`. Positions are CSS pixels inside the
+terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
+
+```js
+{ type: 'hello', layer: 'back' | 'front', reduced: false, portrait: false, dev: true,
+  theme: { slug, title, builder },
+  stations: [ { k: 'burnA', name: 'BURN $BOBAI', color: '#ff8a1f', pct: 1 }, … ] }   // once, when the page has loaded; only the ones on screen
+
+{ type: 'layout', w: 1180, h: 760, portrait: false, dpr: 2,
+  figure: { x, y, w, h },                      // BOBAI's figure (he moves a little: it comes again when it changes)
+  ring: { x, y },                              // the next-buyback ring (the "brain" in the middle)
+  trades: { x, y },                            // where the trades come in
+  brain: { x, y, r, bots: 5 },                 // the hologram brain; its bots (the project's workers) fly on a ring of radius r around it
+  stations: { burnA: {x,y}, liq: {x,y}, creator: {x,y} },   // only the stations on screen (from 1 December these three)
+  ui: { top: {x,y,w,h}, log: {x,y,w,h}, timeline: {x,y,w,h} } }   // the terminal's own boxes: keep busy things away from them
+                                               // sent after hello, on every resize, and whenever something moved
+
+{ type: 'event', kind: 'buy' | 'sell', usd: 23.5, alert: false, ours: false }   // every trade of $BOBAI
+{ type: 'event', kind: 'buy', usd: 412, alert: true }                           // a big buy: the terminal shows a moment
+{ type: 'event', kind: 'burn', bobai_burned: 81234, … }                         // the buyback bot bought and burned $BOBAI
+{ type: 'event', kind: 'liq', bnb: 0.04, … }                                    // liquidity added to the pool (LP burned)
+{ type: 'event', kind: 'tax', usd: 30 }                                          // the token's own 3% tax swap
+{ type: 'moment', kind: 'buy' | 'burn', usd, title }                            // the terminal is showing a big moment now
+{ type: 'pose', pose: 'cheer' }       // BOBAI's move: idle, cheer, coffee, bull, saber, moon, hodl, laugh, think, shrug,
+                                      // dance, guitar, burn, liq, defi, giggle, buy-big, burn-mega, … (any name may come)
+{ type: 'mood', mood: 'pump' | 'up' | 'flat' | 'down' | 'dump', change_1h_pct: 2.4 }   // the market's last hour
+{ type: 'visible', on: false }        // the tab went out of sight: stop animating until { on: true }
+```
+
+**From 1 December 2026 the terminal has three stations plus the trades:** `burnA` (BURN $BOBAI), `liq` ($BOBAI
+liquidity, the LP burned) and `creator` (the creator wallet) — the token's 3% tax goes 1% to each, for good. `hello`
+and `layout` only ever name the stations that are on screen, so build for those three and the `trades` point; draw
+a station only when `layout.stations` has it (in November you may still see `burnB` $BOB burn, `defi` the DeFi agent
+and `giggle` the Giggle Academy pot — they end on 1 December). A theme that answers the chain — a burn that lights a
+candle at `burnA`, a big buy that rings a bell, snow that thickens when the mood pumps — is what makes it a *Brain
+Terminal* theme rather than a wallpaper.
+
+Testing events in dev: open the browser console on the dev page and run
+`__btXm.emit({ type: 'event', kind: 'burn', bobai_burned: 50000 })` (any message above works the same way).
+
+## The sandbox (what does not work, on purpose)
+
+Your pages run in a sandbox, in dev exactly as live:
+
+- **no network**: `fetch`, XHR, WebSocket, beacons and files from other sites are blocked → everything in `theme/`
+- **no `eval`, `new Function`, WebAssembly, web workers** → plain scripts and modules
+- **no cookies, `localStorage`, `sessionStorage`, IndexedDB** (they throw) → keep state in variables
+- **no sound**, no forms, no popups, no frames, no clicks (the layers take no pointer events)
+- **no talking back**: the terminal tells your pages things and listens to nothing they say
+
+`node xmas.mjs check` warns about all of this before you upload.
+
+## Fast, calm, on every screen
+
+- The terminal measures its own frame rate while a theme is on. **Under 20 fps for 8 seconds, the theme is put away
+  for that visitor** and the standard terminal stays. Phones first: test the dev page at 390 px wide (browser dev
+  tools, device mode) and on a real phone if you can.
+- Animate with `requestAnimationFrame`, CSS `transform`/`opacity`, or one `<canvas>`; cap the canvas at
+  `Math.min(devicePixelRatio, 2)`; prefer WebP images and short muted looping video; a few hundred particles, not
+  tens of thousands.
+- **Stop when `visible` says `on: false`** (and on `document.hidden`).
+- **`reduced: true`** (the visitor asked their device for less motion): keep it still or nearly still — no flashing,
+  no fast movement, no shaking. Never flash the whole screen for anyone (photosensitivity).
+- Leave BOBAI's face and the terminal's boxes (`layout.ui`, `layout.figure`) clear of busy motion in `front.html`.
+
+## Pictures and clips — made the way the BOBAI terminal makes its own
+
+The terminal's own pictures and clips are made with OpenAI's image models and Google's Veo. You can do the same, with
+**your human's own keys and credits**: they go into `.env` in this folder (`OPENAI_API_KEY=…`, `GEMINI_API_KEY=…`),
+stay on this machine and are sent only to OpenAI or Google. Never put a key into `theme/` — `check` and `upload`
+refuse any file that contains one.
+
+```
+node xmas.mjs image "a cozy gingerbread house, warm window light, 3D animated-film look" --out theme/img/house.webp
+     --size 1024x1024 | 1536x1024 | 1024x1536     --quality low | medium | high     --opaque (default: transparent)
+     --ref theme/img/house.webp   (a new picture in the same style / a frame of a small animation: "the same house, now with snow on the roof")
+     --model …  (default: the newest image model the key can use that draws what you asked; transparent needs one that supports it)
+node xmas.mjs video "snow falls slowly over a quiet pine forest at night, the camera does not move" --out theme/vid/forest.mp4
+     --ratio 16:9 | 9:16    --secs 8    --image theme/img/start.png (first frame)    --last theme/img/end.png (last frame; same as --image = a seamless loop)
+     --model veo-3.1-fast-generate-preview (default) | veo-3.1-generate-preview
+```
+
+What works well (learned on the terminal): one style for everything, written into every prompt; transparent PNG/WebP
+for things that sit on the scene; a reference picture (`--ref`) to keep a set of pictures matching; for a seamless
+looping clip give the same picture as first and last frame. A clip that must be cut out (a figure over the scene) is
+drawn on a flat green or blue screen and keyed in a `<canvas>` or a small WebGL shader — **set `video.crossOrigin = 'anonymous'`**
+(and `img.crossOrigin` for pictures you read pixels from): your pages are their own origin, and without it the canvas
+cannot read the frames; a whole backdrop in
+`back.html` needs no keying. Videos play **muted** (`<video autoplay muted loop playsinline>`): the terminal has no
+sound, and a video with sound will not start. Keep clips short and small (720p, a few MB); turn large PNGs into WebP.
+Ask your human before spending credits on many pictures or clips.
+
+## Your commands (in this folder)
+
+```
+node xmas.mjs dev       the real terminal on your machine with theme/ in it — saved = shown, it reloads by itself
+node xmas.mjs check     what the upload would refuse or what will not work, before you upload
+node xmas.mjs upload    send theme/ up; you get the preview link: {{PREVIEW}}
+node xmas.mjs status    what is up, and that it is on the switch from 1 December
+node xmas.mjs image …   a picture into theme/ with your OpenAI key (above)
+node xmas.mjs video …   a clip into theme/ with your Google key (above)
+```
+
+The dev page is the terminal as it is live, with live chain data, and your folder in it. Upload as often as you like
+(up to 120 times a day); every upload replaces the last one. The preview link always shows the newest upload.
+
+Limits: 300 files, 5 MB per file, 20 MB in all. Kinds: html, css, js/mjs, json, svg, webp, png, jpg, gif, avif, mp4,
+webm, woff/woff2, glb/gltf/bin.
+
+## How it goes live
+
+There is no review and no waiting: **every uploaded theme is on the terminal's switch from 1 December**, under its
+builder's name, with how many visitors use it today. Every upload replaces the last one.
+
+**Everyone may build one** — a builder, a team, another memecoin, a platform, an exchange. Your own name, logo or
+mascot in your theme is fine: it is your theme. The rules:
+
+- **no hate, no racism, no terror** — nothing that attacks people for who they are, nothing that glorifies violence
+  or terrorism. This is the hard line: a theme that crosses it is stopped at once.
+- **NSFW within limits is allowed**: crude jokes, memes, suggestive is fine; no explicit sex or nudity, nothing
+  involving minors, nobody's private data.
+- **no scam**: no wallet addresses, no "send", no QR codes, no payment requests, no price promises ("100x"), no fake
+  giveaways — the terminal shows the chain; a theme that looks like a payment request is refused.
+- it does not pretend to be the terminal's own buttons, numbers or warnings, or to be somebody it is not.
+- it works on a phone and a desktop and stays fast (see above).
+
+A theme can be stopped at any time, also after 1 December. Your key (`.xmas-key`) is you: whoever has it can change
+your theme. Never commit it, post it or paste it anywhere.
+
+## When your human is stuck (you fix it, they should not have to)
+
+Assume your human may have never used a terminal. Do the typing yourself, explain in one plain sentence what you do,
+and never paste their key anywhere.
+
+| what happens | what you do |
+|---|---|
+| `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
+| the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
+| "the name … is taken" | ask for another builder name (it shows on the terminal) |
+| "too many new builders from here today" | wait until tomorrow (UTC), or continue in the folder that already exists |
+| `node xmas.mjs dev`: "Port 5199 is busy" | `node xmas.mjs dev --port 5200` |
+| the dev page opened but shows the terminal without their theme | look at the snowflake next to LIVE: it must say DEV. Open exactly the address the dev command printed (http://127.0.0.1:…/?xmas-dev=1), not brainonbnb.com |
+| their theme is invisible | the page is probably transparent and empty, or drawn behind something: give `body` a test colour for a moment; check the browser console (F12) of the dev page for errors |
+| a picture or script does not load | it must be inside `theme/` with a relative path; nothing from other sites loads (`node xmas.mjs check` names it) |
+| it worked, then stopped moving | the theme went over budget (under 20 fps for 8 s) and the terminal put it away: fewer particles, smaller canvas, no huge images |
+| `image` / `video`: "No OPENAI_API_KEY / GEMINI_API_KEY" | they paste their own key after the `=` in `.env` in the folder; OpenAI keys: platform.openai.com → API keys; Google: aistudio.google.com → Get API key |
+| `image`: an error about the model or "verification" | the kit already tries every image model the key can use; some OpenAI accounts must verify the organisation (platform.openai.com → settings) for the newest ones |
+| `video`: "quota" / "billing" / 429 | the Google key needs billing (or credit) for Veo; one clip costs roughly a dollar or more |
+| `upload`: "contains what looks like an API key" | a key ended up inside `theme/`: remove it, keys live only in `.env` |
+| `upload`: 401 "unknown key" / "no key" | `.xmas-key` is missing or changed: it is in the folder the start command made; without it the theme cannot be changed (start a new one with another name) |
+| `upload`: 429 | 120 uploads a day: use the dev page for trying things, upload when it is good |
+| Windows: quotes in prompts break | use double quotes around the prompt; no line breaks inside it |
+| they want to start over | delete the files in `theme/` and build again; the name and key stay theirs |
+
+Anything else: read the error out loud to them in plain words, and look at `node xmas.mjs check`. The kit is a single
+file, `xmas.mjs`, in this folder — you may read it to see exactly what a command does.
+
+## Working with your human
+
+1. If you have not yet: run `node xmas.mjs dev` and let them see the empty terminal.
+2. Ask what they imagine: the mood, the colours, what should happen when someone buys or a burn hits. Offer two or
+   three directions if they are unsure.
+3. Build in small steps; after each one, they look at the dev page.
+4. Before you call it done: `node xmas.mjs check`, a phone-width look, the console free of errors, and one test of each
+   event (above). Then `node xmas.mjs upload` and give them the preview link.
+
+The terminal's own colours, if you want to match or contrast: gold `#F0B90B`, night `#0b090a`, the stations
+`#ff8a1f` `#ffc247` `#2ee6c8` `#60a5fa` `#f472b6` `#c9b8a8`. Use them or don't.
+
+Questions, ideas, bugs in the kit: the Brain Board, https://brainonbnb.com/board · the kit: https://brainonbnb.com/xmas
+
+==============================================================================
+=== FILE: xmas-kit/package.json
+==============================================================================
+
+{
+  "name": "bobai-xmas-kit",
+  "version": "1.0.0",
+  "description": "Build your own Xmas look for the $BOBAI Brain Terminal on BNB Chain: one command, your own agent, a live sandbox.",
+  "type": "module",
+  "bin": { "bobai-xmas": "xmas.mjs" },
+  "files": ["xmas.mjs", "guide.md", "template"],
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
+
+==============================================================================
+=== FILE: xmas-kit/template/back.html
+==============================================================================
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>back</title>
+<style>
+  /* back.html lies BEHIND BOBAI, over the terminal's 3D scene. Keep the page transparent where the scene should show. */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+  // The terminal tells this page what happens. Nothing here can reach the terminal, and it needs nothing back.
+  // Every message: { bobai: 'xmas', v: 1, type, ... } — the guide (AGENTS.md) lists them all.
+  let L = null; // the latest layout: where BOBAI, the stations and the terminal's own boxes are
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'layout') L = m;
+    // m.type: hello | layout | event | moment | pose | mood | visible
+  });
+</script>
+</body>
+</html>
+
+==============================================================================
+=== FILE: xmas-kit/template/front.html
+==============================================================================
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>front</title>
+<style>
+  /* front.html lies IN FRONT OF BOBAI, under the terminal's labels, buttons and windows. Transparent, always:
+     it is an overlay (snow, lights, things that fly by), never a wall. */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+  let L = null;
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'layout') L = m;
+  });
+</script>
+</body>
+</html>
+
+==============================================================================
+=== FILE: xmas-kit/xmas.mjs
+==============================================================================
+
+#!/usr/bin/env node
+// BOBAI Xmas Terminal kit — build your own Xmas look for the $BOBAI Brain Terminal (https://brainonbnb.com).
+// No dependencies. Node 18 or newer.
+//
+//   npx https://brainonbnb.com/xmas/kit.tgz                     start: asks the terminal's name and the builder, makes your folder
+//   npx https://brainonbnb.com/xmas/kit.tgz --title "Frosty Brain" --builder "your_name"   the same without questions (for agents)
+//   node xmas.mjs dev        the real terminal on your machine with your folder in it; saved = shown
+//   node xmas.mjs check      what the upload would refuse, before you upload
+//   node xmas.mjs upload     your theme/ folder goes up; you get a preview link anyone can open
+//   node xmas.mjs status     what is uploaded, and that it is on the switch from 1 December
+//   node xmas.mjs image "<prompt>" --out theme/img/tree.webp      a picture with YOUR OpenAI key (OPENAI_API_KEY in .env)
+//   node xmas.mjs video "<prompt>" --out theme/vid/sky.mp4        a clip with YOUR Google key (GEMINI_API_KEY in .env, Veo)
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import readline from 'node:readline';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const API = process.env.BOBAI_XMAS_API || 'https://bobai-xmas.bobbuildonbnb.workers.dev';
+const SANDBOX = process.env.BOBAI_XMAS_SANDBOX || 'https://xmas.bobai-dashboard.pages.dev';
+const SITE = 'https://brainonbnb.com';
+const LIMITS = { files: 300, fileBytes: 5 * 1024 * 1024, totalBytes: 20 * 1024 * 1024 };
+const TYPES = { html: 'text/html; charset=utf-8', htm: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', mjs: 'text/javascript; charset=utf-8',
+  json: 'application/json; charset=utf-8', txt: 'text/plain; charset=utf-8', svg: 'image/svg+xml', webp: 'image/webp', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  avif: 'image/avif', mp4: 'video/mp4', webm: 'video/webm', woff2: 'font/woff2', woff: 'font/woff', glb: 'model/gltf-binary', gltf: 'model/gltf+json', bin: 'application/octet-stream' };
+// the same rules the live terminal serves your files with: try it here, it behaves there
+const THEME_CSP = "sandbox allow-scripts; default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const flag = (n) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : null; };
+const has = (n) => args.includes('--' + n);
+const cmd = args[0] && !args[0].startsWith('--') ? args[0] : null;
+const say = (...a) => console.log(...a);
+const die = (m) => { console.error('\n  ' + m + '\n'); process.exit(1); };
+const slugOf = (name) => { const s = String(name || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24); return s.length >= 2 ? s : null; };
+
+function project() {
+  let d = process.cwd();
+  for (let i = 0; i < 6; i++) { if (fs.existsSync(path.join(d, 'xmas.json'))) return d; const up = path.dirname(d); if (up === d) break; d = up; }
+  return null;
+}
+function readProject(dir) {
+  const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'xmas.json'), 'utf8'));
+  const key = fs.existsSync(path.join(dir, '.xmas-key')) ? fs.readFileSync(path.join(dir, '.xmas-key'), 'utf8').trim() : null;
+  return { cfg, key, theme: path.join(dir, 'theme') };
+}
+async function api(p, body, key) {
+  const r = await fetch(API + p, { method: body === undefined ? 'GET' : 'POST', headers: { 'content-type': 'application/json', ...(key ? { 'x-xmas-key': key } : {}), 'user-agent': 'bobai-xmas-kit/1' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'the workshop answered ' + r.status);
+  return j;
+}
+const ask = (q) => new Promise((res) => { const rl = readline.createInterface({ input: process.stdin, output: process.stdout }); rl.question(q, (a) => { rl.close(); res(a.trim()); }); });
+
+// ---------------------------------------------------------------- start
+async function init() {
+  let title = flag('title'), builder = flag('builder');
+  const tty = process.stdin.isTTY && process.stdout.isTTY;
+  say('\n  🎄  BOBAI Xmas Terminal kit\n  You build the Xmas look of the $BOBAI Brain Terminal: the surroundings and your own animations.\n  BOBAI himself and the standard terminal stay as they are.\n');
+  if (!title || !builder) {
+    if (!tty) die('Two answers are needed — ask your human, then run again with them:\n    --title "<what the terminal is called>"  --builder "<the builder\'s name as it shows>"');
+    if (!title) title = await ask('  What should your terminal be called?  ');
+    if (!builder) builder = await ask('  Who is the builder (your name as it shows on the terminal)?  ');
+  }
+  if (!slugOf(builder)) die('The builder name needs at least two letters or digits.');
+  const dir = path.resolve(flag('dir') || 'bobai-xmas-' + slugOf(builder));
+  if (fs.existsSync(path.join(dir, 'xmas.json'))) die(`${dir} is a kit folder already: cd into it and run  node xmas.mjs dev`);
+  say('  Joining the workshop…');
+  let j; try { j = await api('/join', { title, builder }); } catch (e) { die(e.message); }
+  fs.mkdirSync(path.join(dir, 'theme'), { recursive: true });
+  for (const f of ['back.html', 'front.html']) fs.copyFileSync(path.join(HERE, 'template', f), path.join(dir, 'theme', f));
+  fs.copyFileSync(fileURLToPath(import.meta.url), path.join(dir, 'xmas.mjs'));
+  const guide = fs.readFileSync(path.join(HERE, 'guide.md'), 'utf8').replaceAll('{{TITLE}}', j.title).replaceAll('{{BUILDER}}', j.builder).replaceAll('{{SLUG}}', j.slug).replaceAll('{{PREVIEW}}', j.preview);
+  // every agent reads its own file first: the same guide in each
+  for (const f of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', '.cursorrules', path.join('.github', 'copilot-instructions.md')]) { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.writeFileSync(path.join(dir, f), guide); }
+  fs.writeFileSync(path.join(dir, 'xmas.json'), JSON.stringify({ title: j.title, builder: j.builder, slug: j.slug, preview: j.preview, api: API, sandbox: SANDBOX }, null, 2) + '\n');
+  fs.writeFileSync(path.join(dir, '.xmas-key'), j.key + '\n', { mode: 0o600 });
+  fs.writeFileSync(path.join(dir, '.gitignore'), '.xmas-key\n.env\nnode_modules\n');
+  fs.writeFileSync(path.join(dir, '.env'), '# Your own AI keys, for: node xmas.mjs image / video. They stay on this machine (never uploaded).\nOPENAI_API_KEY=\nGEMINI_API_KEY=\n');
+  say(`\n  ✅  "${j.title}" by ${j.builder} — your folder: ${dir}\n`);
+  say('  Next, in that folder:');
+  say('    node xmas.mjs dev       the real terminal with your theme in it (saved = shown)');
+  say('    node xmas.mjs upload    send it up; you get a preview link to share');
+  say('\n  Building with an AI agent (Claude Code, Codex, Cursor, Gemini…)? Open the folder with it:');
+  say(`    cd "${path.relative(process.cwd(), dir) || '.'}"  &&  claude      — it reads CLAUDE.md / AGENTS.md and knows the rest.`);
+  say('\n  Your key is in .xmas-key: it is you. Never share it or post it.\n');
+}
+
+// ---------------------------------------------------------------- the theme folder
+function walk(root) {
+  const out = [];
+  const go = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.name.startsWith('.')) continue; const p = path.join(d, e.name); if (e.isDirectory()) go(p); else if (e.isFile()) out.push(p); } };
+  if (fs.existsSync(root)) go(root);
+  return out;
+}
+function checkTheme(root) {
+  const files = walk(root), problems = [], warnings = [];
+  let total = 0;
+  const rels = files.map((f) => path.relative(root, f).split(path.sep).join('/'));
+  if (!rels.includes('back.html') && !rels.includes('front.html')) problems.push('theme/ needs back.html (behind BOBAI) or front.html (in front of him)');
+  if (files.length > LIMITS.files) problems.push(`${files.length} files; at most ${LIMITS.files}`);
+  files.forEach((f, i) => {
+    const rel = rels[i], ext = (rel.match(/\.([A-Za-z0-9]+)$/) || [])[1]?.toLowerCase(), size = fs.statSync(f).size;
+    total += size;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,119}$/.test(rel)) problems.push(`${rel}: use letters, digits, . _ - and / in file names`);
+    if (!ext || !TYPES[ext]) problems.push(`${rel}: .${ext || '?'} is not served (html, css, js, json, images, video, fonts, glb)`);
+    if (size > LIMITS.fileBytes) problems.push(`${rel}: ${(size / 1048576).toFixed(1)} MB; one file at most 5 MB`);
+    if (/\.(html?|css|m?js)$/i.test(rel)) {
+      const t = fs.readFileSync(f, 'utf8');
+      const ext2 = t.match(/(?:src|href)\s*=\s*["']\s*(https?:)?\/\/[^"']+|url\(\s*["']?(https?:)?\/\//gi);
+      if (ext2) warnings.push(`${rel}: loads from another site (${ext2[0].slice(0, 60)}…) — the terminal blocks it; put the file in theme/`);
+      if (/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon/.test(t)) warnings.push(`${rel}: calls out (fetch/XHR/WebSocket) — blocked on the terminal; everything must be in theme/`);
+      if (/\beval\s*\(|new\s+Function\s*\(|WebAssembly/.test(t)) warnings.push(`${rel}: eval / new Function / WebAssembly — blocked on the terminal`);
+      if (/<audio|new\s+Audio\s*\(|AudioContext/.test(t)) warnings.push(`${rel}: sound — the terminal has none; it will not play`);
+      if (/localStorage|sessionStorage|indexedDB|document\.cookie/.test(t)) warnings.push(`${rel}: storage/cookies — not available in the sandbox (it throws); keep state in variables`);
+    }
+  });
+  if (total > LIMITS.totalBytes) problems.push(`${(total / 1048576).toFixed(1)} MB in all; at most 20 MB`);
+  // NEVER A KEY IN AN UPLOAD: an API key (OpenAI, Google, any sk-/AIza- form) or the kit's own key in a file of theme/
+  // stops the upload — whatever is uploaded can be read by anyone with the preview link
+  const own = (() => { try { return fs.readFileSync(path.join(path.dirname(root), '.xmas-key'), 'utf8').trim(); } catch { return null; } })();
+  files.forEach((f, i) => {
+    if (!/\.(html?|css|m?js|json|txt|svg|gltf)$/i.test(rels[i])) return;
+    const t = fs.readFileSync(f, 'utf8');
+    if (/\bsk-(proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}|\bAIza[0-9A-Za-z_-]{30,}|\bxk_[A-Za-z0-9]{32}\b|OPENAI_API_KEY\s*=\s*\S|GEMINI_API_KEY\s*=\s*\S/.test(t) || (own && t.includes(own)))
+      problems.push(`${rels[i]}: contains what looks like an API key or your .xmas-key — never upload a key; keys stay in .env`);
+  });
+  return { files, rels, total, problems, warnings };
+}
+
+async function check(dir) {
+  const { theme } = readProject(dir), c = checkTheme(theme);
+  say(`\n  theme/: ${c.files.length} files, ${(c.total / 1024).toFixed(0)} KB`);
+  for (const w of c.warnings) say('  ⚠  ' + w);
+  for (const p of c.problems) say('  ✗  ' + p);
+  if (!c.problems.length) say('  ✓  ready to upload');
+  say('');
+  return c;
+}
+
+async function upload(dir) {
+  const { cfg, key, theme } = readProject(dir);
+  if (!key) die('No .xmas-key in this folder. Run the start command again in a new folder, or put your key back.');
+  const c = await check(dir); if (c.problems.length) die('Not uploaded: fix the ✗ lines first.');
+  say('  Uploading…');
+  const files = c.files.map((f, i) => ({ path: c.rels[i], b64: fs.readFileSync(f).toString('base64') }));
+  let j; try { j = await api('/upload', { files, title: has('title') ? flag('title') : undefined }, key); } catch (e) { die(e.message); }
+  say(`\n  ✅  version ${j.ver} is up (${j.files} files, ${(j.bytes / 1024).toFixed(0)} KB)\n  Preview, anyone can open it:  ${j.preview}\n  ${j.note}\n`);
+}
+
+async function status(dir) {
+  const { key } = readProject(dir);
+  let j; try { j = await api('/hello', {}, key); } catch (e) { die(e.message); }
+  const t = j.theme;
+  say(`\n  "${t.title}" by ${t.builder}\n  uploaded: ${t.ver ? 'version ' + t.ver + ', ' + t.updated : 'nothing yet'}\n  on the terminal's switch from 1 December: ${t.live ? 'yes, under your name' : t.ver ? 'no (stopped by the operator)' : 'after your first upload'}\n  preview: ${t.preview}\n`);
+}
+
+// ---------------------------------------------------------------- dev: the sandbox page, mirrored, with your folder in it
+async function dev(dir) {
+  const { cfg, theme } = readProject(dir);
+  const port = Number(flag('port')) || 5199;
+  const EMPTY = '<!doctype html><meta charset="utf-8"><title></title>';
+  let ver = 0, sig = '';
+  const scan = () => { try { const s = walk(theme).map((f) => { const st = fs.statSync(f); return f + st.size + ':' + st.mtimeMs; }).join('|'); if (s !== sig) { sig = s; ver++; } } catch {} };
+  scan(); setInterval(scan, 600);
+  const server = http.createServer(async (req, res) => {
+    try {
+      const u = new URL(req.url, 'http://127.0.0.1');
+      if (u.pathname.startsWith('/__theme/')) {
+        if (u.pathname === '/__theme/__version') { res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' }); return res.end(String(ver)); }
+        const rel = decodeURIComponent(u.pathname.slice('/__theme/'.length));
+        const file = path.resolve(theme, rel);
+        if (!file.startsWith(path.resolve(theme) + path.sep)) { res.writeHead(404); return res.end(); }
+        const ext = (rel.match(/\.([A-Za-z0-9]+)$/) || [])[1]?.toLowerCase();
+        const headers = { 'content-security-policy': THEME_CSP, 'x-content-type-options': 'nosniff', 'cache-control': 'no-store', 'access-control-allow-origin': '*' }; // as live: a canvas may read a video or picture loaded with crossOrigin
+        if (!fs.existsSync(file)) { if (/^(back|front)\.html$/.test(rel)) { res.writeHead(200, { ...headers, 'content-type': TYPES.html }); return res.end(EMPTY); } res.writeHead(404, headers); return res.end(); }
+        if (!ext || !TYPES[ext]) { res.writeHead(415, headers); return res.end('not a kind of file the terminal serves'); }
+        res.writeHead(200, { ...headers, 'content-type': TYPES[ext] }); return res.end(fs.readFileSync(file));
+      }
+      // everything else: the sandbox page itself, fetched for you
+      const body = ['GET', 'HEAD'].includes(req.method) ? undefined : await new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
+      const up = await fetch(SANDBOX + u.pathname + u.search, { method: req.method, redirect: 'manual', body, headers: { accept: req.headers.accept || '*/*', 'content-type': req.headers['content-type'] || '', 'user-agent': 'bobai-xmas-kit-dev/1' } });
+      const h = {};
+      up.headers.forEach((v, k) => { if (!['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'strict-transport-security', 'alt-svc'].includes(k)) h[k] = v; });
+      if (h['content-security-policy']) h['content-security-policy'] = h['content-security-policy'].replace(/;\s*upgrade-insecure-requests/g, '');
+      if (h.location) h.location = h.location.replace(SANDBOX, `http://127.0.0.1:${port}`);
+      res.writeHead(up.status, h); res.end(Buffer.from(await up.arrayBuffer()));
+    } catch (e) { res.writeHead(502, { 'content-type': 'text/plain' }); res.end('the sandbox page could not be reached: ' + e.message); }
+  });
+  server.listen(port, '127.0.0.1', () => {
+    const url = `http://127.0.0.1:${port}/?xmas-dev=1`;
+    say(`\n  🎄  "${cfg.title}" by ${cfg.builder} — dev\n  Open:  ${url}\n  Your folder theme/ is in the terminal; save a file and it shows. Ctrl+C stops.\n`);
+    if (!has('no-open')) { const o = process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]]; try { spawn(o[0], o[1], { stdio: 'ignore', detached: true }).unref(); } catch {} }
+  });
+  server.on('error', (e) => die(e.code === 'EADDRINUSE' ? `Port ${port} is busy: node xmas.mjs dev --port ${port + 1}` : e.message));
+}
+
+// ---------------------------------------------------------------- pictures and clips, with the builder's own keys
+// The same way the BOBAI terminal's own pictures and clips are made: OpenAI's image models (transparent PNG/WebP, a
+// reference picture for a matching set) and Google's Veo (a clip from a prompt, optionally from a first and a last
+// frame). Your keys, your credits: they are read from .env in this folder (or the environment) and sent only to OpenAI
+// or Google — never to the terminal, never into theme/.
+function env(name) {
+  if (process.env[name]) return process.env[name];
+  const dir = project(); if (!dir) return null;
+  try { for (const l of fs.readFileSync(path.join(dir, '.env'), 'utf8').split(/\r?\n/)) { const m = l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/); if (m && m[1] === name) return m[2].replace(/^["']|["']$/g, ''); } } catch {}
+  return null;
+}
+const promptArg = () => args.slice(1).find((a, i, all) => !a.startsWith('--') && !(i > 0 && all[i - 1].startsWith('--')));
+function outPath(dir, def) {
+  const o = path.resolve(dir, flag('out') || def);
+  if (!o.startsWith(path.join(dir, 'theme') + path.sep)) die('--out must be inside theme/ (e.g. --out theme/img/tree.webp)');
+  fs.mkdirSync(path.dirname(o), { recursive: true });
+  return o;
+}
+async function image(dir) {
+  const key = env('OPENAI_API_KEY'); if (!key) die('No OPENAI_API_KEY: put a line OPENAI_API_KEY=sk-… into .env in this folder (your own key, your credits).');
+  const prompt = promptArg(); if (!prompt) die('node xmas.mjs image "<what to draw>" --out theme/img/name.webp [--size 1024x1024|1536x1024|1024x1536] [--quality low|medium|high] [--opaque] [--ref theme/img/other.png] [--model …]');
+  const out = outPath(dir, 'theme/img/image-' + Date.now() + '.webp');
+  const fmt = /\.png$/i.test(out) ? 'png' : /\.jpe?g$/i.test(out) ? 'jpeg' : 'webp';
+  const opaque = has('opaque') || fmt === 'jpeg', size = flag('size') || '1024x1024', quality = flag('quality') || 'medium';
+  const ref = flag('ref');
+  // WHICH MODEL (learned 2026-11-17 on our own theme: gpt-image-2 refuses a transparent background, gpt-image-1 is gone):
+  // the models this key can use, newest first, each tried until one draws it — or the one the builder names
+  let models = flag('model') ? [flag('model')] : env('OPENAI_IMAGE_MODEL') ? [env('OPENAI_IMAGE_MODEL')] : null;
+  if (!models) {
+    const ver = (id) => (id.match(/gpt-image-(\d+(?:\.\d+)?)/) || [])[1] * 1 || 0;
+    try { const l = await (await fetch('https://api.openai.com/v1/models', { headers: { Authorization: 'Bearer ' + key } })).json();
+      models = (l.data || []).map((m) => m.id).filter((id) => /^gpt-image-[\d.]+(-[a-z]+)?$/.test(id)).sort((a, b) => ver(b) - ver(a) || a.localeCompare(b)); } catch {}
+    if (!models?.length) models = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1-mini'];
+  }
+  for (const model of [...new Set(models)]) {
+    say(`  ${model} · ${size} · ${quality}${opaque ? '' : ' · transparent'}${ref ? ' · from ' + ref : ''} …`);
+    let r;
+    if (ref) {
+      const fd = new FormData(); fd.append('model', model); fd.append('prompt', prompt); fd.append('size', size); fd.append('quality', quality);
+      fd.append('background', opaque ? 'opaque' : 'transparent'); fd.append('output_format', fmt); fd.append('n', '1');
+      fd.append('image[]', new Blob([fs.readFileSync(path.resolve(dir, ref))], { type: /\.webp$/i.test(ref) ? 'image/webp' : /\.jpe?g$/i.test(ref) ? 'image/jpeg' : 'image/png' }), path.basename(ref));
+      r = await fetch('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd });
+    } else {
+      r = await fetch('https://api.openai.com/v1/images/generations', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'content-type': 'application/json' },
+        body: JSON.stringify({ model, prompt, size, quality, background: opaque ? 'opaque' : 'transparent', output_format: fmt, n: 1 }) });
+    }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.data?.[0]?.b64_json) { fs.writeFileSync(out, Buffer.from(j.data[0].b64_json, 'base64')); return say(`  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB)`); }
+    const msg = j.error?.message || 'OpenAI answered ' + r.status;
+    if (models.length > 1 && /model|transparent|background|not supported|verif/i.test(msg) && model !== models[models.length - 1]) { say('  ' + msg + ' — trying the next model'); continue; }
+    die(msg);
+  }
+}
+async function video(dir) {
+  const key = env('GEMINI_API_KEY'); if (!key) die('No GEMINI_API_KEY: put a line GEMINI_API_KEY=AIza… into .env in this folder (your own Google AI Studio key, your credits).');
+  const prompt = promptArg(); if (!prompt) die('node xmas.mjs video "<what happens>" --out theme/vid/name.mp4 [--image first.png] [--last last.png] [--ratio 16:9|9:16] [--secs 8] [--model veo-3.1-fast-generate-preview]');
+  const out = outPath(dir, 'theme/vid/video-' + Date.now() + '.mp4');
+  const API = 'https://generativelanguage.googleapis.com/v1beta';
+  // WHICH MODEL (learned 2026-11-17: the Veo 3.1 previews are gone; Google's video now comes from Gemini Omni through
+  // /interactions): the models this key can use — the newest Gemini Omni first, a Veo model if one is still served
+  let model = flag('model') || env('VEO_MODEL');
+  if (!model) {
+    let all = [], tok = '';
+    try { do { const j = await (await fetch(`${API}/models?pageSize=100${tok ? '&pageToken=' + tok : ''}`, { headers: { 'x-goog-api-key': key } })).json(); all = all.concat(j.models || []); tok = j.nextPageToken || ''; } while (tok); } catch {}
+    const ids = all.map((m) => ({ id: m.name.replace(/^models\//, ''), lr: (m.supportedGenerationMethods || []).includes('predictLongRunning') }));
+    const ver = (id) => parseFloat((id.match(/(\d+(?:\.\d+)?)/) || [])[1]) || 0;
+    const omni = ids.filter((m) => /^gemini-omni-[\d.]+-flash$/.test(m.id)).sort((a, b) => ver(b.id) - ver(a.id))[0] || ids.find((m) => /^gemini-omni/.test(m.id));
+    const veo = ids.filter((m) => /^veo-/.test(m.id) && m.lr).sort((a, b) => ver(b.id) - ver(a.id))[0];
+    model = omni?.id || veo?.id || 'gemini-omni-1.1-flash';
+  }
+  if (/^gemini-omni/.test(model)) return omniVideo(key, model, out, prompt, dir);
+  const img = (p) => ({ bytesBase64Encoded: fs.readFileSync(path.resolve(dir, p)).toString('base64'), mimeType: /\.jpe?g$/i.test(p) ? 'image/jpeg' : /\.webp$/i.test(p) ? 'image/webp' : 'image/png' });
+  const inst = { prompt, ...(flag('image') ? { image: img(flag('image')) } : {}), ...(flag('last') ? { lastFrame: img(flag('last')) } : {}) };
+  const body = { instances: [inst], parameters: { aspectRatio: flag('ratio') || '16:9', durationSeconds: Number(flag('secs')) || 8, resolution: '720p' } };
+  say(`  ${model} · ${body.parameters.aspectRatio} · ${body.parameters.durationSeconds} s … (a clip takes one to a few minutes)`);
+  const r = await fetch(`${API}/models/${model}:predictLongRunning`, { method: 'POST', headers: { 'x-goog-api-key': key, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) die(j.error?.message || 'Google answered ' + r.status);
+  let s;
+  for (;;) { await new Promise((ok) => setTimeout(ok, 10000)); s = await (await fetch(`${API}/${j.name}`, { headers: { 'x-goog-api-key': key } })).json().catch(() => ({})); if (s.error) die(s.error.message || 'Veo failed'); if (s.done) break; process.stdout.write('.'); }
+  const uri = s.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri;
+  if (!uri) die('Veo returned no clip (filtered?): ' + JSON.stringify(s.response || {}).slice(0, 300));
+  const v = await fetch(uri, { headers: { 'x-goog-api-key': key }, redirect: 'follow' });
+  fs.writeFileSync(out, Buffer.from(await v.arrayBuffer()));
+  say(`\n  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB) — Veo clips have sound: the terminal plays every video muted`);
+}
+
+// Gemini Omni: one request to /interactions (a first and a last image, the prompt, "a video"), asked again until the
+// clip is there, then the file downloaded — the same way the BOBAI terminal's own clips are made since 25 Oct 2026
+async function omniVideo(key, model, out, prompt, dir) {
+  const API = 'https://generativelanguage.googleapis.com/v1beta', H = { 'x-goog-api-key': key, 'content-type': 'application/json' };
+  const ratio = flag('ratio') || '16:9', secs = Number(flag('secs')) || 8;
+  const im = (p) => ({ type: 'image', data: fs.readFileSync(path.resolve(dir, p)).toString('base64'), mime_type: /\.jpe?g$/i.test(p) ? 'image/jpeg' : /\.webp$/i.test(p) ? 'image/webp' : 'image/png' });
+  const input = [...(flag('image') ? [im(flag('image'))] : []), ...(flag('last') ? [im(flag('last'))] : []),
+    { type: 'text', text: prompt + ` The clip is exactly ${secs} seconds long${flag('image') && flag('last') ? '; it starts on the first image and ends exactly on the second image' : ''}. No audio needed.` }];
+  say(`  ${model} · ${ratio} · ${secs} s … (a clip takes one to a few minutes)`);
+  const r = await fetch(`${API}/interactions`, { method: 'POST', headers: H, body: JSON.stringify({ model, input, response_format: { type: 'video', aspect_ratio: ratio, resolution: '720p', delivery: 'uri' } }) });
+  let j = await r.json().catch(() => ({})); if (!r.ok) die(j.error?.message || 'Google answered ' + r.status);
+  const find = (o, pred) => { if (o && typeof o === 'object') for (const [k, v] of Object.entries(o)) { if (pred(k, v)) return v; const f = find(v, pred); if (f) return f; } return null; };
+  const uriOf = (o) => find(o, (k, v) => k === 'uri' && typeof v === 'string' && v.includes('/files/')), dataOf = (o) => find(o, (k, v) => k === 'data' && typeof v === 'string' && v.length > 100000);
+  const id = j.id || j.name;
+  for (let i = 0; i < 120 && !uriOf(j) && !dataOf(j); i++) {
+    if (/fail|cancel|error/i.test(String(j.status || j.state || ''))) die('the clip failed: ' + JSON.stringify(j).slice(0, 300));
+    await new Promise((ok) => setTimeout(ok, 10000)); process.stdout.write('.');
+    try { j = await (await fetch(`${API}/interactions/${id}`, { headers: H })).json(); } catch {}
+  }
+  const uri = uriOf(j);
+  if (uri) {
+    const fid = uri.split('/files/')[1].split(/[:?]/)[0];
+    for (let i = 0; i < 120; i++) { let f = {}; try { f = await (await fetch(`${API}/files/${fid}`, { headers: H })).json(); } catch {} if (f.state === 'ACTIVE') break; if (f.state === 'FAILED') die('the clip file failed'); await new Promise((ok) => setTimeout(ok, 10000)); }
+    const v = await fetch(`${API}/files/${fid}:download?alt=media`, { headers: H, redirect: 'follow' });
+    fs.writeFileSync(out, Buffer.from(await v.arrayBuffer()));
+  } else if (dataOf(j)) fs.writeFileSync(out, Buffer.from(dataOf(j), 'base64'));
+  else die('no clip came back (filtered?): ' + JSON.stringify(j).slice(0, 300));
+  say(`\n  ✅  ${path.relative(dir, out)} (${(fs.statSync(out).size / 1024).toFixed(0)} KB) — the terminal plays every video muted`);
+}
+
+// ---------------------------------------------------------------- which
+const dir = project();
+if (!cmd && !dir) await init();
+else if (!dir) die('Run this inside your kit folder (the one with xmas.json), or start a new one:  npx https://brainonbnb.com/xmas/kit.tgz');
+else if (cmd === 'dev') await dev(dir);
+else if (cmd === 'check') { const c = await check(dir); process.exit(c.problems.length ? 1 : 0); }
+else if (cmd === 'upload') await upload(dir);
+else if (cmd === 'status') await status(dir);
+else if (cmd === 'image') await image(dir);
+else if (cmd === 'video') await video(dir);
+else say('\n  node xmas.mjs dev | check | upload | status | image | video   — the guide for you and your agent: AGENTS.md\n');
+
+==============================================================================
+=== FILE: xmas-themes/bobai-xmas-mmx_qq/theme/back.html
+==============================================================================
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBAI Builds Xmas on BNB — back</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  /* Christmas on BNB Chain: a tree of golden blocks behind BOBAI, the elves decorating it */
+  /* the night sky, and in it the picture: wide, the whole of it at the bottom, melting upward into the sky; tall (a phone), filling it */
+  #sky { position: absolute; inset: 0; background: linear-gradient(#060a1a, #0d1931); opacity: 0;
+    transition: opacity 1.8s ease, filter 6s ease; -webkit-mask-image: var(--hole, none); mask-image: var(--hole, none); }
+  #pic { position: absolute; left: 0; right: 0; bottom: 0; height: var(--picH, 66%); background: url(img/back-wide.webp) center bottom / cover no-repeat;
+    -webkit-mask-image: linear-gradient(transparent 0, #000 22%); mask-image: linear-gradient(transparent 0, #000 22%); }
+  body.tall #pic { top: 0; height: auto; background-image: url(img/back-tall.webp); -webkit-mask-image: none; mask-image: none; }
+  #sky.in { opacity: .93; }
+  body.pump #sky { filter: saturate(1.25) brightness(1.12); }
+  body.up #sky { filter: saturate(1.1) brightness(1.05); }
+  body.down #sky, body.dump #sky { filter: saturate(.9) brightness(.95); }
+  /* the snow under his feet */
+  #ground { position: absolute; left: 0; top: 0; opacity: 0; transition: opacity 1.4s ease; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .4)); }
+  #ground.in { opacity: 1; }
+  /* the stations and the Santa girl */
+  .p { position: absolute; left: 0; top: 0; height: var(--h, 90px); opacity: 0; transition: opacity 1.4s ease; will-change: transform; }
+  .p.in { opacity: 1; }
+  .p img { height: 100%; width: auto; display: block; transform-origin: 50% 90%; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .45));
+    animation: var(--anim, bob) var(--t, 5s) ease-in-out infinite; animation-delay: var(--d, 0s); }
+  .p canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
+  .p.vid img { visibility: hidden; }
+  .p.vid canvas { display: block; }
+  .p i { position: absolute; inset: -22% -28%; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent 70%); opacity: 0; transition: opacity .5s ease; }
+  .p.hot i { opacity: .7; }
+  .p.hot img { animation: hop 1s ease; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4%) rotate(1.5deg); } }
+  @keyframes still { 0%, 100% { transform: none; } }
+  @keyframes hop { 0% { transform: scale(1); } 30% { transform: scale(1.15) translateY(-9%); } 60% { transform: scale(.96); } 100% { transform: scale(1); } }
+  /* the builder elves: the bots, flying their ring round the hologram brain with a block each */
+  .e { position: absolute; left: 0; top: 0; height: var(--eh, 40px); opacity: 0; transition: opacity 1.2s ease; filter: drop-shadow(0 0 6px rgba(255, 210, 90, .8)); will-change: transform; }
+  .e.in { opacity: 1; }
+  /* the sleigh: across the sky on a big buy, and now and then just so */
+  #sleigh { position: absolute; left: 0; top: 0; width: var(--sw, 260px); opacity: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
+  #sleigh.go { animation: fly var(--ft, 5s) cubic-bezier(.45, .05, .55, .95) forwards; }
+  @keyframes fly { 0% { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(-4deg); } 10% { opacity: 1; }
+    50% { transform: translate(calc((var(--x0) + var(--x1)) / 2), var(--ym)) rotate(3deg); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(-3deg); } }
+  /* the tree's own lights, twinkling over the picture */
+  #tw { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* little scenes: a delivery elf, a warm word, hearts, a shooting star */
+  .fly { position: absolute; left: 0; top: 0; height: var(--eh, 42px); filter: drop-shadow(0 0 8px rgba(255, 215, 100, .9)); will-change: transform; transition: opacity .6s ease; }
+  .say { position: absolute; left: 0; top: 0; max-width: 190px; padding: 7px 12px; border-radius: 16px 16px 16px 4px; background: #fffaf0; color: #5a2a14;
+    font: 700 13px/1.25 'Trebuchet MS', 'Segoe UI', sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); opacity: 0; transform: translateY(8px) scale(.9); transform-origin: 0 100%;
+    transition: opacity .45s ease, transform .45s cubic-bezier(.3, 1.6, .5, 1); white-space: normal; }
+  .say.in { opacity: 1; transform: none; }
+  .say.r { border-radius: 16px 16px 4px 16px; transform-origin: 100% 100%; }
+  .heart { position: absolute; left: 0; top: 0; font-size: 18px; color: #ff4f87; text-shadow: 0 0 8px rgba(255, 90, 140, .8); animation: up 2.6s ease-out forwards; }
+  @keyframes up { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 0px), -120px) scale(1.2); } }
+  .shoot { position: absolute; left: 0; top: 0; width: 140px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 200, 0), #fff6d8); border-radius: 2px;
+    box-shadow: 0 0 10px #fff2b0; transform-origin: 100% 50%; animation: shoot 1.3s ease-in forwards; }
+  @keyframes shoot { 0% { opacity: 0; transform: translate(var(--sx), var(--sy)) rotate(18deg) scaleX(.2); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(var(--sx) + 420px), calc(var(--sy) + 140px)) rotate(18deg) scaleX(1); } }
+  body.calm .p img, body.calm .p.hot img { animation: none; }
+  body.calm #sleigh { display: none; }
+  body.off * { animation-play-state: paused !important; }
+</style>
+</head>
+<body>
+<div id="sky"><div id="pic"></div><canvas id="tw"></canvas></div>
+<img id="ground" alt="" src="img/ground.webp">
+<img id="sleigh" alt="" src="img/sleigh.webp">
+<script>
+  // BOBAI builds Xmas by mmx_QQ — Christmas on BNB Chain: building and decorating, one block at a time.
+  // From 1 Dec the terminal has three stations and the trades. Each gets its own little thing; the Santa girl waves at the creator.
+  const P = {
+    burnA:   { img: 'st-burn',    c: 'rgba(255,150,50,.9)',  k: 1,    side: 'left' },  // the block stove: $BOBAI burned
+    liq:     { img: 'st-liq',     c: 'rgba(255,215,120,.9)', k: 1,    side: 'left' },  // the cocoa fountain: liquidity poured
+    creator: { img: 'st-creator', c: 'rgba(255,120,120,.85)', k: 0.95, side: 'left' }, // the gift table: the creator's share
+    santa:   { img: 'girl-santa', c: 'rgba(255,90,130,.8)',  k: 1.25, anim: 'still', vid: 'vid/santa.mp4', at: 'creator' }, // she waves, winks, blows a kiss
+    trades:  { img: 'santa-bobai', c: 'rgba(255,215,90,.9)', k: 1.55, anim: 'still', vid: 'vid/santa-bobai.mp4', side: 'up' }, // Santa BOBAI brings the blocks: he laughs, waves, winks
+  };
+  const sky = document.getElementById('sky'), ground = document.getElementById('ground'), sleigh = document.getElementById('sleigh'), D = {}, E = [];
+  let calm = false, run = true, L = null, flyAt = 0;
+  for (const [k, s] of Object.entries(P)) {
+    const d = document.createElement('div'); d.className = 'p'; d.style.setProperty('--c', s.c); if (s.anim) d.style.setProperty('--anim', s.anim);
+    d.style.setProperty('--t', (4.5 + Math.random() * 2).toFixed(2) + 's'); d.style.setProperty('--d', (-Math.random() * 5).toFixed(2) + 's');
+    d.innerHTML = '<i></i><img alt="" src="img/' + s.img + '.webp">'; document.body.appendChild(d); D[k] = d;
+  }
+  for (let i = 0; i < 5; i++) { const e = document.createElement('img'); e.className = 'e'; e.alt = ''; e.src = 'img/elf.webp'; document.body.appendChild(e); E.push({ el: e, ph: Math.random() * 6.28 }); }
+
+  // the Santa girl alive: her clip on flat green, keyed in a small canvas (the picture stays when the device asks for calm)
+  function alive(k) {
+    const s = P[k], d = D[k]; if (!s.vid || calm || d._alive) return; d._alive = true;
+    const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto'; v.src = s.vid;
+    const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true }); d.appendChild(cv);
+    let ok = false, t0 = 0;
+    v.addEventListener('playing', () => { ok = true; d.classList.add('vid'); });
+    v.play().catch(() => {});
+    (function draw(now) {
+      requestAnimationFrame(draw);
+      if (!ok || !run || v.readyState < 2 || now - t0 < 33) return; t0 = now;
+      const h = d.clientHeight * 1.32, dpr = Math.min(devicePixelRatio || 1, 1.5), H = Math.round(h * dpr), W = Math.round(H * v.videoWidth / v.videoHeight);
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; cv.style.height = h + 'px'; cv.style.width = (h * v.videoWidth / v.videoHeight) + 'px'; }
+      g.drawImage(v, 0, 0, W, H);
+      const im = g.getImageData(0, 0, W, H), p = im.data;
+      for (let i = 0; i < p.length; i += 4) {
+        const r = p[i], gg = p[i + 1], b = p[i + 2], m = r > b ? r : b, dom = gg - m;
+        if (dom > 18) { const a = 255 - (dom - 18) * 7; p[i + 3] = a < 0 ? 0 : a; p[i + 1] = m + (dom > 40 ? 0 : (dom - 18) * 0.3); }
+      }
+      g.putImageData(im, 0, 0);
+    })(0);
+  }
+
+  function place(m) {
+    L = m;
+    document.body.classList.toggle('tall', m.portrait || m.h > m.w);
+    const topMin = m.ui && m.ui.top ? m.ui.top.y + m.ui.top.h + 4 : 60;
+    const base = m.portrait ? Math.max(36, Math.min(60, m.w * 0.12)) : Math.max(60, Math.min(100, m.h * 0.105));
+    for (const [k, d] of Object.entries(D)) {
+      const s = P[k], at = s.at || k, p = at === 'trades' ? m.trades : m.stations && m.stations[at];
+      if (!p) { d.classList.remove('in'); continue; }
+      const h = base * s.k * (k === 'santa' ? 1.45 : 1), w = h * (s.vid ? 0.55 : 0.95);
+      let x, y;
+      if (k === 'santa') { x = p.x - base * 0.55 - w - 2; y = p.y - h * 0.7; }              // beside the gift table, on its left
+      else if (s.side === 'up') { x = p.x - w / 2; y = p.y - h * 1.12; }                   // Santa BOBAI just above the trades label
+      else { x = p.x - w / 2; y = p.y - h * 0.62; }                                        // on its own light, where the orb was
+      x = Math.max(4, Math.min(m.w - w - 4, x)); y = Math.max(topMin, Math.min(m.h - h - 4, y));
+      d.style.setProperty('--h', h + 'px'); d.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; d.classList.add('in');
+    }
+    if (m.figure) { const gw = m.figure.w * (m.portrait ? 1.7 : 1.85), gh = gw * 242 / 640;
+      ground.style.width = gw + 'px'; ground.style.transform = 'translate(' + Math.round(m.figure.x + m.figure.w / 2 - gw / 2) + 'px,' + Math.round(m.figure.y + m.figure.h - gh * 0.5) + 'px)'; ground.classList.add('in'); }
+    for (const e of E) e.el.style.setProperty('--eh', (m.portrait ? 26 : 40) + 'px');
+    if (m.ring) { const r = Math.min(m.w, m.h) * (m.portrait ? 0.07 : 0.095);
+      sky.style.setProperty('--hole', 'radial-gradient(circle at ' + m.ring.x + 'px ' + m.ring.y + 'px, transparent 0, transparent ' + r + 'px, #000 ' + (r + 60) + 'px)'); }
+    sky.style.setProperty('--picH', Math.round(Math.min(m.h, m.w * 1024 / 1536)) + 'px'); // the wide picture's own height at this width
+    sleigh.style.setProperty('--sw', Math.round(m.portrait ? m.w * 0.5 : Math.min(320, m.w * 0.26)) + 'px');
+    sky.classList.add('in');
+  }
+  // the elves fly their ring round the brain, as the bots do, each with a block
+  let last = performance.now();
+  (function orbit(now) {
+    requestAnimationFrame(orbit);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!run || !L || !L.brain) return;
+    const b = L.brain, n = E.length, sp = calm ? 0.08 : 0.3;
+    E.forEach((e, i) => {
+      e.ph += dt * sp;
+      const a = e.ph + (i / n) * Math.PI * 2, h = parseFloat(e.el.style.getPropertyValue('--eh')) || 40;
+      const x = b.x + Math.cos(a) * b.r * 1.05 - h * 0.4, y = b.y + Math.sin(a) * b.r * 0.42 - h * 0.5 + Math.sin(now / 500 + i) * 3;
+      // they face the way they fly (the picture faces right: moving left is sin(a) > 0), nearer = larger, a little tilt into the turn
+      const left = Math.sin(a) > 0, depth = 0.8 + 0.3 * (Math.sin(a) + 1) / 2, tilt = Math.cos(a) * 8;
+      e.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + (left ? -depth : depth).toFixed(3) + ',' + depth.toFixed(3) + ') rotate(' + (left ? -tilt : tilt).toFixed(1) + 'deg)';
+      e.el.style.zIndex = Math.sin(a) > 0 ? 3 : 1; e.el.classList.add('in');
+    });
+  })(last);
+  const pulse = (k, delay = 0) => setTimeout(() => { const d = D[k]; if (!d || !d.classList.contains('in')) return; d.classList.remove('hot'); void d.offsetWidth; d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 1500); }, delay);
+  function fly() {
+    if (calm || !L || Date.now() - flyAt < 6000) return; flyAt = Date.now();
+    const w = parseFloat(getComputedStyle(sleigh).width) || 260, top = L.portrait ? L.h * 0.12 : L.h * 0.1;
+    sleigh.style.setProperty('--x0', -w + 'px'); sleigh.style.setProperty('--x1', L.w + 'px');
+    sleigh.style.setProperty('--y0', top + 40 + 'px'); sleigh.style.setProperty('--ym', top - 10 + 'px'); sleigh.style.setProperty('--y1', top + 20 + 'px');
+    sleigh.style.setProperty('--ft', (L.portrait ? 4.2 : 5.5) + 's');
+    sleigh.classList.remove('go'); void sleigh.offsetWidth; sleigh.classList.add('go');
+  }
+  (function idle() { setTimeout(() => { if (!document.hidden && run) fly(); idle(); }, 50000 + Math.random() * 50000); })();
+  // ---------------------------------------------------------------- warmth: the tree lives, little scenes, kind words
+  // THE TREE'S LIGHTS: twinkling over the golden block tree of the picture; every buy lights one more (this visit)
+  const tw = document.getElementById('tw'), tg = tw.getContext('2d'), LIGHTS = [];
+  const COLS = ['255,214,120', '255,120,110', '255,245,220', '140,230,255', '255,170,90'];
+  function treeBox() { // the tree in the picture, in page pixels: centre x, star y, base y, half width at the base
+    if (!L) return null;
+    if (document.body.classList.contains('tall')) { const s = Math.max(L.w / 1024, L.h / 1536), ox = (L.w - 1024 * s) / 2, oy = L.h - 1536 * s;
+      return { x: ox + 512 * s, top: oy + 1536 * s * 0.07, base: oy + 1536 * s * 0.72, half: 1024 * s * 0.25 }; }
+    const ph = Math.min(L.h, L.w * 1024 / 1536), oy = L.h - ph;
+    return { x: L.w / 2, top: oy + ph * 0.06, base: oy + ph * 0.86, half: L.w * 0.2 };
+  }
+  function addLight(pop) {
+    const v = Math.random(), u = (Math.random() * 2 - 1) * v * 0.92;   // inside the triangle: wider further down
+    LIGHTS.push({ u, v, c: COLS[Math.floor(Math.random() * COLS.length)], ph: Math.random() * 6.3, sp: 1.2 + Math.random() * 2.4, r: 1.6 + Math.random() * 1.8, pop: pop ? 1 : 0 });
+  }
+  for (let i = 0; i < 70; i++) addLight(false);
+  function sizeTw() { const d = Math.min(devicePixelRatio || 1, 2); tw.width = innerWidth * d; tw.height = innerHeight * d; tg.setTransform(d, 0, 0, d, 0, 0); }
+  sizeTw(); addEventListener('resize', sizeTw);
+  let twLast = 0;
+  (function twinkle(now) {
+    requestAnimationFrame(twinkle);
+    if (!run || now - twLast < 50) return; twLast = now;   // 20 fps is plenty for a twinkle
+    const b = treeBox(); tg.clearRect(0, 0, tw.width, tw.height); if (!b) return;
+    for (const l of LIGHTS) {
+      const x = b.x + l.u * b.half, y = b.top + l.v * (b.base - b.top), a = calm ? 0.7 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 1000 * l.sp + l.ph));
+      const r = l.r * (1 + l.pop * 2.5); if (l.pop) l.pop = Math.max(0, l.pop - 0.02);
+      const gr = tg.createRadialGradient(x, y, 0, x, y, r * 4); gr.addColorStop(0, 'rgba(' + l.c + ',' + a + ')'); gr.addColorStop(1, 'rgba(' + l.c + ',0)');
+      tg.fillStyle = gr; tg.beginPath(); tg.arc(x, y, r * 4, 0, 6.283); tg.fill();
+    }
+  })(0);
+
+  // A WARM WORD: a little bubble from Santa BOBAI or the Santa girl, now and then and on the chain's moments
+  const WORDS = {
+    trades: ['Ho ho ho!', 'Merry Xmas, builder!', 'One more block for the tree!', 'Stay a while, it is cozy here.', 'Every trade lights a candle on the tree.', 'The elves never stop building.', 'Hot cocoa is on me!', 'Made with love on BNB Chain.'],
+    santa: ['Merry Xmas! ♥', 'You came back! ♥', 'Snow, lights and you.', 'Make a wish!', 'Warm hugs from the North Pole.'],
+    buy: ['Thank you! ♥', 'A new block for the tree!', 'Ho ho ho, a buy!', 'One more light!'],
+    burn: ['The stove is warm: a burn!', 'Into the fire, for good.'],
+  };
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  let sayEl = null;
+  function say(who, text) {
+    const d = D[who]; if (!d || !d.classList.contains('in') || !L) return;
+    if (sayEl) sayEl.remove();
+    const s = document.createElement('div'); s.className = 'say'; s.textContent = text; document.body.appendChild(s); sayEl = s;
+    const r = d.getBoundingClientRect(), right = r.left > L.w * 0.55;
+    if (right) s.classList.add('r');
+    const w = s.offsetWidth, h = s.offsetHeight;
+    const x = right ? r.left - w + r.width * 0.3 : r.left + r.width * 0.7, y = Math.max(L.ui && L.ui.top ? L.ui.top.y + L.ui.top.h + 4 : 60, r.top - h + 6);
+    s.style.left = Math.max(4, Math.min(L.w - w - 4, x)) + 'px'; s.style.top = y + 'px';
+    requestAnimationFrame(() => s.classList.add('in'));
+    setTimeout(() => { s.classList.remove('in'); setTimeout(() => s.remove(), 500); }, 3600);
+  }
+  // HEARTS: from the Santa girl
+  function hearts(n = 6) {
+    const d = D.santa; if (!d || !d.classList.contains('in') || calm) return;
+    const r = d.getBoundingClientRect();
+    for (let i = 0; i < n; i++) setTimeout(() => { const h = document.createElement('div'); h.className = 'heart'; h.textContent = '♥';
+      h.style.left = (r.left + r.width * (0.3 + Math.random() * 0.4)) + 'px'; h.style.top = (r.top + r.height * 0.25) + 'px'; h.style.setProperty('--dx', (Math.random() * 60 - 30) + 'px');
+      h.style.fontSize = (12 + Math.random() * 12) + 'px'; document.body.appendChild(h); setTimeout(() => h.remove(), 2700); }, i * 160);
+  }
+  // THE DELIVERY: an elf takes a block from Santa BOBAI up to the tree; it lights up when it lands
+  function deliver() {
+    const from = D.trades, b = treeBox(); if (!from || !from.classList.contains('in') || !b || calm) return;
+    const r = from.getBoundingClientRect(), el = document.createElement('img'); el.className = 'fly'; el.alt = ''; el.src = 'img/elf.webp';
+    el.style.setProperty('--eh', (L.portrait ? 30 : 44) + 'px'); document.body.appendChild(el);
+    const x0 = r.left + r.width * 0.5, y0 = r.top + r.height * 0.2, x1 = b.x + (Math.random() * 0.6 - 0.3) * b.half, y1 = b.top + (b.base - b.top) * (0.15 + Math.random() * 0.5);
+    const t0 = performance.now(), T = 4200, flip = x1 < x0;
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(k * Math.PI) * 90;
+      el.style.transform = 'translate(' + x + 'px,' + y + 'px) scaleX(' + (flip ? -1 : 1) + ') rotate(' + (Math.sin(now / 160) * 6) + 'deg)';
+      if (k < 1) return requestAnimationFrame(step);
+      for (let i = 0; i < 4; i++) addLight(true); if (LIGHTS.length > 160) LIGHTS.splice(0, LIGHTS.length - 160);
+      el.style.opacity = '0'; setTimeout(() => el.remove(), 700);
+    })(t0);
+  }
+  // A SHOOTING STAR over the sky
+  function shootingStar() {
+    if (calm || !L) return; const s = document.createElement('div'); s.className = 'shoot';
+    s.style.setProperty('--sx', (Math.random() * L.w * 0.5) + 'px'); s.style.setProperty('--sy', (40 + Math.random() * L.h * 0.15) + 'px');
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1400);
+  }
+  // THE DIRECTOR: one small scene every 18-32 s, never two at once
+  const SCENES = [() => say('trades', pick(WORDS.trades)), () => { say('santa', pick(WORDS.santa)); hearts(5); }, deliver, deliver, shootingStar];
+  (function direct() { setTimeout(() => { if (run && !document.hidden && L && !calm) pick(SCENES)(); direct(); }, 18000 + Math.random() * 14000); })();
+  setTimeout(() => { if (!calm) say('trades', 'Ho ho ho! Welcome, builder!'); }, 4500);   // a hello when they arrive
+
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'event' && !calm) {   // the chain's moments get their warm word too
+      if (m.kind === 'buy') { addLight(true); if (m.alert || Math.random() < 0.35) say('trades', pick(WORDS.buy)); if (m.alert) hearts(10); }
+      else if (m.kind === 'burn') say('trades', pick(WORDS.burn));
+    }
+    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); alive('trades'); }
+    else if (m.type === 'layout') place(m);
+    else if (m.type === 'visible') { run = m.on; document.body.classList.toggle('off', !m.on); }
+    else if (m.type === 'mood') { document.body.classList.remove('pump', 'up', 'down', 'dump'); if (m.mood !== 'flat') document.body.classList.add(m.mood); }
+    else if (m.type === 'event') {
+      if (m.kind === 'burn') { pulse('burnA'); pulse('liq', 300); pulse('creator', 600); }   // the tax splits: burn, add liq, creator
+      else if (m.kind === 'liq') pulse('liq');
+      else if (m.kind === 'buy') { pulse('trades'); if (m.alert) { fly(); pulse('santa', 200); } }   // every buy: Santa BOBAI glows
+      else if (m.kind === 'sell') pulse('trades');
+    }
+    else if (m.type === 'moment' && m.kind === 'buy') { fly(); pulse('santa'); }
+  });
+</script>
+</body>
+</html>
+
+==============================================================================
+=== FILE: xmas-themes/bobai-xmas-mmx_qq/theme/front.html
+==============================================================================
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BOBAI Builds Xmas on BNB — front</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+  // BOBAI builds Xmas by mmx_QQ — soft snow in front of BOBAI; golden blocks, hearts and sparkle on the chain's moments.
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  let W = 0, H = 0, D = 1, run = true, calm = false, mood = 'flat', L = null, last = performance.now();
+  const flakes = [], sparks = [];
+  const rand = (a, b) => a + Math.random() * (b - a);
+  function size() {
+    D = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
+    cv.width = Math.round(W * D); cv.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0);
+    const want = Math.round((W * H) / (calm ? 22000 : 9000));
+    while (flakes.length < Math.min(want, 170)) flakes.push(flake(true));
+    flakes.length = Math.min(flakes.length, Math.min(want, 170));
+  }
+  function flake(anywhere) {
+    const z = Math.random();                                  // depth: far flakes small and slow
+    return { x: rand(0, W), y: anywhere ? rand(0, H) : rand(-30, -5), r: 0.8 + z * 2.6, v: 12 + z * 30, ph: rand(0, 6.3), sw: rand(8, 26), a: 0.35 + z * 0.55, gold: false };
+  }
+  const COL = { cash: [255, 200, 70], bubble: [255, 236, 170], heart: [255, 70, 130], gold: [255, 214, 120], pink: [255, 160, 210], mint: [140, 255, 220], ember: [255, 150, 60], ice: [200, 235, 255] };
+  function burst(x, y, n, kind, spread = 1, from = 0, to = Math.PI * 2) {   // from/to: the directions they fly (radians)
+    if (calm || !run) return;
+    for (let i = 0; i < n; i++) {
+      const a = rand(from, to), sp = rand(30, 120) * spread, c = kind === 'party' ? ['gold', 'pink', 'mint', 'ice'][i % 4] : kind;
+      sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'ember' ? 60 : kind === 'bubble' ? 90 : 30), life: 0, max: rand(1.3, 2.6), r: rand(1.8, 4), c: COL[c], star: kind === 'party' && i % 3 === 0, heart: kind === 'heart', cash: kind === 'cash', rot: rand(0, 6.3), spin: rand(-6, 6) });
+    }
+    if (sparks.length > 500) sparks.splice(0, sparks.length - 500);
+  }
+  function star(x, y, r) {
+    g.beginPath();
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * 0.38 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+    g.closePath(); g.fill();
+  }
+  function heart(x, y, r) {
+    g.beginPath(); g.moveTo(x, y + r * 0.9);
+    g.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.6, y - r * 1.4, x, y - r * 0.45);
+    g.bezierCurveTo(x + r * 0.6, y - r * 1.4, x + r * 1.6, y - r * 0.2, x, y + r * 0.9); g.fill();
+  }
+  function kiss() {   // the Santa girl at the creator blows a kiss: hearts float up from her
+    const p = L && L.stations && L.stations.creator; if (!p) return;
+    burst(p.x - 20, p.y - 40, 18, 'heart', 0.7, -Math.PI * 0.85, -Math.PI * 0.15);
+  }
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!run || document.hidden) return;
+    g.clearRect(0, 0, W, H);
+    const speed = (calm ? 0.45 : 1) * (mood === 'pump' ? 1.25 : 1);
+    for (const f of flakes) {
+      f.y += f.v * dt * speed; f.ph += dt * 0.9;
+      const x = f.x + Math.sin(f.ph) * f.sw;
+      if (f.y > H + 6) Object.assign(f, flake(false), { gold: mood === 'pump' && Math.random() < 0.25 });
+      g.fillStyle = f.gold ? 'rgba(255,220,140,' + f.a + ')' : 'rgba(255,255,255,' + f.a + ')';
+      g.beginPath(); g.arc(x, f.y, f.r, 0, 6.283); g.fill();
+    }
+    g.globalCompositeOperation = 'lighter';                   // sparks glow where they cross
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i]; s.life += dt; if (s.life > s.max) { sparks.splice(i, 1); continue; }
+      s.vy += 40 * dt; s.vx *= 0.985; s.x += s.vx * dt; s.y += s.vy * dt;
+      const k = 1 - s.life / s.max, [r, gg, b] = s.c;
+      g.fillStyle = 'rgba(' + r + ',' + gg + ',' + b + ',' + (k * 0.95).toFixed(3) + ')';
+      if (s.cash) { s.rot += s.spin * dt; g.save(); g.translate(s.x, s.y); g.rotate(s.rot); g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 3.2); g.fillStyle = 'rgba(255,245,200,' + (k * 0.7).toFixed(3) + ')'; g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 0.9);   /* a golden block, its lit top */ g.restore(); }
+      else if (s.heart) heart(s.x, s.y, s.r * 3.2 * (0.7 + k * 0.3)); else if (s.star) star(s.x, s.y, s.r * 3.4 * (0.6 + k * 0.4)); else { g.beginPath(); g.arc(s.x, s.y, s.r * (0.5 + k * 0.5), 0, 6.283); g.fill(); }
+    }
+    g.globalCompositeOperation = 'source-over';
+  }
+  // a big buy: a ring of stars around BOBAI, never on his face (from the sides of his figure)
+  function party() {
+    const f = L && L.figure; if (!f) return burst(W / 2, H / 2, 40, 'party', 1.4);
+    const A = Math.PI;                                       // away from him: left, right and down, never across his face
+    burst(f.x + f.w * 0.02, f.y + f.h * 0.5, 40, 'party', 1.5, A * 0.6, A * 1.4); burst(f.x + f.w * 0.98, f.y + f.h * 0.5, 40, 'party', 1.5, -A * 0.4, A * 0.4);
+    burst(f.x + f.w * 0.5, f.y + f.h * 0.98, 28, 'party', 1.3, A * 0.15, A * 0.85);
+  }
+  addEventListener('resize', size);
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'hello') { calm = !!m.reduced; size(); }
+    else if (m.type === 'layout') L = m;
+    else if (m.type === 'visible') run = m.on;
+    else if (m.type === 'mood') mood = m.mood;
+    else if (m.type === 'event' && L) {
+      if (m.kind === 'buy' && m.alert) { party(); kiss(); }
+      else if (m.kind === 'buy' && L.trades) burst(L.trades.x, L.trades.y - 60, 6 + Math.min(16, Math.round((m.usd || 0) / 12)), 'cash', 0.8, -Math.PI * 0.85, -Math.PI * 0.15);   // golden blocks fly off the sled
+      else if (m.kind === 'burn' && L.stations.burnA) { burst(L.stations.burnA.x, L.stations.burnA.y, 40, 'ember', 0.9); if (L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 14, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1); }
+      else if (m.kind === 'liq' && L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 26, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1);   // champagne
+    }
+    else if (m.type === 'moment' && m.kind === 'buy') { party(); kiss(); }
+  });
+  size(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>

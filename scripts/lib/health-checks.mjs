@@ -1021,7 +1021,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
       if (r.status === 422 && /needs/.test(String(r.body?.error || ''))) refused.push(s);
     }
     ok('Agents', 'no service refuses a payment that names no input (a marketplace hire button)', !refused.length, refused.length ? `refused for the input: ${refused.join(', ')}` : 'six of six look at the payment');
-    const mq = (await getJ('https://marque.trade/api/v1/phase2/owner/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')).body?.agents || [];
+    // Marque answers 503 "owner_unavailable … try again in a minute" now and then (17.11.: 503, then 200 five seconds
+    // later): one more ask before a red, so their hiccup is not read as our agents being off the list
+    const mqUrl = 'https://marque.trade/api/v1/phase2/owner/0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A';
+    let mqR = await getJ(mqUrl);
+    if (!Array.isArray(mqR.body?.agents)) { await new Promise((r) => setTimeout(r, 5000)); mqR = await getJ(mqUrl); }
+    const mq = mqR.body?.agents || [];
     const notListed = ['363709', '302257', '302258', '304493', '304494', '310460'].filter((id) => !mq.some((a) => String(a.agentId) === id && a.listedOnMarque && a.quality?.passed === 5));
     ok('Agents', 'all six agents listed on Marque, 5/5', mq.length > 0 && !notListed.length, notListed.length ? `not listed or under 5/5: #${notListed.join(', #')} — ${mq.filter((a) => notListed.includes(String(a.agentId))).map((a) => (a.quality?.checks || []).filter((c) => !c.pass).map((c) => c.reason).join('; ')).join(' | ').slice(0, 160)}` : 'six of six');
     // asked twice when the first answer is empty (15 Oct: one run read none of the seven, the next all seven)

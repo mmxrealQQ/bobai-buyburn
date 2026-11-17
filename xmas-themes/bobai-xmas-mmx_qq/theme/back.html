@@ -42,13 +42,27 @@
   #sleigh.go { animation: fly var(--ft, 5s) cubic-bezier(.45, .05, .55, .95) forwards; }
   @keyframes fly { 0% { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(-4deg); } 10% { opacity: 1; }
     50% { transform: translate(calc((var(--x0) + var(--x1)) / 2), var(--ym)) rotate(3deg); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(-3deg); } }
+  /* the tree's own lights, twinkling over the picture */
+  #tw { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* little scenes: a delivery elf, a warm word, hearts, a shooting star */
+  .fly { position: absolute; left: 0; top: 0; height: var(--eh, 42px); filter: drop-shadow(0 0 8px rgba(255, 215, 100, .9)); will-change: transform; transition: opacity .6s ease; }
+  .say { position: absolute; left: 0; top: 0; max-width: 190px; padding: 7px 12px; border-radius: 16px 16px 16px 4px; background: #fffaf0; color: #5a2a14;
+    font: 700 13px/1.25 'Trebuchet MS', 'Segoe UI', sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); opacity: 0; transform: translateY(8px) scale(.9); transform-origin: 0 100%;
+    transition: opacity .45s ease, transform .45s cubic-bezier(.3, 1.6, .5, 1); white-space: normal; }
+  .say.in { opacity: 1; transform: none; }
+  .say.r { border-radius: 16px 16px 4px 16px; transform-origin: 100% 100%; }
+  .heart { position: absolute; left: 0; top: 0; font-size: 18px; color: #ff4f87; text-shadow: 0 0 8px rgba(255, 90, 140, .8); animation: up 2.6s ease-out forwards; }
+  @keyframes up { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 0px), -120px) scale(1.2); } }
+  .shoot { position: absolute; left: 0; top: 0; width: 140px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 200, 0), #fff6d8); border-radius: 2px;
+    box-shadow: 0 0 10px #fff2b0; transform-origin: 100% 50%; animation: shoot 1.3s ease-in forwards; }
+  @keyframes shoot { 0% { opacity: 0; transform: translate(var(--sx), var(--sy)) rotate(18deg) scaleX(.2); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(var(--sx) + 420px), calc(var(--sy) + 140px)) rotate(18deg) scaleX(1); } }
   body.calm .p img, body.calm .p.hot img { animation: none; }
   body.calm #sleigh { display: none; }
   body.off * { animation-play-state: paused !important; }
 </style>
 </head>
 <body>
-<div id="sky"><div id="pic"></div></div>
+<div id="sky"><div id="pic"></div><canvas id="tw"></canvas></div>
 <img id="ground" alt="" src="img/ground.webp">
 <img id="sleigh" alt="" src="img/sleigh.webp">
 <script>
@@ -145,8 +159,99 @@
     sleigh.classList.remove('go'); void sleigh.offsetWidth; sleigh.classList.add('go');
   }
   (function idle() { setTimeout(() => { if (!document.hidden && run) fly(); idle(); }, 50000 + Math.random() * 50000); })();
+  // ---------------------------------------------------------------- warmth: the tree lives, little scenes, kind words
+  // THE TREE'S LIGHTS: twinkling over the golden block tree of the picture; every buy lights one more (this visit)
+  const tw = document.getElementById('tw'), tg = tw.getContext('2d'), LIGHTS = [];
+  const COLS = ['255,214,120', '255,120,110', '255,245,220', '140,230,255', '255,170,90'];
+  function treeBox() { // the tree in the picture, in page pixels: centre x, star y, base y, half width at the base
+    if (!L) return null;
+    if (document.body.classList.contains('tall')) { const s = Math.max(L.w / 1024, L.h / 1536), ox = (L.w - 1024 * s) / 2, oy = L.h - 1536 * s;
+      return { x: ox + 512 * s, top: oy + 1536 * s * 0.07, base: oy + 1536 * s * 0.72, half: 1024 * s * 0.25 }; }
+    const ph = Math.min(L.h, L.w * 1024 / 1536), oy = L.h - ph;
+    return { x: L.w / 2, top: oy + ph * 0.06, base: oy + ph * 0.86, half: L.w * 0.2 };
+  }
+  function addLight(pop) {
+    const v = Math.random(), u = (Math.random() * 2 - 1) * v * 0.92;   // inside the triangle: wider further down
+    LIGHTS.push({ u, v, c: COLS[Math.floor(Math.random() * COLS.length)], ph: Math.random() * 6.3, sp: 1.2 + Math.random() * 2.4, r: 1.6 + Math.random() * 1.8, pop: pop ? 1 : 0 });
+  }
+  for (let i = 0; i < 70; i++) addLight(false);
+  function sizeTw() { const d = Math.min(devicePixelRatio || 1, 2); tw.width = innerWidth * d; tw.height = innerHeight * d; tg.setTransform(d, 0, 0, d, 0, 0); }
+  sizeTw(); addEventListener('resize', sizeTw);
+  let twLast = 0;
+  (function twinkle(now) {
+    requestAnimationFrame(twinkle);
+    if (!run || now - twLast < 50) return; twLast = now;   // 20 fps is plenty for a twinkle
+    const b = treeBox(); tg.clearRect(0, 0, tw.width, tw.height); if (!b) return;
+    for (const l of LIGHTS) {
+      const x = b.x + l.u * b.half, y = b.top + l.v * (b.base - b.top), a = calm ? 0.7 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 1000 * l.sp + l.ph));
+      const r = l.r * (1 + l.pop * 2.5); if (l.pop) l.pop = Math.max(0, l.pop - 0.02);
+      const gr = tg.createRadialGradient(x, y, 0, x, y, r * 4); gr.addColorStop(0, 'rgba(' + l.c + ',' + a + ')'); gr.addColorStop(1, 'rgba(' + l.c + ',0)');
+      tg.fillStyle = gr; tg.beginPath(); tg.arc(x, y, r * 4, 0, 6.283); tg.fill();
+    }
+  })(0);
+
+  // A WARM WORD: a little bubble from Santa BOBAI or the Santa girl, now and then and on the chain's moments
+  const WORDS = {
+    trades: ['Ho ho ho!', 'Merry Xmas, builder!', 'One more block for the tree!', 'Stay a while, it is cozy here.', 'Every trade lights a candle on the tree.', 'The elves never stop building.', 'Hot cocoa is on me!', 'Made with love on BNB Chain.'],
+    santa: ['Merry Xmas! ♥', 'You came back! ♥', 'Snow, lights and you.', 'Make a wish!', 'Warm hugs from the North Pole.'],
+    buy: ['Thank you! ♥', 'A new block for the tree!', 'Ho ho ho, a buy!', 'One more light!'],
+    burn: ['The stove is warm: a burn!', 'Into the fire, for good.'],
+  };
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  let sayEl = null;
+  function say(who, text) {
+    const d = D[who]; if (!d || !d.classList.contains('in') || !L) return;
+    if (sayEl) sayEl.remove();
+    const s = document.createElement('div'); s.className = 'say'; s.textContent = text; document.body.appendChild(s); sayEl = s;
+    const r = d.getBoundingClientRect(), right = r.left > L.w * 0.55;
+    if (right) s.classList.add('r');
+    const w = s.offsetWidth, h = s.offsetHeight;
+    const x = right ? r.left - w + r.width * 0.3 : r.left + r.width * 0.7, y = Math.max(L.ui && L.ui.top ? L.ui.top.y + L.ui.top.h + 4 : 60, r.top - h + 6);
+    s.style.left = Math.max(4, Math.min(L.w - w - 4, x)) + 'px'; s.style.top = y + 'px';
+    requestAnimationFrame(() => s.classList.add('in'));
+    setTimeout(() => { s.classList.remove('in'); setTimeout(() => s.remove(), 500); }, 3600);
+  }
+  // HEARTS: from the Santa girl
+  function hearts(n = 6) {
+    const d = D.santa; if (!d || !d.classList.contains('in') || calm) return;
+    const r = d.getBoundingClientRect();
+    for (let i = 0; i < n; i++) setTimeout(() => { const h = document.createElement('div'); h.className = 'heart'; h.textContent = '♥';
+      h.style.left = (r.left + r.width * (0.3 + Math.random() * 0.4)) + 'px'; h.style.top = (r.top + r.height * 0.25) + 'px'; h.style.setProperty('--dx', (Math.random() * 60 - 30) + 'px');
+      h.style.fontSize = (12 + Math.random() * 12) + 'px'; document.body.appendChild(h); setTimeout(() => h.remove(), 2700); }, i * 160);
+  }
+  // THE DELIVERY: an elf takes a block from Santa BOBAI up to the tree; it lights up when it lands
+  function deliver() {
+    const from = D.trades, b = treeBox(); if (!from || !from.classList.contains('in') || !b || calm) return;
+    const r = from.getBoundingClientRect(), el = document.createElement('img'); el.className = 'fly'; el.alt = ''; el.src = 'img/elf.webp';
+    el.style.setProperty('--eh', (L.portrait ? 30 : 44) + 'px'); document.body.appendChild(el);
+    const x0 = r.left + r.width * 0.5, y0 = r.top + r.height * 0.2, x1 = b.x + (Math.random() * 0.6 - 0.3) * b.half, y1 = b.top + (b.base - b.top) * (0.15 + Math.random() * 0.5);
+    const t0 = performance.now(), T = 4200, flip = x1 < x0;
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      const x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(k * Math.PI) * 90;
+      el.style.transform = 'translate(' + x + 'px,' + y + 'px) scaleX(' + (flip ? -1 : 1) + ') rotate(' + (Math.sin(now / 160) * 6) + 'deg)';
+      if (k < 1) return requestAnimationFrame(step);
+      for (let i = 0; i < 4; i++) addLight(true); if (LIGHTS.length > 160) LIGHTS.splice(0, LIGHTS.length - 160);
+      el.style.opacity = '0'; setTimeout(() => el.remove(), 700);
+    })(t0);
+  }
+  // A SHOOTING STAR over the sky
+  function shootingStar() {
+    if (calm || !L) return; const s = document.createElement('div'); s.className = 'shoot';
+    s.style.setProperty('--sx', (Math.random() * L.w * 0.5) + 'px'); s.style.setProperty('--sy', (40 + Math.random() * L.h * 0.15) + 'px');
+    document.body.appendChild(s); setTimeout(() => s.remove(), 1400);
+  }
+  // THE DIRECTOR: one small scene every 18-32 s, never two at once
+  const SCENES = [() => say('trades', pick(WORDS.trades)), () => { say('santa', pick(WORDS.santa)); hearts(5); }, deliver, deliver, shootingStar];
+  (function direct() { setTimeout(() => { if (run && !document.hidden && L && !calm) pick(SCENES)(); direct(); }, 18000 + Math.random() * 14000); })();
+  setTimeout(() => { if (!calm) say('trades', 'Ho ho ho! Welcome, builder!'); }, 4500);   // a hello when they arrive
+
   addEventListener('message', (e) => {
     const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'event' && !calm) {   // the chain's moments get their warm word too
+      if (m.kind === 'buy') { addLight(true); if (m.alert || Math.random() < 0.35) say('trades', pick(WORDS.buy)); if (m.alert) hearts(10); }
+      else if (m.kind === 'burn') say('trades', pick(WORDS.burn));
+    }
     if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); alive('trades'); }
     else if (m.type === 'layout') place(m);
     else if (m.type === 'visible') { run = m.on; document.body.classList.toggle('off', !m.on); }

@@ -7247,6 +7247,7 @@ window.__btBrSeason = brSeason;
   if (q === '0' || (q !== '1' && !brSeason())) return;
   // an Xmas theme asked for by link (a builder's preview, the sandbox page) shows on the standard terminal, not on brainrot
   if (q !== '1' && /[?&]xmas(-dev)?=/.test(location.search) && !/[?&]xmas=0\b/.test(location.search)) return;
+  if (/^xmas\./i.test(location.hostname)) return; // the Xmas sandbox page: never brainrot
   // HEALTH FIRST (operator, 2026-11-05: "a warning when somebody opens the page, so nobody gets serious problems from the
   // brainrot theme — epilepsy and so on — and can go to the standard; health is the most important"): nothing of the look
   // moves until the visitor has chosen. A stored choice is kept; ?br=1 (a link that asks for it, the checks) counts as one;
@@ -8360,8 +8361,11 @@ window.__btXmSeason = xmSeason;
   const devHost = /^(127\.0\.0\.1|localhost)$/i.test(location.hostname);
   const dev = devHost && devPort != null ? location.origin + '/__theme/' : null;
   const slugOk = s => /^[a-z0-9_-]{2,24}$/.test(s || '');
+  // THE SANDBOX PAGE IS ALWAYS XMAS (operator, 17.11.: "the sandbox page does not work, there is the rot"): on
+  // xmas.bobai-dashboard.pages.dev the switch holds every uploaded theme at any date, and brainrot never starts
+  const sandbox = /^xmas\./i.test(location.hostname);
   if (want === '0') return;
-  if (!dev && !slugOk(want) && !xmSeason()) return;
+  if (!dev && !sandbox && !slugOk(want) && !xmSeason()) return;
   const calmDevice = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   let stored = null; try { stored = localStorage.getItem('bt-xmas'); } catch {}
   let THEMES = [], cur = null, note = '';

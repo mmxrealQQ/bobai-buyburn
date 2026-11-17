@@ -72,19 +72,18 @@ ok('a version that does not exist is not found', r.status === 404);
 
 // the operator
 r = await call('GET', '/themes');
-ok('nothing is live before the operator approves it', r.status === 200 && r.j.live.length === 0);
+ok('everyone is in (17.11.): an uploaded theme is on the list, one with nothing uploaded is not', r.status === 200 && r.j.live.length === 1 && r.j.live[0].slug === 'mmx_qq' && /\/t\/mmx_qq\/1\/$/.test(r.j.live[0].base) && r.j.live[0].users_today === 0, JSON.stringify(r.j.live.map((t) => t.slug)));
 r = await call('GET', '/theme/mmx_qq');
-ok('the preview link reads the theme before approval', r.status === 200 && r.j.theme.ver === 1 && r.j.theme.layers.back === true && r.j.theme.layers.front === false);
-r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'wrong' }, body: { action: 'approve', slug: 'mmx_qq' } });
-ok('approving needs the operator secret', r.status === 401);
+ok('the preview link reads the theme', r.status === 200 && r.j.theme.ver === 1 && r.j.theme.layers.back === true && r.j.theme.layers.front === false);
+r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'wrong' }, body: { action: 'block', slug: 'mmx_qq' } });
+ok('blocking needs the operator secret', r.status === 401);
 r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'adm1n-secret' }, body: { action: 'approve', slug: 'mmx_qq' } });
-r = await call('GET', '/themes');
-ok('approved: in the list, with its base and users', r.j.live.length === 1 && r.j.live[0].slug === 'mmx_qq' && /\/t\/mmx_qq\/1\/$/.test(r.j.live[0].base) && r.j.live[0].users_today === 0);
+ok('there is no approving any more', r.status === 400);
 
 // counting users
 await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' } });
 r = await call('POST', '/use', { body: { slug: 'spam0' } });
-ok('only an approved theme is counted', r.j?.counted === false);
+ok('a theme with nothing uploaded is not counted', r.j?.counted === false);
 r = await call('GET', '/themes');
 ok('users today and in all', r.j.live[0].users_today === 2 && r.j.live[0].users_total === 2 && r.j.users_today_all === 2);
 ok('the count holds no address', ![...store.entries()].some(([k, v]) => k.startsWith('xmas:use') && /1\.1\.1\.1|9\.9\.9\.9/.test(String(v))));

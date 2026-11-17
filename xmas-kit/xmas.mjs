@@ -7,7 +7,7 @@
 //   node xmas.mjs dev        the real terminal on your machine with your folder in it; saved = shown
 //   node xmas.mjs check      what the upload would refuse, before you upload
 //   node xmas.mjs upload     your theme/ folder goes up; you get a preview link anyone can open
-//   node xmas.mjs status     what is uploaded, and whether it is approved for 1 December
+//   node xmas.mjs status     what is uploaded, and that it is on the switch from 1 December
 //   node xmas.mjs image "<prompt>" --out theme/img/tree.webp      a picture with YOUR OpenAI key (OPENAI_API_KEY in .env)
 //   node xmas.mjs video "<prompt>" --out theme/vid/sky.mp4        a clip with YOUR Google key (GEMINI_API_KEY in .env, Veo)
 import fs from 'node:fs';
@@ -154,7 +154,7 @@ async function status(dir) {
   const { key } = readProject(dir);
   let j; try { j = await api('/hello', {}, key); } catch (e) { die(e.message); }
   const t = j.theme;
-  say(`\n  "${t.title}" by ${t.builder}\n  uploaded: ${t.ver ? 'version ' + t.ver + ', ' + t.updated : 'nothing yet'}\n  approved for 1 December: ${t.approved ? 'yes' : 'not yet'}\n  preview: ${t.preview}\n`);
+  say(`\n  "${t.title}" by ${t.builder}\n  uploaded: ${t.ver ? 'version ' + t.ver + ', ' + t.updated : 'nothing yet'}\n  on the terminal's switch from 1 December: ${t.live ? 'yes, under your name' : t.ver ? 'no (stopped by the operator)' : 'after your first upload'}\n  preview: ${t.preview}\n`);
 }
 
 // ---------------------------------------------------------------- dev: the sandbox page, mirrored, with your folder in it

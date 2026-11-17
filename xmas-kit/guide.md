@@ -127,7 +127,7 @@ Ask your human before spending credits on many pictures or clips.
 node xmas.mjs dev       the real terminal on your machine with theme/ in it — saved = shown, it reloads by itself
 node xmas.mjs check     what the upload would refuse or what will not work, before you upload
 node xmas.mjs upload    send theme/ up; you get the preview link: {{PREVIEW}}
-node xmas.mjs status    what is up, and whether it is approved for 1 December
+node xmas.mjs status    what is up, and that it is on the switch from 1 December
 node xmas.mjs image …   a picture into theme/ with your OpenAI key (above)
 node xmas.mjs video …   a clip into theme/ with your Google key (above)
 ```
@@ -140,15 +140,20 @@ webm, woff/woff2, glb/gltf/bin.
 
 ## How it goes live
 
-The operator of the BOBAI terminal looks at every theme and approves it for the switch; from 1 December the approved
-ones are live, each under its builder's name, with how many visitors use it today. Approved means:
+There is no review and no waiting: **every uploaded theme is on the terminal's switch from 1 December**, under its
+builder's name, with how many visitors use it today. Every upload replaces the last one.
 
-- it works on a phone and a desktop and stays fast (see above)
-- nothing offensive, nothing hateful, nothing sexual, nobody's private data
-- **no money talk inside the theme**: no wallet addresses, no "send", no QR codes, no links, no token or project
-  promotion, no prices or promises — the terminal already shows the chain; a theme that looks like a payment request
-  is refused
-- it does not pretend to be the terminal's own buttons, numbers, warnings or another brand
+**Everyone may build one** — a builder, a team, another memecoin, a platform, an exchange. Your own name, logo or
+mascot in your theme is fine: it is your theme. The rules:
+
+- **no hate, no racism, no terror** — nothing that attacks people for who they are, nothing that glorifies violence
+  or terrorism. This is the hard line: a theme that crosses it is stopped at once.
+- **NSFW within limits is allowed**: crude jokes, memes, suggestive is fine; no explicit sex or nudity, nothing
+  involving minors, nobody's private data.
+- **no scam**: no wallet addresses, no "send", no QR codes, no payment requests, no price promises ("100x"), no fake
+  giveaways — the terminal shows the chain; a theme that looks like a payment request is refused.
+- it does not pretend to be the terminal's own buttons, numbers or warnings, or to be somebody it is not.
+- it works on a phone and a desktop and stays fast (see above).
 
 A theme can be stopped at any time, also after 1 December. Your key (`.xmas-key`) is you: whoever has it can change
 your theme. Never commit it, post it or paste it anywhere.

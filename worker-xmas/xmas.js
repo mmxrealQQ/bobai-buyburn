@@ -14,17 +14,19 @@
 // on the terminal: the response's own CSP says `sandbox allow-scripts` (an opaque origin even when a file is opened on
 // its own: no cookies, no storage, no page), `connect-src 'none'` (no calls out, no tracking), no eval and no
 // WebAssembly (no miner), no workers, no forms, no plugins, no frames. The terminal gives the frames no pointer events:
-// a theme can never put a button in front of a visitor. Nothing goes before every visitor until the operator approves
-// it (POST /admin approve); a preview link works for anyone from the first upload: https://xmas.bobai-dashboard.pages.dev/?xmas=<slug>.
+// a theme can never put a button in front of a visitor. EVERYONE IS IN (operator, 17.11.: "no review, all are allowed —
+// just no racism, terror, hate"): every uploaded theme is on the switch from 1 December; the operator blocks one that
+// crosses that line (POST /admin block). A preview link works for anyone from the first upload:
+// https://xmas.bobai-dashboard.pages.dev/?xmas=<slug>.
 //
 //   POST /join     {title, builder}            -> {key, slug}   (the kit keeps the key; a builder name is taken once)
 //   POST /hello    x-xmas-key                  -> the builder's theme as it stands
 //   POST /upload   x-xmas-key, {files:[{path, b64}], title?} -> {ver, preview}
-//   GET  /themes                               -> the approved ones with today's users, for the terminal's switch
-//   GET  /theme/<slug>                         -> one theme (approved or not: the preview link)
+//   GET  /themes                               -> every uploaded, unblocked theme with today's users, for the terminal's switch
+//   GET  /theme/<slug>                         -> one theme (the preview link)
 //   GET  /t/<slug>/<ver>/<path>                -> a file of a theme, sandboxed
 //   POST /use      {slug}                      -> a visitor's terminal shows this theme today (counted once a day per browser)
-//   POST /admin    x-xmas-admin, {action: list | approve | unapprove | block | unblock | order | rename}
+//   POST /admin    x-xmas-admin, {action: list | block | unblock | order | rename}
 
 export const XMAS_SEASON = { from: '2026-12-01T00:00:00Z', to: '2027-01-01T00:00:00Z' };
 export const XMAS_LIMITS = { files: 300, fileBytes: 5 * 1024 * 1024, totalBytes: 20 * 1024 * 1024, uploadsPerDay: 120, joinsPerIpPerDay: 10, themes: 5000 };
@@ -92,7 +94,7 @@ async function readUse(env) {
   return { day, today: today || {}, total: total || {} };
 }
 async function listSlugs(env) { return (await env.XMAS.get('xmas:index', 'json').catch(() => null)) || []; }
-const publicView = (t) => ({ slug: t.slug, title: t.title, builder: t.builder, ver: t.ver || 0, updated: t.updated || null, approved: !!t.approved,
+const publicView = (t) => ({ slug: t.slug, title: t.title, builder: t.builder, ver: t.ver || 0, updated: t.updated || null, live: !t.blocked && !!t.ver,
   base: t.ver ? `${SELF}/t/${t.slug}/${t.ver}/` : null, layers: { back: !!t.files?.some((f) => f[0] === 'back.html'), front: !!t.files?.some((f) => f[0] === 'front.html') },
   preview: `${SITE}/?xmas=${t.slug}` });
 
@@ -130,7 +132,7 @@ export async function handleXmas(request, env, url, path) {
   if (path === '/themes' && request.method === 'GET') {
     const slugs = await listSlugs(env);
     const all = (await Promise.all(slugs.map((s) => env.XMAS.get(themeKey(s), 'json', { cacheTtl: 60 })))).filter(Boolean);
-    const live = all.filter((t) => t.approved && !t.blocked && t.ver).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.approvedAt).localeCompare(String(b.approvedAt)));
+    const live = all.filter((t) => !t.blocked && t.ver).sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || String(a.created).localeCompare(String(b.created)));
     const use = await readUse(env);
     return out({ season: XMAS_SEASON, in_season: inSeason(), day: use.day,
       live: live.map((t) => ({ ...publicView(t), users_today: use.today[t.slug] || 0, users_total: use.total[t.slug] || 0 })),
@@ -144,7 +146,7 @@ export async function handleXmas(request, env, url, path) {
     const b = await request.json().catch(() => null), slug = String(b?.slug || '');
     if (!/^[a-z0-9_-]{2,24}$/.test(slug)) return out({ ok: false }, 400);
     const t = await env.XMAS.get(themeKey(slug), 'json', { cacheTtl: 60 });
-    if (!t || !t.approved || t.blocked) return out({ ok: false, counted: false });
+    if (!t || t.blocked || !t.ver) return out({ ok: false, counted: false });
     const day = new Date().toISOString().slice(0, 10), k = `xmas:use:${day}`;
     const m = (await env.XMAS.get(k, 'json')) || {};
     m[slug] = (m[slug] || 0) + 1;
@@ -177,7 +179,7 @@ export async function handleXmas(request, env, url, path) {
     let key = 'xk_';
     while (key.length < 35) for (const x of crypto.getRandomValues(new Uint8Array(48))) if (x < 248 && key.length < 35) key += A[x % 62];
     const now = new Date().toISOString();
-    await env.XMAS.put(themeKey(slug), JSON.stringify({ slug, title, builder, ver: 0, files: [], created: now, updated: null, approved: false, uploads: {} }));
+    await env.XMAS.put(themeKey(slug), JSON.stringify({ slug, title, builder, ver: 0, files: [], created: now, updated: null, uploads: {} }));
     await env.XMAS.put(keyKey(await sha(key)), JSON.stringify({ slug, created: now }));
     await env.XMAS.put('xmas:index', JSON.stringify([...slugs, slug]));
     await env.XMAS.put(ipKey, String(n + 1), { expirationTtl: 172800 });
@@ -203,8 +205,8 @@ export async function handleXmas(request, env, url, path) {
     const next = { ...t, title, prevVer: t.ver || null, prevFiles: t.files || [], ver, files: p.index, bytes: p.total, updated: new Date().toISOString(), uploads: { [day]: used + 1 } };
     await env.XMAS.put(themeKey(t.slug), JSON.stringify(next));
     if (old) await env.XMAS.delete(bundleKey(t.slug, old)).catch(() => {});   // the version before the previous one
-    return out({ ok: true, ver, files: p.index.length, bytes: p.total, preview: `${SITE}/?xmas=${t.slug}`, approved: !!t.approved,
-      note: t.approved ? 'Approved: this version is what the terminal shows.' : 'Uploaded. The preview link shows it to anyone; the operator decides what goes live on 1 December.' });
+    return out({ ok: true, ver, files: p.index.length, bytes: p.total, preview: `${SITE}/?xmas=${t.slug}`, live: true,
+      note: 'Uploaded. The preview link shows it to anyone; from 1 December it is on the terminal\'s switch under your name (every upload replaces the last).' });
   }
 
   if (path === '/admin' && request.method === 'POST') {
@@ -217,13 +219,11 @@ export async function handleXmas(request, env, url, path) {
     }
     const t = await env.XMAS.get(themeKey(String(b.slug || '')), 'json');
     if (!t) return out({ error: 'no such theme' }, 404);
-    if (b.action === 'approve') { t.approved = true; t.approvedAt = new Date().toISOString(); if (Number.isFinite(b.order)) t.order = b.order; }
-    else if (b.action === 'unapprove') t.approved = false;
-    else if (b.action === 'block') { t.blocked = true; t.approved = false; }
+    if (b.action === 'block') { t.blocked = true; t.blockedAt = new Date().toISOString(); }
     else if (b.action === 'unblock') t.blocked = false;
     else if (b.action === 'order') t.order = Number(b.order);
     else if (b.action === 'rename') { t.title = cleanText(b.title, 48) || t.title; }
-    else return out({ error: 'action: list | approve | unapprove | block | unblock | order | rename' }, 400);
+    else return out({ error: 'action: list | block | unblock | order | rename' }, 400);
     await env.XMAS.put(themeKey(t.slug), JSON.stringify(t));
     return out({ ok: true, theme: { ...publicView(t), blocked: !!t.blocked, order: t.order ?? null } });
   }

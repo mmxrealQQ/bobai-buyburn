@@ -1,0 +1,11 @@
+name = "bobai-xmas"
+main = "index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# Its own storage: nothing of the agent worker (payments, sessions, the board) is reachable from here.
+[[kv_namespaces]]
+binding = "XMAS"
+id = "15e47ab79a364abf8e7c4906602d56ca"
+
+# Secret XMAS_ADMIN (wrangler secret put XMAS_ADMIN): the operator's approve / block.

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<!-- THE COMMUNITY XMAS TERMINAL (2026-11-17): the one command, what it gives, how it goes live. The kit is /xmas/kit.tgz
+     (built from xmas-kit/ in the repository), the workshop is the bobai-xmas worker, the sandbox page is the live
+     terminal's code on xmas.bobai-dashboard.pages.dev. -->
+<html lang="en" style="background:#0c0b0c">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/fonts.css?v=1">
+
+  <title>Build the Xmas terminal — $BOBAI Brain Terminal</title>
+  <meta name="description" content="Build your own Xmas look for the $BOBAI Brain Terminal on BNB Chain: one command, your own AI agent, a live sandbox. From 1 December visitors pick it by your name.">
+  <link rel="canonical" href="https://brainonbnb.com/xmas">
+  <link rel="icon" type="image/png" href="favicon.png?v=4">
+  <link rel="apple-touch-icon" href="logo.png?v=4">
+  <meta property="og:title" content="Build the Xmas terminal">
+  <meta property="og:description" content="One command, your own AI agent, a live sandbox. From 1 December visitors pick your Xmas terminal by your name.">
+  <meta property="og:url" content="https://brainonbnb.com/xmas">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Build the Xmas terminal">
+  <meta name="twitter:description" content="One command, your own AI agent, a live sandbox. From 1 December visitors pick your Xmas terminal by your name.">
+  <meta name="twitter:image" content="https://brainonbnb.com/og-banner.png">
+  <style>
+    :root{--bg:#0c0b0c;--fg:#ece8e4;--dim:#9a938d;--line:#241f22;--acc:#f0b90b;--card:#141213;--ice:#9fd8ff}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:760px;margin:0 auto;padding:56px 20px 96px}
+    h1{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0 0 6px}
+    h2{font-family:'Space Grotesk',Inter,sans-serif;font-size:20px;margin:38px 0 10px}
+    .lede{color:var(--dim);margin:0 0 30px;font-size:17px}
+    a{color:var(--acc)}
+    pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:0 0 14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px}
+    pre.cmd{border-color:rgba(159,216,255,.5);font-size:15px}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    p{margin:0 0 14px}
+    ol,ul{margin:0 0 14px;padding-left:22px}
+    li{margin:0 0 8px}
+    .note{color:var(--dim);font-size:14.5px}
+    .live{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 6px}
+    .live div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;min-width:150px}
+    .live b{display:block;font:700 26px 'Space Grotesk',Inter,sans-serif;color:var(--ice)}
+    .live span{color:var(--dim);font-size:13.5px}
+    .copy{margin:-6px 0 18px;font:600 13px Inter,sans-serif;background:none;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 12px;cursor:pointer}
+    .copy:hover{border-color:var(--ice)}
+    .back{display:inline-block;margin-top:34px;color:var(--dim);text-decoration:none;border-bottom:1px solid var(--line)}
+    .back:hover{color:var(--fg)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Build the Xmas terminal ❄</h1>
+  <p class="lede">The <a href="/">$BOBAI Brain Terminal</a> shows every trade, burn and liquidity add of $BOBAI on BNB
+  Chain as it happens. This December it wears Xmas looks built by the community — anyone, people, teams, platforms.
+  From 1 December visitors pick one by its builder's name, and the terminal counts how many use each.</p>
+
+  <pre class="cmd"><code id="cmd">npx https://brainonbnb.com/xmas/kit.tgz</code></pre>
+  <button class="copy" type="button" id="cp">Copy</button>
+  <p class="note">Node 18 or newer. It asks two things — what your terminal is called and who the builder is — and makes
+  your folder.</p>
+
+  <h2>Then you build it the way we build ours</h2>
+  <ol>
+    <li><b>Open the folder with your AI agent</b> (Claude Code, Codex, Cursor, Gemini…). It reads the guide in the folder
+    and knows everything we know: the layers, every event the terminal sends, the rules, the commands.</li>
+    <li><b><code>node xmas.mjs dev</code></b> — the real terminal, live data, with your folder in it. Save, and it shows.</li>
+    <li><b>Pictures and clips</b> with your own keys and credits, the same way the terminal's own are made:
+    <code>node xmas.mjs image "…"</code> (OpenAI) and <code>node xmas.mjs video "…"</code> (Google Veo).</li>
+    <li><b><code>node xmas.mjs upload</code></b> — you get a preview link anyone can open.</li>
+  </ol>
+
+  <h2>What you build — what stays</h2>
+  <ul>
+    <li>You build the surroundings and your own animations: a scene behind BOBAI, an overlay in front of him, things that
+    answer a buy or a burn. Nothing is given, nothing is expected.</li>
+    <li>BOBAI himself, the terminal's numbers, log, buttons and windows stay as they are, and the standard terminal is
+    always one click away.</li>
+  </ul>
+
+  <h2>Safe by construction</h2>
+  <p>Every theme runs in a sandbox, served from a separate domain: no access to this site, its storage or anybody's
+  wallet, no calls out, no clicks, no sound. A theme that slows a visitor's device down is put away for that visit.
+  Each one is looked at before it goes live; nothing that asks for money, links out or offends gets in.</p>
+
+  <h2>Right now</h2>
+  <div class="live"><div><b id="n-b">—</b><span>builders so far</span></div><div><b id="n-l">—</b><span>approved for 1 December</span></div></div>
+  <p class="note">Every preview opens on the <a href="https://xmas.bobai-dashboard.pages.dev">sandbox page</a>: the live
+  terminal's own code, every theme reachable by its link.</p>
+
+  <a class="back" href="/">&larr; brainonbnb.com</a>
+</div>
+<script>
+  document.getElementById('cp').addEventListener('click', async (e) => { try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); e.target.textContent = 'Copied'; } catch { e.target.textContent = 'Select and copy'; } });
+  fetch('https://bobai-xmas.bobbuildonbnb.workers.dev/themes').then((r) => r.json()).then((j) => {
+    document.getElementById('n-b').textContent = j.builders ?? '—'; document.getElementById('n-l').textContent = (j.live || []).length;
+  }).catch(() => {});
+</script>
+</body>
+</html>

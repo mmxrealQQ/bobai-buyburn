@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>front</title>
+<style>
+  /* front.html lies IN FRONT OF BOBAI, under the terminal's labels, buttons and windows. Transparent, always:
+     it is an overlay (snow, lights, things that fly by), never a wall. */
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+</style>
+</head>
+<body>
+<script>
+  let L = null;
+  addEventListener('message', (e) => {
+    const m = e.data; if (!m || m.bobai !== 'xmas') return;
+    if (m.type === 'layout') L = m;
+  });
+</script>
+</body>
+</html>

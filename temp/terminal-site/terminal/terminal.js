@@ -8374,7 +8374,7 @@ window.__btXmSeason = xmSeason;
     return f;
   };
   const hello = layer => ({ bobai: 'xmas', v: 1, type: 'hello', layer, reduced: calmDevice || REDUCED, portrait, theme: cur ? { slug: cur.slug, title: cur.title, builder: cur.builder } : null,
-    dev: !!dev, stations: DEST.map(d => ({ k: d.k, name: d.name, color: d.c, pct: d.pct })) });
+    dev: !!dev, stations: DEST.filter(d => d.pct > 0).map(d => ({ k: d.k, name: d.name, color: d.c, pct: d.pct })) });
   const post = (f, m) => { try { if (f && f._ready && f.contentWindow) f.contentWindow.postMessage(m, '*'); } catch {} };
   const emit = m => { if (!cur) return; const msg = { at: Date.now(), ...m, bobai: 'xmas', v: 1 }; post(F.back, msg); post(F.front, msg); }; // the marker last: nothing overwrites it
   // what the theme may know of the page: where things are, in CSS pixels of the terminal's window
@@ -8386,7 +8386,8 @@ window.__btXmSeason = xmSeason;
     const pt = v => { const p = toScreen(v); return { x: Math.round(p.x), y: Math.round(p.y) }; };
     const lay = { type: 'layout', w: Math.round(r0.width), h: Math.round(r0.height), portrait, dpr: Math.min(3, devicePixelRatio || 1),
       figure: rel(fig, r0), ring: pt(A.core), trades: pt(A.src), // figure, never "bobai": that key is every message's marker
-      stations: Object.fromEntries(DEST.map(d => [d.k, d.pos ? pt(d.pos) : null])),
+      // only the stations with a share now (applyPhase hides the rest): from 1 Dec 2026 burnA, liq and creator
+      stations: Object.fromEntries(DEST.filter(d => d.pct > 0 && d.pos).map(d => [d.k, pt(d.pos)])),
       ui: { top: rel(win.querySelector('.hud'), r0), log: rel(win.querySelector('.term'), r0), timeline: rel(win.querySelector('.tl'), r0) } };
     const s = JSON.stringify(lay); if (!force && s === lastLay) return; lastLay = s;
     post(F.back, { ...lay, bobai: 'xmas', v: 1 }); post(F.front, { ...lay, bobai: 'xmas', v: 1 });

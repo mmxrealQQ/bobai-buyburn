@@ -41,13 +41,13 @@ terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
 ```js
 { type: 'hello', layer: 'back' | 'front', reduced: false, portrait: false, dev: true,
   theme: { slug, title, builder },
-  stations: [ { k: 'burnA', name: 'BURN $BOBAI', color: '#ff8a1f', pct: 0.8 }, … ] }   // once, when the page has loaded
+  stations: [ { k: 'burnA', name: 'BURN $BOBAI', color: '#ff8a1f', pct: 1 }, … ] }   // once, when the page has loaded; only the ones on screen
 
 { type: 'layout', w: 1180, h: 760, portrait: false, dpr: 2,
   figure: { x, y, w, h },                      // BOBAI's figure (he moves a little: it comes again when it changes)
   ring: { x, y },                              // the next-buyback ring (the "brain" in the middle)
   trades: { x, y },                            // where the trades come in
-  stations: { burnA: {x,y}, burnB: {x,y}, liq: {x,y}, defi: {x,y}, giggle: {x,y}, creator: {x,y} },
+  stations: { burnA: {x,y}, liq: {x,y}, creator: {x,y} },   // only the stations on screen (from 1 December these three)
   ui: { top: {x,y,w,h}, log: {x,y,w,h}, timeline: {x,y,w,h} } }   // the terminal's own boxes: keep busy things away from them
                                                // sent after hello, on every resize, and whenever something moved
 
@@ -63,8 +63,11 @@ terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
 { type: 'visible', on: false }        // the tab went out of sight: stop animating until { on: true }
 ```
 
-The stations, in the terminal's words: `burnA` BURN $BOBAI, `burnB` BURN $BOB, `liq` liquidity, `defi` the DeFi agent,
-`giggle` the Giggle Academy pot, `creator` the creator wallet. A theme that answers the chain — a burn that lights a
+**From 1 December 2026 the terminal has three stations plus the trades:** `burnA` (BURN $BOBAI), `liq` ($BOBAI
+liquidity, the LP burned) and `creator` (the creator wallet) — the token's 3% tax goes 1% to each, for good. `hello`
+and `layout` only ever name the stations that are on screen, so build for those three and the `trades` point; draw
+a station only when `layout.stations` has it (in November you may still see `burnB` $BOB burn, `defi` the DeFi agent
+and `giggle` the Giggle Academy pot — they end on 1 December). A theme that answers the chain — a burn that lights a
 candle at `burnA`, a big buy that rings a bell, snow that thickens when the mood pumps — is what makes it a *Brain
 Terminal* theme rather than a wallpaper.
 
@@ -107,7 +110,7 @@ refuse any file that contains one.
 node xmas.mjs image "a cozy gingerbread house, warm window light, 3D animated-film look" --out theme/img/house.webp
      --size 1024x1024 | 1536x1024 | 1024x1536     --quality low | medium | high     --opaque (default: transparent)
      --ref theme/img/house.webp   (a new picture in the same style / a frame of a small animation: "the same house, now with snow on the roof")
-     --model gpt-image-2 (default; gpt-image-1 is tried when it is not available to the key)
+     --model …  (default: the newest image model the key can use that draws what you asked; transparent needs one that supports it)
 node xmas.mjs video "snow falls slowly over a quiet pine forest at night, the camera does not move" --out theme/vid/forest.mp4
      --ratio 16:9 | 9:16    --secs 8    --image theme/img/start.png (first frame)    --last theme/img/end.png (last frame; same as --image = a seamless loop)
      --model veo-3.1-fast-generate-preview (default) | veo-3.1-generate-preview
@@ -175,7 +178,7 @@ and never paste their key anywhere.
 | a picture or script does not load | it must be inside `theme/` with a relative path; nothing from other sites loads (`node xmas.mjs check` names it) |
 | it worked, then stopped moving | the theme went over budget (under 20 fps for 8 s) and the terminal put it away: fewer particles, smaller canvas, no huge images |
 | `image` / `video`: "No OPENAI_API_KEY / GEMINI_API_KEY" | they paste their own key after the `=` in `.env` in the folder; OpenAI keys: platform.openai.com → API keys; Google: aistudio.google.com → Get API key |
-| `image`: an error about the model or "verification" | try `--model gpt-image-1`; some OpenAI accounts must verify the organisation for the newest image model |
+| `image`: an error about the model or "verification" | the kit already tries every image model the key can use; some OpenAI accounts must verify the organisation (platform.openai.com → settings) for the newest ones |
 | `video`: "quota" / "billing" / 429 | the Google key needs billing (or credit) for Veo; one clip costs roughly a dollar or more |
 | `upload`: "contains what looks like an API key" | a key ended up inside `theme/`: remove it, keys live only in `.env` |
 | `upload`: 401 "unknown key" / "no key" | `.xmas-key` is missing or changed: it is in the folder the start command made; without it the theme cannot be changed (start a new one with another name) |

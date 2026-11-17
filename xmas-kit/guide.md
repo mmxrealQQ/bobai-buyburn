@@ -41,13 +41,13 @@ terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
 ```js
 { type: 'hello', layer: 'back' | 'front', reduced: false, portrait: false, dev: true,
   theme: { slug, title, builder },
-  stations: [ { k: 'burnA', name: 'BURN $BOBAI', color: '#ff8a1f', pct: 0.8 }, … ] }   // once, when the page has loaded
+  stations: [ { k: 'burnA', name: 'BURN $BOBAI', color: '#ff8a1f', pct: 1 }, … ] }   // once, when the page has loaded; only the ones on screen
 
 { type: 'layout', w: 1180, h: 760, portrait: false, dpr: 2,
   figure: { x, y, w, h },                      // BOBAI's figure (he moves a little: it comes again when it changes)
   ring: { x, y },                              // the next-buyback ring (the "brain" in the middle)
   trades: { x, y },                            // where the trades come in
-  stations: { burnA: {x,y}, burnB: {x,y}, liq: {x,y}, defi: {x,y}, giggle: {x,y}, creator: {x,y} },
+  stations: { burnA: {x,y}, liq: {x,y}, creator: {x,y} },   // only the stations on screen (from 1 December these three)
   ui: { top: {x,y,w,h}, log: {x,y,w,h}, timeline: {x,y,w,h} } }   // the terminal's own boxes: keep busy things away from them
                                                // sent after hello, on every resize, and whenever something moved
 
@@ -63,8 +63,11 @@ terminal's window, `x`/`y` from its top-left; a box is `{ x, y, w, h }`.
 { type: 'visible', on: false }        // the tab went out of sight: stop animating until { on: true }
 ```
 
-The stations, in the terminal's words: `burnA` BURN $BOBAI, `burnB` BURN $BOB, `liq` liquidity, `defi` the DeFi agent,
-`giggle` the Giggle Academy pot, `creator` the creator wallet. A theme that answers the chain — a burn that lights a
+**From 1 December 2026 the terminal has three stations plus the trades:** `burnA` (BURN $BOBAI), `liq` ($BOBAI
+liquidity, the LP burned) and `creator` (the creator wallet) — the token's 3% tax goes 1% to each, for good. `hello`
+and `layout` only ever name the stations that are on screen, so build for those three and the `trades` point; draw
+a station only when `layout.stations` has it (in November you may still see `burnB` $BOB burn, `defi` the DeFi agent
+and `giggle` the Giggle Academy pot — they end on 1 December). A theme that answers the chain — a burn that lights a
 candle at `burnA`, a big buy that rings a bell, snow that thickens when the mood pumps — is what makes it a *Brain
 Terminal* theme rather than a wallpaper.
 

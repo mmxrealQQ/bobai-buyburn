@@ -57,6 +57,7 @@ ok('back under BOBAI (z 1), front under every label and window (z 4)', /#bt \.xm
 ok('the dev folder loads only on 127.0.0.1 / localhost', /const devHost = \/\^\(127\\\.0\\\.0\\\.1\|localhost\)\$\/i\.test\(location\.hostname\)/.test(T));
 ok('the marker is set last on every message (nothing overwrites it)', /\{ \.\.\.lay, bobai: 'xmas', v: 1 \}/.test(T) && /\.\.\.m, bobai: 'xmas', v: 1 \}/.test(T));
 ok('the layout calls BOBAI "figure"', /figure: rel\(fig, r0\)/.test(T));
+ok('only the stations on screen are named (from 1 Dec: burnA, liq, creator)', /stations: Object\.fromEntries\(DEST\.filter\(d => d\.pct > 0 && d\.pos\)/.test(T) && /stations: DEST\.filter\(d => d\.pct > 0\)\.map/.test(T) && /three stations plus the trades/.test(guide));
 ok('a slow theme is put away (under 20 fps for 8 s)', /slowS = n < 20 \? slowS \+ 1 : 0/.test(T) && /if \(slowS >= 8\)/.test(T));
 ok('the page listens to nothing a theme says', !/addEventListener\('message'/.test(T.slice(T.indexOf('COMMUNITY XMAS TERMINAL'))));
 const H = fs.readFileSync(path.join(ROOT, 'dashboard', '_headers'), 'utf8');

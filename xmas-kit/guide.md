@@ -171,6 +171,7 @@ and never paste their key anywhere.
 
 | what happens | what you do |
 |---|---|
+| they downloaded kit.tgz in the browser and "nothing opens" | the file does nothing by itself: the command must run in a terminal (you can run it for them) |
 | `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
 | the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
 | "the name … is taken" | ask for another builder name (it shows on the terminal) |

@@ -86,6 +86,12 @@ async function init() {
   say('\n  Building with an AI agent (Claude Code, Codex, Cursor, Gemini…)? Open the folder with it:');
   say(`    cd "${path.relative(process.cwd(), dir) || '.'}"  &&  claude      — it reads CLAUDE.md / AGENTS.md and knows the rest.`);
   say('\n  Your key is in .xmas-key: it is you. Never share it or post it.\n');
+  // SOMETHING OPENS RIGHT AWAY (17.11.: a builder ran it and "nothing opens"): typed by a person, the dev page starts
+  // at once and the browser shows the real terminal with the new folder in it; an agent's shell (no keyboard) is not held
+  if (tty && !has('no-dev')) {
+    say('  Opening your terminal in the browser… (Ctrl+C here stops it; start it again any time with: node xmas.mjs dev)\n');
+    process.chdir(dir); await dev(dir);
+  }
 }
 
 // ---------------------------------------------------------------- the theme folder

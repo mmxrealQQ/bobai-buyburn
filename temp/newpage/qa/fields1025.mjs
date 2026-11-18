@@ -7,7 +7,8 @@ import fs from 'node:fs';
 const base = (process.argv[2] || 'https://brainonbnb.com').replace(/\/$/, '');
 const pages = ['/list', '/join', '/pass', '/board', '/scanner', '/registry', '/defi', '/services', '/jobs'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const port = 9700 + Math.floor(Math.random() * 200), prof = import.meta.dirname + '/prof-' + port;
+const port = 9700 + Math.floor(Math.random() * 200), prof = (process.env.TEMP || process.env.TMPDIR || '/tmp') + '/bobai-prof-' + port;
+{ const fs = process.getBuiltinModule('node:fs'), d = process.env.TEMP || process.env.TMPDIR || '/tmp'; try { for (const n of fs.readdirSync(d)) if (n.startsWith('bobai-prof-') && Date.now() - fs.statSync(d + '/' + n).mtimeMs > 36e5) fs.rmSync(d + '/' + n, { recursive: true, force: true }); } catch {} } process.on('exit', () => { try { process.getBuiltinModule('node:fs').rmSync(prof, { recursive: true, force: true, maxRetries: 3 }); } catch {} }); // 2026-11-18: the profile goes with the script (16 GB of them had piled up in qa/)
 const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`, '--user-data-dir=' + prof, 'about:blank'], { stdio: 'ignore' });
 let tab; for (let i = 0; i < 40 && !tab; i++) { await sleep(500); try { tab = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json(); } catch {} }
 const ws = new WebSocket(tab.webSocketDebuggerUrl); await new Promise((r) => (ws.onopen = r));

@@ -48,6 +48,12 @@ ok('the guide names every message the terminal sends', ['hello', 'layout', 'even
 ok('the guide gives the figure as "figure" (the key "bobai" is the marker)', /figure: \{ x, y, w, h \}/.test(guide) && !/^\s+bobai: \{ x/m.test(guide));
 const tgz = path.join(ROOT, 'dashboard', 'xmas', 'kit.tgz');
 ok('the served kit is the built one (kit.tgz exists)', fs.existsSync(tgz) && fs.statSync(tgz).size > 5000);
+// The command is the npm name (18.11.): X hides "https://" and npx then reads the link as a file on disk.
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'xmas-kit', 'package.json'), 'utf8'));
+ok('the kit is the npm package bobai-xmas with the bin of the same name (npx bobai-xmas)', pkg.name === 'bobai-xmas' && pkg.bin && pkg.bin['bobai-xmas'] === 'xmas.mjs');
+const pageX = fs.readFileSync(path.join(ROOT, 'dashboard', 'xmas.html'), 'utf8'), workerX = fs.readFileSync(path.join(ROOT, 'worker-xmas', 'index.js'), 'utf8');
+ok('the page, the worker and the kit give "npx bobai-xmas" as the command', /<code id="cmd">npx bobai-xmas<\/code>/.test(pageX) && /how: 'npx bobai-xmas'/.test(workerX) && /start a new one: {2}npx bobai-xmas'/.test(kit));
+ok('no command anywhere without the https:// (npx brainonbnb.com/…)', ![pageX, workerX, kit, guide].some((t) => /npx brainonbnb\.com/.test(t)));
 
 // --- the terminal's layer
 const T = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.js'), 'utf8'), C = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.css'), 'utf8');

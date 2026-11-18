@@ -2,8 +2,8 @@
 // BOBAI Xmas Terminal kit — build your own Xmas look for the $BOBAI Brain Terminal (https://brainonbnb.com).
 // No dependencies. Node 18 or newer.
 //
-//   npx https://brainonbnb.com/xmas/kit.tgz                     start: asks the terminal's name and the builder, makes your folder
-//   npx https://brainonbnb.com/xmas/kit.tgz --title "Frosty Brain" --builder "your_name"   the same without questions (for agents)
+//   npx bobai-xmas                     start: asks the terminal's name and the builder, makes your folder
+//   npx bobai-xmas --title "Frosty Brain" --builder "your_name"   the same without questions (for agents)
 //   node xmas.mjs dev        the real terminal on your machine with your folder in it; saved = shown
 //   node xmas.mjs check      what the upload would refuse, before you upload
 //   node xmas.mjs upload     your theme/ folder goes up; you get a preview link anyone can open
@@ -322,7 +322,7 @@ async function omniVideo(key, model, out, prompt, dir) {
 // ---------------------------------------------------------------- which
 const dir = project();
 if (!cmd && !dir) await init();
-else if (!dir) die('Run this inside your kit folder (the one with xmas.json), or start a new one:  npx https://brainonbnb.com/xmas/kit.tgz');
+else if (!dir) die('Run this inside your kit folder (the one with xmas.json), or start a new one:  npx bobai-xmas');
 else if (cmd === 'dev') await dev(dir);
 else if (cmd === 'check') { const c = await check(dir); process.exit(c.problems.length ? 1 : 0); }
 else if (cmd === 'upload') await upload(dir);

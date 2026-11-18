@@ -2,7 +2,7 @@
 # One npx command, your own AI agent, a sandboxed theme on the live terminal.
 #
 # This is the complete xmas-terminal bundle as a single file, so it can be read in
-# one fetch. 13 files, 1403 lines.
+# one fetch. 13 files, 1410 lines.
 # Download as a zip: https://brainonbnb.com/code/xmas-terminal.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -85,6 +85,12 @@ ok('the guide names every message the terminal sends', ['hello', 'layout', 'even
 ok('the guide gives the figure as "figure" (the key "bobai" is the marker)', /figure: \{ x, y, w, h \}/.test(guide) && !/^\s+bobai: \{ x/m.test(guide));
 const tgz = path.join(ROOT, 'dashboard', 'xmas', 'kit.tgz');
 ok('the served kit is the built one (kit.tgz exists)', fs.existsSync(tgz) && fs.statSync(tgz).size > 5000);
+// The command is the npm name (18.11.): X hides "https://" and npx then reads the link as a file on disk.
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'xmas-kit', 'package.json'), 'utf8'));
+ok('the kit is the npm package bobai-xmas with the bin of the same name (npx bobai-xmas)', pkg.name === 'bobai-xmas' && pkg.bin && pkg.bin['bobai-xmas'] === 'xmas.mjs');
+const pageX = fs.readFileSync(path.join(ROOT, 'dashboard', 'xmas.html'), 'utf8'), workerX = fs.readFileSync(path.join(ROOT, 'worker-xmas', 'index.js'), 'utf8');
+ok('the page, the worker and the kit give "npx bobai-xmas" as the command', /<code id="cmd">npx bobai-xmas<\/code>/.test(pageX) && /how: 'npx bobai-xmas'/.test(workerX) && /start a new one: {2}npx bobai-xmas'/.test(kit));
+ok('no command anywhere without the https:// (npx brainonbnb.com/…)', ![pageX, workerX, kit, guide].some((t) => /npx brainonbnb\.com/.test(t)));
 
 // --- the terminal's layer
 const T = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.js'), 'utf8'), C = fs.readFileSync(path.join(ROOT, 'temp', 'terminal-site', 'terminal', 'terminal.css'), 'utf8');
@@ -217,7 +223,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '').replace(/^\/xmas(?=\/|$)/, '') || '/';
-    if (path === '/') return new Response(JSON.stringify({ name: 'BOBAI Xmas terminal workshop', how: 'npx https://brainonbnb.com/xmas/kit.tgz', themes: url.origin + '/themes' }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' } });
+    if (path === '/') return new Response(JSON.stringify({ name: 'BOBAI Xmas terminal workshop', how: 'npx bobai-xmas', themes: url.origin + '/themes' }, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' } });
     try { return await handleXmas(request, env, url, path); }
     catch (e) { return new Response(JSON.stringify({ error: 'something broke on our side; nothing was changed' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }); }
   },
@@ -653,6 +659,7 @@ and never paste their key anywhere.
 | what happens | what you do |
 |---|---|
 | they downloaded kit.tgz in the browser and "nothing opens" | the file does nothing by itself: the command must run in a terminal (you can run it for them) |
+| `ENOENT ... brainonbnb.com\xmas\kit.tgz` | they typed the link without `https://` (X hides it), so npm looked for a file on disk: run `npx bobai-xmas` |
 | `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
 | the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
 | "the name … is taken" | ask for another builder name (it shows on the terminal) |
@@ -693,8 +700,8 @@ Questions, ideas, bugs in the kit: the Brain Board, https://brainonbnb.com/board
 ==============================================================================
 
 {
-  "name": "bobai-xmas-kit",
-  "version": "1.0.0",
+  "name": "bobai-xmas",
+  "version": "1.0.1",
   "description": "Build your own Xmas look for the $BOBAI Brain Terminal on BNB Chain: one command, your own agent, a live sandbox.",
   "type": "module",
   "bin": { "bobai-xmas": "xmas.mjs" },
@@ -767,8 +774,8 @@ Questions, ideas, bugs in the kit: the Brain Board, https://brainonbnb.com/board
 // BOBAI Xmas Terminal kit — build your own Xmas look for the $BOBAI Brain Terminal (https://brainonbnb.com).
 // No dependencies. Node 18 or newer.
 //
-//   npx https://brainonbnb.com/xmas/kit.tgz                     start: asks the terminal's name and the builder, makes your folder
-//   npx https://brainonbnb.com/xmas/kit.tgz --title "Frosty Brain" --builder "your_name"   the same without questions (for agents)
+//   npx bobai-xmas                     start: asks the terminal's name and the builder, makes your folder
+//   npx bobai-xmas --title "Frosty Brain" --builder "your_name"   the same without questions (for agents)
 //   node xmas.mjs dev        the real terminal on your machine with your folder in it; saved = shown
 //   node xmas.mjs check      what the upload would refuse, before you upload
 //   node xmas.mjs upload     your theme/ folder goes up; you get a preview link anyone can open
@@ -1087,7 +1094,7 @@ async function omniVideo(key, model, out, prompt, dir) {
 // ---------------------------------------------------------------- which
 const dir = project();
 if (!cmd && !dir) await init();
-else if (!dir) die('Run this inside your kit folder (the one with xmas.json), or start a new one:  npx https://brainonbnb.com/xmas/kit.tgz');
+else if (!dir) die('Run this inside your kit folder (the one with xmas.json), or start a new one:  npx bobai-xmas');
 else if (cmd === 'dev') await dev(dir);
 else if (cmd === 'check') { const c = await check(dir); process.exit(c.problems.length ? 1 : 0); }
 else if (cmd === 'upload') await upload(dir);

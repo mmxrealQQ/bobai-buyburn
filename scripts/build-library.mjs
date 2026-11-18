@@ -339,7 +339,7 @@ powers by themselves; combos at 8, 16 and 24; a daily top 10 and an overall boar
     slug: 'xmas-terminal',
     title: 'Xmas Terminal — the community builds the terminal\'s look',
     tagline: 'One npx command, your own AI agent, a sandboxed theme on the live terminal.',
-    about: `Anyone builds an Xmas look for the Brain Terminal (2026-11-17): npx https://brainonbnb.com/xmas/kit.tgz asks
+    about: `Anyone builds an Xmas look for the Brain Terminal (2026-11-17): npx bobai-xmas asks
 the terminal's name and the builder, writes the guide every agent reads (AGENTS/CLAUDE/GEMINI/Cursor/Copilot), and gives
 dev (the live terminal mirrored with the folder in it, saved = shown), check, upload, and pictures/clips with the
 builder's own OpenAI and Google keys. Themes live in a worker of their own with storage of its own and are served into

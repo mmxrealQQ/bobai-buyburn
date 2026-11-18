@@ -1,6 +1,6 @@
 {
-  "name": "bobai-xmas-kit",
-  "version": "1.0.0",
+  "name": "bobai-xmas",
+  "version": "1.0.1",
   "description": "Build your own Xmas look for the $BOBAI Brain Terminal on BNB Chain: one command, your own agent, a live sandbox.",
   "type": "module",
   "bin": { "bobai-xmas": "xmas.mjs" },

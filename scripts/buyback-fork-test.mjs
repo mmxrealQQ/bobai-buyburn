@@ -238,6 +238,27 @@ console.log = (...a) => out.push(a.join(' '));
 try { await worker.scheduled({}, env, {}); } finally { console.log = log; }
 ok('a second tick finds the wallet under its threshold and sends nothing', (await pub.getTransactionCount({ address: bot })) === nonce && JSON.parse(kv.get('burns.json')).length === 1);
 
+// NOV 20 → DEC 1 (2026-11-18): Liq Boost III, the DeFi agent's share and the Giggle pot all end at Nov 20 00:01; for
+// eleven days the plain 1/1/1 runs. Its first real run is the night of the 20th, so it is run here first, the same way.
+console.log('\nthe run on Nov 20, 2026 (standard 1/1/1)');
+{
+  const key3 = generatePrivateKey(), bot3 = privateKeyToAccount(key3).address;
+  await test.setBalance({ address: bot3, value: parseEther('0.1') });
+  const kv3 = new Map();
+  const env3 = { ...env, BUYBACK_PRIVATE_KEY: key3, LOGS: { get: async (k) => (kv3.has(k) ? kv3.get(k) : null), put: async (k, v) => { kv3.set(k, v); }, delete: async (k) => { kv3.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv3.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) } };
+  const c0 = await bal(CREATOR), l0 = await bal(LPA), p0 = await bal(POT), deadBob0 = await tok(BOB, DEAD), deadBobai0 = await tok(BOBAI, DEAD);
+  const realNow = Date.now; const out3 = [];
+  Date.now = () => Date.parse('2026-11-20T00:02:00Z'); console.log = (...a) => out3.push(a.join(' '));
+  try { await worker.scheduled({}, env3, {}); } finally { console.log = log; Date.now = realNow; }
+  const said = out3.join('\n'), e3 = JSON.parse(kv3.get('burns.json') || '[]')[0] || {};
+  const avail3 = parseEther('0.1') - parseEther('0.003');
+  ok('Nov 20: the split is 100 BOBAI burn / 100 BOB burn / 100 creator, "Standard 1/1/1", no other slice', /Active phases: Standard 1\/1\/1/.test(said) && /BOBAI burn 100\s+\|\s+BOB burn 100\s+\|\s+Creator 100/.test(said) && !/BOBAI liq |LP agent |Giggle pot |WC26 pool |BOB liq /.test(said), (said.match(/Active phases:[^\n]*/) || [''])[0] + ' · ' + (said.match(/BOBAI burn \d+[^\n]*/) || [''])[0]);
+  ok('Nov 20: the DeFi agent and the Giggle pot receive nothing, no liquidity is added', (await bal(LPA)) === l0 && (await bal(POT)) === p0 && !e3.lpAgentTx && !e3.giggleTx && !kv3.get('bobai-liq-log.json'));
+  ok('Nov 20: the creator receives exactly a third of what was available', (await bal(CREATOR)) - c0 === (avail3 * 100n) / 300n, formatEther((await bal(CREATOR)) - c0));
+  ok('Nov 20: $BOB and $BOBAI are both bought and burned, the log holds both burns', /^0x[0-9a-f]{64}$/.test(e3.bobBurnTx || '') && /^0x[0-9a-f]{64}$/.test(e3.bobaiBurnTx || '') && (await tok(BOB, DEAD)) > deadBob0 && (await tok(BOBAI, DEAD)) > deadBobai0);
+  ok('Nov 20: the wallet keeps its gas reserve and no more', (await bal(bot3)) <= parseEther('0.003') && (await bal(bot3)) > 0n, formatEther(await bal(bot3)));
+}
+
 // FROM DEC 1 (operator, 2026-10-28): the BOB-burn 1% is BOBAI liquidity for good. The same worker, a fresh throwaway
 // wallet, its clock set to Dec 1 00:02 UTC for the one run (Date.now is what the windows read; restored after).
 console.log('\nthe run on Dec 1, 2026 (BOBAI liquidity for good)');

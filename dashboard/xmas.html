@@ -61,7 +61,7 @@
   Chain as it happens. This December it wears Xmas looks built by the community — anyone, people, teams, platforms.
   From 1 December visitors pick one by its builder's name, and the terminal counts how many use each.</p>
 
-  <pre class="cmd"><code id="cmd">npx bobai-xmas</code></pre>
+  <pre class="cmd"><code id="cmd">npx https://brainonbnb.com/xmas/kit.tgz</code></pre>
   <button class="copy" type="button" id="cp">Copy</button>
   <p class="note">It asks two things — what your terminal is called and who the builder is — makes your folder and opens
   the terminal with it in your browser.</p>
@@ -69,14 +69,15 @@
   <h2>How to run it (2 minutes)</h2>
   <ol>
     <li><b>Easiest:</b> open your AI agent (Claude Code, Codex, Cursor, Gemini…) and tell it:
-    <i>“run npx bobai-xmas and help me build my theme”</i>. It does the rest.</li>
+    <i>“run npx https://brainonbnb.com/xmas/kit.tgz and help me build my theme”</i>. It does the rest.</li>
     <li><b>Or yourself:</b> you need <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> (the LTS, default install).
     Then open a terminal — Windows: press <b>Win</b>, type <b>PowerShell</b>, Enter · Mac: <b>Terminal</b> — paste the command above and press Enter.</li>
   </ol>
-  <p class="note">The command has to run in a terminal; nothing to download first. The kit is the npm package
-  <a href="https://www.npmjs.com/package/bobai-xmas" target="_blank" rel="noopener">bobai-xmas</a>
-  (the same kit also runs as <code>npx https://brainonbnb.com/xmas/kit.tgz</code> — with the https://, without it npm looks for a file on your disk).
-  Next time, inside your folder: <code>node xmas.mjs dev</code>.</p>
+  <p class="note"><b>Keep the <code>https://</code>.</b> X and some chat apps hide it when you copy a link; without it
+  npx looks for a file on your own disk and stops with <code>ENOENT … brainonbnb.com\xmas\kit.tgz</code>.
+  Copy the command from this page (the button), or type <code>https://</code> in front.</p>
+  <p class="note">The command has to run in a terminal; nothing to download first. Opening <code>kit.tgz</code> in the
+  browser only saves a file and does nothing by itself. Next time, inside your folder: <code>node xmas.mjs dev</code>.</p>
 
   <h2>Then you build it the way we build ours</h2>
   <ol>

@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brain-pop.txt
 Xmas Terminal — the community builds the terminal's look
 --------------------------------------------------------
 One npx command, your own AI agent, a sandboxed theme on the live terminal.
-13 files, 1410 lines
+13 files, 1412 lines
 needs:
   - A worker and a key-value store of their own
       ours: Cloudflare Workers + KV (bobai-xmas on workers.dev)

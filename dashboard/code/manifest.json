@@ -555,10 +555,10 @@
    "title": "Xmas Terminal — the community builds the terminal's look",
    "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
    "files": 13,
-   "lines": 1410,
-   "zipBytes": 46885,
-   "txtBytes": 113963,
-   "sha256": "aa626439e266aebb",
+   "lines": 1412,
+   "zipBytes": 47068,
+   "txtBytes": 114426,
+   "sha256": "19112b9218700b6c",
    "reqs": [
     {
      "what": "A worker and a key-value store of their own",

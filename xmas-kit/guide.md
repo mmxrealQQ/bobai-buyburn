@@ -172,7 +172,7 @@ and never paste their key anywhere.
 | what happens | what you do |
 |---|---|
 | they downloaded kit.tgz in the browser and "nothing opens" | the file does nothing by itself: the command must run in a terminal (you can run it for them) |
-| `ENOENT ... brainonbnb.com\xmas\kit.tgz` | they typed the link without `https://` (X hides it), so npm looked for a file on disk: run `npx bobai-xmas` |
+| `ENOENT ... brainonbnb.com\xmas\kit.tgz` | they typed the link without `https://` (X hides it), so npm looked for a file on disk: run it again with the scheme, `npx https://brainonbnb.com/xmas/kit.tgz` |
 | `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
 | the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
 | "the name … is taken" | ask for another builder name (it shows on the terminal) |

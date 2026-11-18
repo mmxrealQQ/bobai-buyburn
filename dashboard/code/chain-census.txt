@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5082 lines.
+# one fetch. 7 files, 5097 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3686,8 +3686,17 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   });
   Promise.all([get(AG + '/hires'), get(AG + '/second-opinion'), get(AG + '/jobs/own'), get(AG + '/buys'), get(AG + '/settle/public'), get(AG + '/listings')]).then(function (r) {
     var hires = r[0], op = r[1], own = r[2], buys = r[3], st = r[4], li = r[5];
+    // NOT READ IS NOT ZERO (2026-11-18): with the agent API down every tile said 0, "None yet." and "The first run
+    // settles at 21:15 UTC" although runs are on chain. A record that did not answer shows a dash and says so.
+    var unread = function (k, link) { set('aw-n-' + k, '&mdash;'); set('aw-s-' + k, 'not read just now'); set('aw-' + k, '<p class="rg-note">The record could not be read just now. <a href="' + link + '" target="_blank" rel="noopener">The record &rarr;</a></p>'); };
+    var okHired = !!(hires && op), okUs = !!(own && buys), okSettled = !!st;
+    if (!okHired) unread('hired', AG + '/hires');
+    if (!okUs) unread('us', AG + '/buys');
+    if (!okSettled) unread('settled', '/settle');
+    if (!li) set('aw-listed', '<p class="rg-note">The listings could not be read just now. <a href="/list">Listing &rarr;</a></p>');
     // we hired: our agents' hires (agent-hires.js) and the DeFi agent's daily second opinion from Mandate Range-1
     var we = [];
+    if (okHired) {
     ((hires && hires.log) || []).forEach(function (h) { if (h.job) we.push({ at: h.at, who: NAME[h.by] || ('#' + h.by), seller: h.seller_name, site: h.site || 'Marque', price: h.price_u, status: h.status, our_side: h.our_side, theirs: h.answer && h.answer.health_factor, ours: h.own && h.own.hf, agrees: h.agrees, tx: ((h.txs || []).slice(-1)[0] || {}).tx }); });
     ((op && op.opinions) || []).forEach(function (o) { if (o.job) we.push({ at: o.at, who: 'DeFi agent', seller: (o.seller && o.seller.name) || 'Mandate Range-1', site: 'Mandate', price: o.price_u, status: o.status, agrees: o.agrees, tx: o.tx }); });
     we.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); });
@@ -3703,8 +3712,10 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
       var st = x.status === 'answered' ? '' : undelivered(x) ? ' &middot; <span class="no">' + esc(x.status) + '</span>' + (x.our_side ? ' (' + esc(x.our_side) + ')' : '') : ' &middot; ' + esc(x.status);
       return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span>Our <b>' + esc(x.who) + '</b> paid <b>' + esc(x.seller) + '</b> (' + esc(x.site) + ') ' + nf(x.price, 2) + ' $U' + f + v + st + tx(x.tx) + '</div>';
     }).join('') : '<p class="rg-note">None yet.</p>');
+    }
     // hired us: paid escrow jobs of our agents by wallets not ours, and x402 answers paid by strangers
     var us = [];
+    if (okUs) {
     Object.keys((own && own.jobs) || {}).forEach(function (id) { var j = own.jobs[id], last = (j.history || []).slice(-1)[0] || {}; if (j.client && OURS.indexOf(String(j.client).toLowerCase()) < 0 && /^(FUNDED|SUBMITTED|COMPLETED)$/.test(last.status || '')) us.push({ at: (j.history[0] || {}).at, from: String(j.client).toLowerCase(), what: 'escrow job ' + id + (NAME[j.agent] ? ' for our ' + NAME[j.agent] : ''), price: last.budget_u, status: last.status, job: id }); });
     ((buys && buys.payments) || []).forEach(function (p) { if (!p.self_test && OURS.indexOf(String(p.from).toLowerCase()) < 0) us.push({ at: p.at, from: String(p.from).toLowerCase(), what: 'x402 ' + String(p.for || '').replace('answer:', '').replace(/_/g, ' '), price: p.amount, asset: p.asset, tx: p.tx }); });
     us.sort(function (a, b) { return Date.parse(b.at) - Date.parse(a.at); });
@@ -3714,13 +3725,17 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     set('aw-us', us.length ? us.slice(0, 6).map(function (x) {
       return '<div class="aw-row"><span class="aw-t">' + day(x.at) + '</span><b>' + (KNOWN[x.from] ? esc(KNOWN[x.from]) : short(x.from)) + '</b> paid ' + (x.price != null ? nf(x.price, 2) + ' ' + esc(x.asset || '$U') + ' ' : '') + 'for ' + esc(x.what) + (x.tx ? tx(x.tx) : x.job ? ' <a href="' + AG + '/job?id=' + esc(x.job) + '" target="_blank" rel="noopener">job &#x2197;</a>' : '') + '</div>';
     }).join('') : '<p class="rg-note">None yet.</p>');
+    }
     // we settled for
     var t = (st && st.totals) || {}, ls = ((st && st.log) || []).filter(function (d) { return d.settled && d.tx; });
+    if (okSettled) {
     set('aw-n-settled', nf(t.jobs || 0));
     set('aw-s-settled', t.jobs ? '$' + nf(t.released_u, 2) + ' to ' + nf((t.providers || []).length) + ' agents' : ((st && st.waiting) ? nf(st.waiting) + ' jobs watched, daily 21:15 UTC' : 'their pay released, our gas'));
     set('aw-settled', ls.length ? ls.slice(0, 6).map(function (d) { return '<div class="aw-row"><span class="aw-t">' + day(d.at) + '</span>Job <b>' + esc(d.id) + '</b>: $' + nf(d.released_u, 2) + ' released to ' + short(d.provider) + tx(d.tx) + '</div>'; }).join('') + '<div class="aw-row"><a href="/settle">Every settle &rarr;</a></div>'
       : '<p class="rg-note">The first run settles at 21:15 UTC. <a href="/settle">The record &rarr;</a></p>');
+    }
     // listed here: listings by others (ours are house listings, free)
+    if (!li) { var lc0 = document.getElementById('aw-n-listed').closest('.rg-card'); lc0.style.display = 'none'; lc0.parentElement.classList.add('n3'); return; }
     var others = ((li && li.listings) || []).filter(function (l) { return !l.house; });
     set('aw-n-listed', nf(others.length));
     // no zero on the first screen of a marketplace (2026-10-30): the tile comes when there is someone in it

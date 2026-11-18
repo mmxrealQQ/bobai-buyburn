@@ -555,10 +555,10 @@
    "title": "Xmas Terminal — the community builds the terminal's look",
    "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
    "files": 13,
-   "lines": 1396,
-   "zipBytes": 46289,
-   "txtBytes": 112407,
-   "sha256": "0f3ba748901a8ecd",
+   "lines": 1403,
+   "zipBytes": 46543,
+   "txtBytes": 113011,
+   "sha256": "aafc7796d6204ba5",
    "reqs": [
     {
      "what": "A worker and a key-value store of their own",
@@ -669,10 +669,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4355,
-   "zipBytes": 156476,
-   "txtBytes": 467477,
-   "sha256": "850dd1910924e9df",
+   "lines": 4359,
+   "zipBytes": 156667,
+   "txtBytes": 468045,
+   "sha256": "9aadcfb6f4c507ba",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -824,10 +824,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 5082,
-   "zipBytes": 114996,
-   "txtBytes": 331560,
-   "sha256": "b7b130123af748b8",
+   "lines": 5097,
+   "zipBytes": 115285,
+   "txtBytes": 332643,
+   "sha256": "6a13a44f95efe9ae",
    "reqs": [
     {
      "what": "Node 18+ and time",

@@ -24,6 +24,11 @@ say(chart && (chart.inputSchema.properties.agent_id.examples || []).every((e) =>
 say(fix && JSON.stringify(fix.inputSchema).includes('Pancake: K') && !JSON.stringify(fix.inputSchema).includes('nonce too low'), 'bnb_fix_lookup: the schema example is one the library answers');
 const pi = (await rpc(`${SITE}/mcp/preflight`, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'bobai-review', version: '1' } }))?.result;
 say(pi && !/bsc_rug_watch|plaza_board_read|erc8183_escrow_status/.test(pi.instructions || '') && !pi.capabilities?.prompts, `/mcp/preflight introduces only its own tools and offers no prompts (${pi?.serverInfo?.name})`);
+// (18.11.) a plain GET names the same tools a client connecting there gets (GET /mcp/preflight named all 30, tools/list 2)
+for (const p of ['/mcp', '/mcp/preflight', '/mcp/pancakeswap', '/mcp/agents', '/mcp/board']) {
+  const g = await json(`${SITE}${p}`), t = ((await rpc(`${SITE}${p}`, 'tools/list'))?.result?.tools || []).map((x) => x.name);
+  say(g && Array.isArray(g.tools) && t.length > 0 && g.tools.length === t.length && g.tools.every((n) => t.includes(n)), `GET ${p} lists the ${t.length} tools that tools/list gives there (GET: ${g?.tools?.length})`);
+}
 const pp = (await rpc(`${SITE}/mcp/preflight`, 'prompts/list'))?.result?.prompts;
 say(Array.isArray(pp) && pp.length === 0, '/mcp/preflight prompts/list is empty');
 const mi = (await rpc(`${SITE}/mcp`, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'bobai-review', version: '1' } }))?.result;

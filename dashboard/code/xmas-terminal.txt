@@ -2,7 +2,7 @@
 # One npx command, your own AI agent, a sandboxed theme on the live terminal.
 #
 # This is the complete xmas-terminal bundle as a single file, so it can be read in
-# one fetch. 13 files, 1396 lines.
+# one fetch. 13 files, 1403 lines.
 # Download as a zip: https://brainonbnb.com/code/xmas-terminal.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -652,6 +652,7 @@ and never paste their key anywhere.
 
 | what happens | what you do |
 |---|---|
+| they downloaded kit.tgz in the browser and "nothing opens" | the file does nothing by itself: the command must run in a terminal (you can run it for them) |
 | `npx` / `node` is "not recognized" | Node.js is missing: they install the LTS from https://nodejs.org (one installer, default options), open a new terminal, run the command again |
 | the start asks two questions and you cannot answer them (no keyboard in your shell) | ask your human both, then run it with `--title "…" --builder "…"` |
 | "the name … is taken" | ask for another builder name (it shows on the terminal) |
@@ -850,6 +851,12 @@ async function init() {
   say('\n  Building with an AI agent (Claude Code, Codex, Cursor, Gemini…)? Open the folder with it:');
   say(`    cd "${path.relative(process.cwd(), dir) || '.'}"  &&  claude      — it reads CLAUDE.md / AGENTS.md and knows the rest.`);
   say('\n  Your key is in .xmas-key: it is you. Never share it or post it.\n');
+  // SOMETHING OPENS RIGHT AWAY (17.11.: a builder ran it and "nothing opens"): typed by a person, the dev page starts
+  // at once and the browser shows the real terminal with the new folder in it; an agent's shell (no keyboard) is not held
+  if (tty && !has('no-dev')) {
+    say('  Opening your terminal in the browser… (Ctrl+C here stops it; start it again any time with: node xmas.mjs dev)\n');
+    process.chdir(dir); await dev(dir);
+  }
 }
 
 // ---------------------------------------------------------------- the theme folder

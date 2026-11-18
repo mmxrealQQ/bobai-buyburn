@@ -1601,10 +1601,14 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
     // stream, and a server that offers none answers 405. It got 200 JSON, which
     // a client reads as a broken stream. A plain GET (a browser, an indexer)
     // still gets the info below.
+    // A SMALL SET SAYS ITS OWN LIST (2026-11-18): GET /mcp/preflight named all 30 tools while a client connecting there
+    // got 2 (pancakeswap 4, agents 6, board 3) — the same list as tools/list and prompts/list on that path, its own name
+    const here = 'https://brainonbnb.com' + new URL(request.url).pathname.replace(/\/+$/, '');
     if (/text\/event-stream/i.test(request.headers.get('accept') || '')) {
-      return new Response(JSON.stringify({ error: 'This MCP server offers no SSE stream. Send JSON-RPC by POST to https://brainonbnb.com/mcp.' }), { status: 405, headers: { ...cors, Allow: 'POST' } });
+      return new Response(JSON.stringify({ error: `This MCP server offers no SSE stream. Send JSON-RPC by POST to ${here}.` }), { status: 405, headers: { ...cors, Allow: 'POST' } });
     }
-    return new Response(JSON.stringify({ name: 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', connect: 'https://brainonbnb.com/connect — one click to keep this server in Claude, Cursor or VS Code', tools: MCP_TOOLS.map(t => t.name), prompts: MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri) }), { headers: cors });
+    const shown = only ? MCP_TOOLS.filter((t) => only.includes(t.name)) : MCP_TOOLS;
+    return new Response(JSON.stringify({ name: sub ? sub.name : 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', endpoint: here, connect: 'https://brainonbnb.com/connect — one click to keep this server in Claude, Cursor or VS Code', tools: shown.map(t => t.name), prompts: sub ? [] : MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri), ...(sub ? { everything: 'https://brainonbnb.com/mcp' } : {}) }), { headers: cors });
   }
   let body;
   try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }

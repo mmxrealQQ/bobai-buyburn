@@ -26,7 +26,7 @@ export const amountShort = (v) => { const x = num(v); if (x == null) return '—
 const u2 = (v) => (num(v) == null ? '—' : num(v).toFixed(2) + ' $U');
 const day = (iso) => { const t = Date.parse(iso || ''); return isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null; };
 
-export const PAGES = ['token', 'registry', 'jobs', 'settle', 'defi', 'venus', 'services', 'connect'];
+export const PAGES = ['token', 'registry', 'jobs', 'settle', 'defi', 'venus', 'services', 'connect', 'list', 'library'];
 const signedPct = (v, d = 1) => (num(v) == null ? '—' : (num(v) < 0 ? '−' : '+') + Math.abs(num(v)).toFixed(d) + '%');
 
 export async function pageSpec(name, get) {
@@ -173,6 +173,42 @@ export async function pageSpec(name, get) {
         ['Clients', '3', 'Claude, Cursor and VS Code', false],
       ],
       foot: 'A token check before every trade · nothing signs', cta: 'Connect it', ok: !!(m || st),
+    };
+  }
+  if (name === 'list') {
+    // (18.11.) the price from the listing service itself, the field it joins from the census; never "listed by others"
+    // (still 0: a marketplace does not lead with its empty shelf, 2026-10-30)
+    const [li, r] = await Promise.all([get(AG + '/listings'), get(SITE + '/api-registry.json')]);
+    const price = num(li && li.price_usd);
+    return {
+      label: 'BRAIN PLAZA · LIST YOUR AGENT', sub: 'The directory of BNB Chain agents that actually answer',
+      head: ['Built an agent that works? ', 'List it.'],
+      box: [price ? '$' + price + ' ONCE · USD1, BNB OR $BOBAI' : 'ONCE · USD1, BNB OR $BOBAI', 'A profile, a badge, a daily check · never a place in the list'],
+      tiles: [
+        ['Answer', int(r && r.reachability && r.reachability.reachable), 'agents reply when contacted', true],
+        ['Hireable', int(r && r.hireable_here), 'with a Hire button here', false],
+        ['Price', price ? '$' + price : '—', 'once, no subscription', false],
+        ['Checked', 'Daily', 'silent 3 days: badge goes', false],
+      ],
+      foot: 'The order is the evidence · nobody can buy a place', cta: 'List your agent', ok: !!(li || r),
+    };
+  }
+  if (name === 'library') {
+    // (18.11.) the library's own manifest: how many bundles, files and lines anyone can read and run
+    const m = await get(SITE + '/code/manifest.json');
+    const b = m && Array.isArray(m.bundles) ? m.bundles : null;
+    const sum = (k) => (b ? b.reduce((a, x) => a + (num(x[k]) || 0), 0) : null);
+    return {
+      label: 'THE LIBRARY · OPEN SOURCE', sub: 'Every bot and app behind $BOBAI, packaged to be read and run',
+      head: ['The code behind ', 'everything'],
+      box: ['MIT LICENSED · NO ACCOUNT', 'Read in the browser or take the zip · no secrets inside'],
+      tiles: [
+        ['Bundles', b ? int(b.length) : '—', 'bots, apps and tools', true],
+        ['Files', int(sum('files')), 'in the bundles', false],
+        ['Lines', b ? amountShort(sum('lines')) : '—', 'of code, every one readable', false],
+        ['License', m && m.license ? String(m.license) : '—', 'take it, run it, change it', false],
+      ],
+      foot: 'Built from our own source · every file readable', cta: 'Open the library', ok: !!b,
     };
   }
   return null;

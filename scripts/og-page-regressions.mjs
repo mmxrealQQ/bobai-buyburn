@@ -57,7 +57,16 @@ ok('a long tile value shrinks (15 chars -> at most 28 px)', sz > 0 && sz <= 28, 
 ok('board card: "Waiting" = bugs and questions without an answer (asking), not every open entry', /Waiting/.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))) && / 2 /.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))) && !/ 39 /.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))));
 
 const w = readFileSync(new URL('../dashboard/_worker.js', import.meta.url), 'utf8');
-ok('site: /og/page/<token|registry|jobs|settle|scanner|defi|venus|services|connect>.png goes to the card worker', /page\\\/\(\?:token\|registry\|jobs\|settle\|scanner\|defi\|venus\|services\|connect\)\)\\\.png\$\//.test(w));
+ok('site: /og/page/<token|registry|jobs|settle|scanner|defi|venus|services|connect|list|library>.png goes to the card worker', /page\\\/\(\?:token\|registry\|jobs\|settle\|scanner\|defi\|venus\|services\|connect\|list\|library\)\)\\\.png\$\//.test(w));
+// (18.11.) /list and /library
+const SAMPLE3 = { ...SAMPLE, 'https://agent.brainonbnb.com/listings': { price_usd: 95, listings: [{ id: '1', house: true }] }, 'https://brainonbnb.com/api-registry.json': { ...SAMPLE['https://brainonbnb.com/api-registry.json'], hireable_here: 57 }, 'https://brainonbnb.com/code/manifest.json': { license: 'MIT', bundles: [{ files: 3, lines: 1000 }, { files: 4, lines: 2117 }] } };
+const ls = text(pageCard(await pageSpec('list', async (u) => SAMPLE3[u] ?? null)));
+ok('list: $95 from the listing service, 1,007 answer, 57 hireable, daily check', /\$95/.test(ls) && /1,007/.test(ls) && /\b57\b/.test(ls) && /Daily/.test(ls), ls.slice(0, 300));
+ok('list: no tile counts outside listings (a marketplace does not lead with its empty shelf)', !/listed by others|Listed\b/.test(ls));
+const lb = text(pageCard(await pageSpec('library', async (u) => SAMPLE3[u] ?? null)));
+ok('library: bundles 2, files 7, lines 3,117, MIT from the manifest', /Bundles 2 /.test(lb) && /Files 7 /.test(lb) && /3,117/.test(lb) && /MIT/.test(lb), lb.slice(0, 300));
+const lb0 = text(pageCard(await pageSpec('library', none)));
+ok('library with no manifest: dashes, never 0 bundles', /Bundles — /.test(lb0) && !/Bundles 0/.test(lb0), lb0.slice(0, 200));
 // (18.11.) /services and /connect: their own cards, the same figures as the pages, nothing the server does not keep
 const SAMPLE2 = { ...SAMPLE, 'https://agent.brainonbnb.com/stats': { asked: { total: 680328, by_kind: { mcp: 137136 } } }, 'https://brainonbnb.com/mcp': { tools: new Array(30).fill('t') } };
 const get2 = async (u) => SAMPLE2[u] ?? null;
@@ -71,7 +80,7 @@ ok('connect with no source answering: a dash, never 0 tools', /Tools —/.test(c
 ok('the services generator names its card', readFileSync(new URL('build-services.mjs', import.meta.url), 'utf8').includes('https://brainonbnb.com/og/page/services.png'));
 const og = readFileSync(new URL('../worker-og/index.js', import.meta.url), 'utf8');
 ok('worker-og: the /page/ route, scanner as the plain card', /\(\?:og\\\/\)\?page\\\/\(\[a-z\]\{3,12\}\)\\\.png\$\//.test(og) && /card\(null\)/.test(og));
-for (const [f, n] of [['token', 'token'], ['registry', 'registry'], ['jobs', 'jobs'], ['settle', 'settle'], ['scanner', 'scanner'], ['defi', 'defi'], ['venus', 'venus'], ['services', 'services'], ['connect', 'connect']]) {
+for (const [f, n] of [['token', 'token'], ['registry', 'registry'], ['jobs', 'jobs'], ['settle', 'settle'], ['scanner', 'scanner'], ['defi', 'defi'], ['venus', 'venus'], ['services', 'services'], ['connect', 'connect'], ['list', 'list'], ['library', 'library']]) {
   const h = readFileSync(new URL(`../dashboard/${f}.html`, import.meta.url), 'utf8');
   ok(`/${f}: og:image and twitter:image are its own card`, h.includes(`<meta property="og:image" content="https://brainonbnb.com/og/page/${n}.png">`) && h.includes(`<meta name="twitter:image" content="https://brainonbnb.com/og/page/${n}.png">`));
 }

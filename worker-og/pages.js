@@ -26,7 +26,7 @@ export const amountShort = (v) => { const x = num(v); if (x == null) return '—
 const u2 = (v) => (num(v) == null ? '—' : num(v).toFixed(2) + ' $U');
 const day = (iso) => { const t = Date.parse(iso || ''); return isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : null; };
 
-export const PAGES = ['token', 'registry', 'jobs', 'settle', 'defi', 'venus'];
+export const PAGES = ['token', 'registry', 'jobs', 'settle', 'defi', 'venus', 'services', 'connect'];
 const signedPct = (v, d = 1) => (num(v) == null ? '—' : (num(v) < 0 ? '−' : '+') + Math.abs(num(v)).toFixed(d) + '%');
 
 export async function pageSpec(name, get) {
@@ -138,6 +138,41 @@ export async function pageSpec(name, get) {
         ['Days at work', j ? int(days) : '—', 'a run every morning', false],
       ],
       foot: 'Read from their log and the chain · a record, not advice', cta: 'See the agents', ok: !!j,
+    };
+  }
+  if (name === 'services') {
+    // (18.11.) the same three figures as /services' own tiles (dashboard/_worker.js RECORD_PAGES['/services']), same sources
+    const [r, c, st] = await Promise.all([get(SITE + '/api-registry.json'), get(AG + '/census'), get(AG + '/stats')]);
+    const reg = Math.max(num(r && r.registered_ids) || 0, num(c && c.highest_id) || 0) || null;
+    const when = day(r && r.measured_at);
+    return {
+      label: 'SERVICES · BRAIN ON BNB', sub: 'We measure BNB Chain and tell you what we found',
+      head: ['Free to look, ', '$0.10 an answer'],
+      box: ['PAID IN USD1, ONE SIGNATURE, NO GAS', 'Nothing signs until you buy · free with 1,000,000 $BOBAI'],
+      tiles: [
+        ['Answered', int(st && st.asked && st.asked.total), 'requests answered for others', true],
+        ['Registered', int(reg), 'agent ids on BNB Chain', false],
+        ['Reply', int(r && r.reachability && r.reachability.reachable), when ? 'census of ' + when : 'when contacted', false],
+        ['Per answer', '$0.10', 'or $0.05 in $BOBAI', false],
+      ],
+      foot: 'Every figure read live · free to look, no wallet', cta: 'See what we do', ok: !!(r || st),
+    };
+  }
+  if (name === 'connect') {
+    // (18.11.) the tool count is the server's own list (GET /mcp), the calls are what /stats counted as MCP
+    const [m, st] = await Promise.all([get(SITE + '/mcp'), get(AG + '/stats')]);
+    const tools = m && Array.isArray(m.tools) ? m.tools.length : null;
+    return {
+      label: 'CONNECT · MCP SERVER', sub: 'Keep the Brain in your AI: Claude, Cursor, VS Code',
+      head: ['One click, ', 'no key'],
+      box: ['BRAINONBNB.COM/MCP', 'Nothing signs, no wallet, nothing to install'],
+      tiles: [
+        ['Tools', tools == null ? '—' : int(tools), 'answering now, no key', true],
+        ['MCP calls', int(st && st.asked && st.asked.by_kind && st.asked.by_kind.mcp), 'answered for agents', false],
+        ['Price', 'Free', 'no key, no account, no wallet', false],
+        ['Clients', '3', 'Claude, Cursor and VS Code', false],
+      ],
+      foot: 'A token check before every trade · nothing signs', cta: 'Connect it', ok: !!(m || st),
     };
   }
   return null;

@@ -57,10 +57,21 @@ ok('a long tile value shrinks (15 chars -> at most 28 px)', sz > 0 && sz <= 28, 
 ok('board card: "Waiting" = bugs and questions without an answer (asking), not every open entry', /Waiting/.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))) && / 2 /.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))) && !/ 39 /.test(text(boardCard({ total: 146, open: 39, asking: 2, resolved: 50 }, { count: 31 }))));
 
 const w = readFileSync(new URL('../dashboard/_worker.js', import.meta.url), 'utf8');
-ok('site: /og/page/<token|registry|jobs|settle|scanner|defi|venus>.png goes to the card worker', /page\\\/\(\?:token\|registry\|jobs\|settle\|scanner\|defi\|venus\)\)\\\.png\$\//.test(w));
+ok('site: /og/page/<token|registry|jobs|settle|scanner|defi|venus|services|connect>.png goes to the card worker', /page\\\/\(\?:token\|registry\|jobs\|settle\|scanner\|defi\|venus\|services\|connect\)\)\\\.png\$\//.test(w));
+// (18.11.) /services and /connect: their own cards, the same figures as the pages, nothing the server does not keep
+const SAMPLE2 = { ...SAMPLE, 'https://agent.brainonbnb.com/stats': { asked: { total: 680328, by_kind: { mcp: 137136 } } }, 'https://brainonbnb.com/mcp': { tools: new Array(30).fill('t') } };
+const get2 = async (u) => SAMPLE2[u] ?? null;
+const sv = text(pageCard(await pageSpec('services', get2)));
+ok('services: answered 680,328, registered = live high-water 419,583, reply 1,007, $0.10 an answer', /680,328/.test(sv) && /419,583/.test(sv) && /1,007/.test(sv) && /\$0\.10/.test(sv) && /census of 15 Nov 2026/.test(sv), sv.slice(0, 300));
+const cn = text(pageCard(await pageSpec('connect', get2)));
+ok('connect: 30 tools from the server\'s own list, 137,136 MCP calls, free', /\b30\b/.test(cn) && /137,136/.test(cn) && /Free/.test(cn), cn.slice(0, 300));
+ok('connect: never "read-only" (plaza_board_post writes a board entry)', !/read-only/i.test(cn));
+const cn0 = text(pageCard(await pageSpec('connect', none)));
+ok('connect with no source answering: a dash, never 0 tools', /Tools —/.test(cn0) && !/Tools 0/.test(cn0), cn0.slice(0, 200));
+ok('the services generator names its card', readFileSync(new URL('build-services.mjs', import.meta.url), 'utf8').includes('https://brainonbnb.com/og/page/services.png'));
 const og = readFileSync(new URL('../worker-og/index.js', import.meta.url), 'utf8');
 ok('worker-og: the /page/ route, scanner as the plain card', /\(\?:og\\\/\)\?page\\\/\(\[a-z\]\{3,12\}\)\\\.png\$\//.test(og) && /card\(null\)/.test(og));
-for (const [f, n] of [['token', 'token'], ['registry', 'registry'], ['jobs', 'jobs'], ['settle', 'settle'], ['scanner', 'scanner'], ['defi', 'defi'], ['venus', 'venus']]) {
+for (const [f, n] of [['token', 'token'], ['registry', 'registry'], ['jobs', 'jobs'], ['settle', 'settle'], ['scanner', 'scanner'], ['defi', 'defi'], ['venus', 'venus'], ['services', 'services'], ['connect', 'connect']]) {
   const h = readFileSync(new URL(`../dashboard/${f}.html`, import.meta.url), 'utf8');
   ok(`/${f}: og:image and twitter:image are its own card`, h.includes(`<meta property="og:image" content="https://brainonbnb.com/og/page/${n}.png">`) && h.includes(`<meta name="twitter:image" content="https://brainonbnb.com/og/page/${n}.png">`));
 }

@@ -277,10 +277,11 @@ function page() {
 <link rel="icon" type="image/png" href="/favicon.png?v=4">
 <meta property="og:title" content="What we can do for you — Brain on BNB">
 <meta property="og:description" content="Free in the browser, hireable on-chain, callable by your agent. The whole offer on one page.">
-<meta property="og:image" content="https://brainonbnb.com/og-banner.png">
+<meta property="og:image" content="https://brainonbnb.com/og/page/services.png">
 <meta property="og:url" content="https://brainonbnb.com/services">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brainonbnb.com/og/page/services.png">
 <link rel="stylesheet" href="/styles.css?v=${STYLES_V}">
 <style>
   .sv{max-width:1000px;margin:0 auto;padding:0 20px 60px}

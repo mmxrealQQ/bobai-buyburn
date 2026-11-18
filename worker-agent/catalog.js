@@ -155,7 +155,9 @@ export const DELIVERIES = Object.values(SERVICES).map((s) => ({
   what: s.deliverables,
   needs: s.needs,
   category: s.category,
-  price: s.price_display,
+  // read when asked, not when the module loads (2026-11-18): Workers run module scope with the clock at 0, so a frozen
+  // copy said "0.01 $U (until 5 Nov 12:00 UTC, then 0.10)" on /, two weeks after the sale, while every quote said 0.10
+  get price() { return s.price_display; },
   agent: SOLD_BY[s.id]?.agent ?? null,
   where: SOLD_BY[s.id] ? `https://brainonbnb.com/registry#cat-${s.category === 'health-factor-monitoring' ? 'health-factor' : s.category}` : null,
   how: 'ERC-8183 escrow: negotiate a quote, fund the job, the agent delivers on-chain. If nothing is delivered by expiry, claimRefund returns the whole budget. Set the expiry at least 8 days after funding (the 7-day dispute window plus one day); a shorter one cannot be delivered. Or pay per answer over x402: POST https://agent.brainonbnb.com/answer?service=<id> once without payment for the terms, pay 0.10 USD1 — signed by EIP-3009 in X-PAYMENT (we settle it), or USDC by standard x402, or a plain USD1 transfer whose hash you send — and the same document comes straight back.',

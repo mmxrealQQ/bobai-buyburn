@@ -80,5 +80,13 @@ for (const q of ['hello', 'what can you do']) {
 // (18.11.) the ERC-8183 escrow settles in $U only: no service's escrow price may name another unit (lp_position_plan said
 // "0.10 USD1" since 3 Sep; a stranger test of Brain Plaza saw "USD1" in one answer and "$U" everywhere else)
 check(Object.values(S.SERVICES).every((s) => / \$U\b/.test(s.price_display) && !/USD1/.test(s.price_display)), 'every escrow price is in $U, none in USD1');
+// (18.11.) Workers load modules with the clock at 0: the catalogue's deliver prices froze at "0.01 $U (until 5 Nov…)" and
+// stood on agent.brainonbnb.com/ two weeks after the sale. Loaded here the same way, they must read today's price.
+{
+  const real = Date.now; Date.now = () => 0;
+  const C = await import('../worker-agent/catalog.js');
+  Date.now = real;
+  check(C.DELIVERIES.every((d) => d.price === '0.10 $U') && JSON.stringify(C.offering()).includes('"price":"0.10 $U"') && !/until 5 Nov/.test(JSON.stringify(C.offering())), 'the catalogue reads the price when asked, not the clock it was loaded with');
+}
 console.log(`\n${pass} pass, ${fail} fail`);
 process.exit(fail ? 1 : 0);

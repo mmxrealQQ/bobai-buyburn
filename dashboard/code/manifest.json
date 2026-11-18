@@ -54,9 +54,9 @@
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
    "lines": 7645,
-   "zipBytes": 201462,
-   "txtBytes": 626666,
-   "sha256": "d6c86317e75067cb",
+   "zipBytes": 201470,
+   "txtBytes": 626678,
+   "sha256": "b63123772cff5d51",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -704,10 +704,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 75,
-   "lines": 24899,
-   "zipBytes": 636862,
-   "txtBytes": 1803939,
-   "sha256": "d03c0162cd7fbe66",
+   "lines": 24904,
+   "zipBytes": 637201,
+   "txtBytes": 1804764,
+   "sha256": "672379ca36d01e92",
    "reqs": [
     {
      "what": "A wallet to be paid into",

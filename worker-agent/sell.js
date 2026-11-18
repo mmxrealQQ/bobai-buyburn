@@ -152,7 +152,7 @@ export const SERVICES = {
     name: 'The DeFi agent, on your position',
     category: 'rebalancing',
     price: '100000000000000000',
-    price_display: '0.10 USD1',
+    price_display: '0.10 $U',   // (18.11.) the escrow settles in $U only — it said USD1 since 3 Sep, two places patched it with .replace
     deliverables: 'What the agent that runs this project\'s own PancakeSwap V3 position would decide about yours, from the same code: whether it is in range and how much room is left to each edge, what it holds and is worth in BNB, what it is owed in fees and whether collecting pays for its own gas, whether a re-set is due and in which width — the width that ended the most ahead against simply holding over the last week when every width was replayed over the recorded prices (its fees, less the gas of its re-sets, plus where it stood against a wallet that held), the width in use kept unless another leads it by a tenth — and what the wallet\'s spare BNB would add. It reads and plans; it signs nothing on your position.',
     needs: { position: 'the PancakeSwap V3 position id (tokenId)', address: 'or the wallet that holds exactly one position (0x…)' },
   },
@@ -711,7 +711,7 @@ export async function handleA2A(request, env, opts = {}) {
   if (!skill && forced && opts.freeHalf && Object.keys(data).length) {
     const free = await opts.freeHalf({ ...data, ...(data.params || {}) }, [data.task_description, data.description, text].filter(Boolean).join(' ')).catch(() => null);
     if (free) {
-      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[forced].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
+      const out = { ...free.figures, free_reading: free.out, paid_half: { service: forced, price: `0.10 USD1, USDC or $U per answer over x402 (or half that in $BOBAI), or ${SERVICES[forced].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${forced}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${opts.agent}/a2a` } };
       return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
     }
   }
@@ -904,7 +904,7 @@ export async function handleA2A(request, env, opts = {}) {
     if (forced && forced !== skill) {
       return rpcOk(id, flatMessage({ accepted: false, reason: `This agent sells ${forced} (${SERVICES[forced].name}). ${skill} is sold by https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a — or per answer over x402 at https://agent.brainonbnb.com/answer?service=${skill}.` }));
     }
-    const paidHalf = { service: skill, price: `0.10 USD1 per answer over x402 (or half that in $BOBAI), or ${SERVICES[skill].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${skill}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a` };
+    const paidHalf = { service: skill, price: `0.10 USD1, USDC or $U per answer over x402 (or half that in $BOBAI), or ${SERVICES[skill].price_display} through the ERC-8183 escrow`, pay_per_answer: `https://agent.brainonbnb.com/answer?service=${skill}`, escrow: `send skill:"negotiate-erc8183-job" to https://agent.brainonbnb.com/${SLUG_OF[skill]}/a2a` };
     const { skill: _s, method: _m, ...inputs } = data;
     const free = forced && opts.freeHalf ? await opts.freeHalf({ ...inputs, ...(data.params || {}) }, [data.task_description, data.task, text].filter((v) => typeof v === 'string' && v).join(' ')).catch(() => null) : null;
     const out = free

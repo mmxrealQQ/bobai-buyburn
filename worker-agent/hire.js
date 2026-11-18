@@ -794,7 +794,10 @@ export async function handleHire(url, body, env, opts = {}) {
       payment_token_note: 'United Stables ($U) is the stablecoin this kernel settles in — not our choice, it is what ERC-8183 jobs on BNB Chain are denominated in. It trades at $1.00 on PancakeSwap against roughly $10M of liquidity, so 0.10 $U is ten cents and getting some is a normal swap.',
       payment_token_where: 'https://pancakeswap.finance/swap?outputCurrency=' + ERC8183.paymentToken,
       expires_at: expiredAt,
-      refundable: 'If nothing is delivered by expiry, claimRefund(jobId) on the kernel returns the full budget to you.',
+      // the review window, read from the policy (2026-11-18, a stranger test of Brain Plaza found the 7 days only on a
+      // seller's agent card): a buyer learns before funding that delivered work is paid out after it, not at once
+      review_window_seconds: disputeWindow,
+      refundable: `After delivery the seller is paid once the review window has passed (${+(disputeWindow / 86400).toFixed(1)} days, read from the dispute policy). If nothing is delivered by expiry, claimRefund(jobId) on the kernel returns the full budget to you.`,
     },
     calls: serializeCalls(calls),
     // Said plainly, because the difference between this and a custodial

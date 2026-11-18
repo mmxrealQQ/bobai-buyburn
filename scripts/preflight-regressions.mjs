@@ -219,6 +219,16 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… both name the free rug watch with this token filled in, and no price', [v2, v3].every((o) => o.keep_watching?.rug_watch?.how?.includes(`/rug-watch {"token":"${o.token.address}"`)) && !/\$\s?\d|USD1|\d+\s?days?/i.test(JSON.stringify(v3.keep_watching)));
   const none = shape(scan({ quotable: false, reason: 'no pool' }), null, 500);
   ok('… and a token with no pool gets none', none.keep_watching == null);
+  // (18.11.) a stranger test of /connect: "about 2 KB of upsell in every reply" — the same offers, one line each
+  ok('… and it stays short: the whole block under 1,000 characters on a V2 pool with three addresses in it (it was ~2,000)', JSON.stringify(v2.keep_watching).length < 1000, String(JSON.stringify(v2.keep_watching).length));
+  ok('… and each watch names the MCP server it is on (rug watch the site, pool watch the agent)', /bsc_rug_watch at https:\/\/brainonbnb\.com\/mcp/.test(v2.keep_watching.rug_watch.terms) && /bsc_pool_watch at https:\/\/agent\.brainonbnb\.com\/mcp/.test(v2.keep_watching.terms));
+}
+// (18.11.) two pools in one answer are named as two: the route's (entry.pool) and the scan's (depth.pool)
+{
+  const same = shape(scan(), route(), 250);
+  ok('one pool: no route_note, no depth note', !('route_note' in same.entry) && !('note' in same.depth));
+  const two = shape(scan(), route({ best_route: 'V3 0.05%', best_route_pool: '0x' + 'e'.repeat(40), best_route_is_the_deepest_pool: false }), 250);
+  ok('two pools: entry says why it is not the deepest, depth says which pool it was read on', /not the deepest/.test(two.entry.route_note || '') && /not on entry\.pool/.test(two.depth.note || ''), JSON.stringify([two.entry.route_note, two.depth.note]));
 }
 
 // A size that is given but unreadable is refused, not answered at 250 (2026-10-05). sizeArg is lifted out of

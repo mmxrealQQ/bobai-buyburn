@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4359 lines.
+# one fetch. 5 files, 4365 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3821,6 +3821,8 @@ export function shape(s, r, usd, routeError = null, control = null) {
       receive_tokens: r.you_would_receive ?? null,
       receive_tokens_after_tax: r.you_would_receive_after_tax ?? null,
       best_route_is_the_deepest_pool: r.best_route_is_the_deepest_pool ?? null,
+      // said where it is false (2026-11-18, stranger test: "false has no explanation next to it")
+      ...(r.best_route_is_the_deepest_pool === false ? { route_note: 'The pool that returns the most at this size is not the deepest one: swap through entry.pool; depth describes the deepest.' } : {}),
       slippage_bps_needed: r.slippage_bps_needed ?? null,
     };
     exit = {
@@ -3862,7 +3864,9 @@ export function shape(s, r, usd, routeError = null, control = null) {
         : { pool: s.pool?.address ?? null, venue: s.pool?.venue ?? null, from: 'the pool scan' }])) },
     // `pool` names what the depth describes — the pool the scan measured, which
     // is not always the pool the best route goes through (entry.pool).
-    depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null },
+    depth: { pool: s.pool?.address ?? null, one_percent_buy_usd: d.buyUsd ?? null, one_percent_sell_usd: d.sellUsd ?? null, pool_hard_side_usd: s.pool?.liquidityUsd ?? null,
+      // two pools in one answer, named as two (2026-11-18, stranger test: "a bot could easily mix them up")
+      ...(entry?.pool && s.pool?.address && entry.pool.toLowerCase() !== s.pool.address.toLowerCase() ? { note: 'Read on the pool the scan measured, not on entry.pool (the one the trade goes through).' } : {}) },
     lp_burned_pct: lpBurned,
     // Who holds the rest (2026-09-27), in the scan's own words — null on a V3
     // pool (position NFTs, not read) or when the reads failed.
@@ -3893,18 +3897,20 @@ export function shape(s, r, usd, routeError = null, control = null) {
     // /stats/detail had the rug watch's terms read 14 times by others and registered 0 times — it stood nested under
     // the paid pool watch. Now the free watch leads, filled in for this token, one call; the holder line says what
     // 1,000,000 $BOBAI changes; the paid pool watch follows with its fields where they were (what/how/terms).
+    // SHORT (2026-11-18, a stranger test of /connect: "about 2 KB of upsell in every reply", 27% of the answer, context an
+    // agent pays for on every call): the same offers in the same order, one line each; the full terms are one GET away.
     keep_watching: s.pool?.address ? {
-      why: `${s.pool?.kind === 'v2' ? 'This answer is one block. If you hold, the depth that lets you out can leave after it.' : 'This answer is one block. If you hold, what it found can change after it.'} The free rug watch below keeps reading this token for you: one call, nothing to pay.`,
+      why: 'One block; it can change after it. The free rug watch below keeps reading this token for you.',
       rug_watch: {
-        what: 'Free, one call with just the token: this preflight is read again every 15 minutes and an alert is raised when the sell stops going through, the liquidity is pulled, a tax rises, LP is withdrawn, or the owner or the proxy changes — and, from its own 24-hour history, when the volume looks faked by a handful of wallets, the price is pumped or dumped after a pump, or it bleeds in a slow rug while insiders sell. Add your https callback and each alert is POSTed to it; without one, read them at the status_url you get back (?since=<time> for the new ones). One watch free per caller; 25 for wallets holding 1,000,000 $BOBAI.',
+        what: 'Free: re-read every 15 minutes; alerts when the sell stops, liquidity or LP goes, a tax rises, the owner changes, on fake volume, a pump, the dump after it, a slow rug.',
         how: `POST https://agent.brainonbnb.com/rug-watch {"token":"${s.address}"}`,
-        terms: 'GET https://agent.brainonbnb.com/rug-watch. Over MCP: bsc_rug_watch at https://brainonbnb.com/mcp.',
-        holder: 'A wallet holding 1,000,000 $BOBAI watches 25 tokens instead of one: add wallet, issued and a personal_sign of "BOBAI rug watch\\nwallet: <lowercase address>\\nissued: <ISO time>" — a signature, no transaction. The same pass makes the paid answers free (20 a day).',
+        terms: 'GET https://agent.brainonbnb.com/rug-watch · MCP: bsc_rug_watch at https://brainonbnb.com/mcp',
+        holder: 'Holding 1,000,000 $BOBAI: 25 tokens instead of one, paid answers free.',
       },
       ...(s.pool?.kind === 'v2' ? {
-        what: 'A paid watch re-reads this pool on a schedule and POSTs your callback when the size that moves the price 1% falls below the figure you set — in the call below, your trade size; set it to the depth you need to get out.',
+        what: 'Paid: a callback when this pool’s 1% depth falls below your figure.',
         how: `POST https://agent.brainonbnb.com/watch {"token":"${s.address}","pair":"${s.pool.address}","depthBelowUsd":${usd},"callback":"https://…"}`,
-        terms: 'Sent without payment, it answers 402 with the price and the term. Over MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp.',
+        terms: 'Unpaid: 402 with price and term · MCP: bsc_pool_watch at https://agent.brainonbnb.com/mcp',
       } : {}),
     } : null,
     // Who controls the contract, read on-chain (2026-10-09; controlBlock below).

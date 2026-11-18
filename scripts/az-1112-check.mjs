@@ -29,6 +29,11 @@ for (const p of ['/mcp', '/mcp/preflight', '/mcp/pancakeswap', '/mcp/agents', '/
   const g = await json(`${SITE}${p}`), t = ((await rpc(`${SITE}${p}`, 'tools/list'))?.result?.tools || []).map((x) => x.name);
   say(g && Array.isArray(g.tools) && t.length > 0 && g.tools.length === t.length && g.tools.every((n) => t.includes(n)), `GET ${p} lists the ${t.length} tools that tools/list gives there (GET: ${g?.tools?.length})`);
 }
+// (18.11.) an agent page names its full record for a reader without a browser; an id nobody holds names none
+{
+  const ag = await get(`${SITE}/agent/374113`), no = await get(`${SITE}/agent/999999999`);
+  say(/<link rel="alternate" type="application\/json" href="https:\/\/agent\.brainonbnb\.com\/chart\/374113">/.test(ag) && /id="loading"[^>]*>[^<]+<a href="https:\/\/agent\.brainonbnb\.com\/chart\/374113">/.test(ag) && !/rel="alternate" type="application\/json"/.test(no), '/agent/<id> HTML points to /chart/<id> (head link + a link under its summary); an unknown id does not');
+}
 const pp = (await rpc(`${SITE}/mcp/preflight`, 'prompts/list'))?.result?.prompts;
 say(Array.isArray(pp) && pp.length === 0, '/mcp/preflight prompts/list is empty');
 const mi = (await rpc(`${SITE}/mcp`, 'initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'bobai-review', version: '1' } }))?.result;

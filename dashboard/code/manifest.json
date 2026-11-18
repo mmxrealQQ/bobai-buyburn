@@ -669,10 +669,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4365,
-   "zipBytes": 156587,
-   "txtBytes": 467884,
-   "sha256": "f9b0cc6ef7a8617f",
+   "lines": 4367,
+   "zipBytes": 156728,
+   "txtBytes": 468365,
+   "sha256": "36a7cacfd3eacca1",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",

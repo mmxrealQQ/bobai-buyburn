@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4365 lines.
+# one fetch. 5 files, 4367 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2812,11 +2812,13 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const t = new HTMLRewriter()
           .on('title', { element(e) { if (named) e.setInnerContent(named); } })
           .on('meta[name="description"]', { element(e) { if (about) e.setAttribute('content', about); } })
-          .on('#loading', { element(e) { if (about) e.setInnerContent(about); } })
+          // the full record named where a reader without a browser finds it (2026-11-18, a stranger test of Brain Plaza: "the
+          // data is at /chart/<id> but nothing points an agent there"); the agent's own words stay text, the link is ours
+          .on('#loading', { element(e) { if (about) { e.setInnerContent(about); e.append(` <a href="https://agent.brainonbnb.com/chart/${id}">The full record as JSON →</a>`, { html: true }); } } })
           .on('meta[property="og:image"]', set(img)).on('meta[name="twitter:image"]', set(img))
           .on('meta[property="og:title"]', set(title)).on('meta[name="twitter:title"]', set(title))
           .on('meta[property="og:url"]', set(`https://brainonbnb.com/agent/${id}`))
-          .on('head', { element(e) { e.append('<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">', { html: true }); } })
+          .on('head', { element(e) { e.append(`<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">${missing ? '' : `<link rel="alternate" type="application/json" href="https://agent.brainonbnb.com/chart/${id}">`}`, { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: missing ? 404 : t.status, headers: secureHeaders(new Headers(t.headers)) });
       }

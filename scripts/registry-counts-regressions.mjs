@@ -15,7 +15,8 @@ const SINCE = /var since = last && base \? Number\(last\.highest_id\|\|0\) - Num
 for (const [n, s] of [['page', page], ['generator', gen]]) {
   ok(`${n}: growth = highest_id - registered_ids of the scan shown`, SINCE.test(s) && !/var since = last && last\.new_since_baseline/.test(s));
 }
-ok('page: the reputation card says the day its 995 answered', /of the 995 that answered on \d{4}-\d{2}-\d{2} &mdash;/.test(page) && !/of 995 that answer &mdash;/.test(page));
+// any count (995 on 25 Oct, 1,007 on 19 Nov when the scan became a weekly step), always with its day
+ok('page: the reputation card says the day its agents answered', /of the [\d,]+ that answered on \d{4}-\d{2}-\d{2} &mdash;/.test(page) && !/of [\d,]+ that answer &mdash;/.test(page));
 ok('generator: the same, from reputation.measured_at', /that answered on \$\{esc\(String\(reputation\.measured_at/.test(gen) && /agents we asked about on \$\{esc\(String\(reputation\.measured_at/.test(gen));
 const reg = (w.match(/'\/registry': \{[\s\S]*?\n {2}\} \},/) || [''])[0];
 ok('worker: /registry asks /census and api-registry.json', /'\/census'/.test(reg) && /api-registry\.json/.test(reg));

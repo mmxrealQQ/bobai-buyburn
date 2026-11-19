@@ -116,5 +116,13 @@ for (const [asked, want] of [['2025-03-26', '2025-03-26'], ['2024-11-05', '2024-
   const j = await mcp('initialize', { protocolVersion: asked, clientInfo: { name: 't' } });
   check(j.result?.protocolVersion === want, `MCP initialize asked ${asked} -> ${want}`, j.result?.protocolVersion);
 }
+// a stranger test of /mcp/agents (2026-11-19): limit "abc", 0, -3, 500 were taken silently; {"id":…} did not name agent_id
+for (const [lim, ok] of [['abc', false], [0, false], [-3, false], [500, false], [2.5, false], [10, true], ['25', true]]) {
+  const j = await mcp('tools/call', { name: 'find_agents_on_bnb_chain', arguments: { query: 'health factor', limit: lim } });
+  const sc = j.result?.structuredContent || {}, txt = j.result?.content?.[0]?.text || '';
+  check(ok ? !j.result?.isError : (j.result?.isError === true && /limit must be a whole number from 1 to 25/.test(txt + JSON.stringify(sc))), `find_agents limit ${JSON.stringify(lim)} ${ok ? 'taken' : 'refused in words'}`, txt.slice(0, 90));
+}
+{ const j = await mcp('tools/call', { name: 'bnb_agent_chart', arguments: { id: '363709' } }); const txt = j.result?.content?.[0]?.text || '';
+  check(j.result?.isError === true && /"agent_id"/.test(txt) && /got "id"/.test(txt), 'bnb_agent_chart with {"id":…} names agent_id and what it got', txt.slice(0, 120)); }
 globalThis.fetch = realFetch;
 console.log(`\n${pass} pass, ${fail} fail`); process.exit(fail ? 1 : 0);

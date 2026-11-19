@@ -109,7 +109,7 @@ const summary = (rows) => {
   };
 };
 const trades = (rows) => rows.slice().sort((a, b) => b[0] - a[0]).slice(0, KEEP)
-  .map(([id, status, u, client, sub, exp, own]) => ({ job: id, status, u: Math.round(u * 1000) / 1000, buyer: client.slice(0, 6) + '…' + client.slice(-4), ...(own === 'ours' ? { ours: true } : own === 'self' ? { self: true } : {}), delivered_at: sub ? new Date(sub * 1000).toISOString().slice(0, 16) : null, expires_at: exp ? new Date(exp * 1000).toISOString().slice(0, 16) : null }));
+  .map(([id, status, u, client, sub, exp, own]) => ({ job: id, status, u: Math.round(u * 1000) / 1000, buyer: client, /* the whole address (2026-11-19, a stranger test: an agent had to ask the escrow again for "0x7709…3f22"); pages shorten it */ ...(own === 'ours' ? { ours: true } : own === 'self' ? { self: true } : {}), delivered_at: sub ? new Date(sub * 1000).toISOString().slice(0, 16) : null, expires_at: exp ? new Date(exp * 1000).toISOString().slice(0, 16) : null }));
 
 const agents = {};
 // the curve under the chart: per day a job was delivered, how many, how many paid out and what they earned (all history)

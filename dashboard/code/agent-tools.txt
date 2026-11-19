@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4373 lines.
+# one fetch. 5 files, 4381 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1031,11 +1031,19 @@ function scanShape(out) {
   return 'nopool';
 }
 const CODED_TOOLS = new Set([...STRUCTURED_TOOLS, 'pancakeswap_fee_tiers', 'pancakeswap_range_plan']);
+// limit as the schema says, 1-25, default 10 (2026-11-19, a stranger test: "abc" and 0 gave 10, -3 gave 1, all silently)
+function limitArg(v) {
+  if (v === undefined || v === null || v === '') return 10;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1 || n > 25) throw new Error(`limit must be a whole number from 1 to 25 (got ${JSON.stringify(v).slice(0, 20)}); leave it out for 10`);
+  return n;
+}
 function errorAnswer(e) {
   const msg = e?.message || String(e);
   const HINTS = {
     bad_address: 'Send a BSC address as the argument "address" — 0x followed by 40 hex characters — or a BscScan, DexScreener or PancakeSwap link containing one.',
     bad_usd: 'Send the size as a positive number of dollars (usd; capitalUsd for pancakeswap_range_plan), e.g. 250, or leave it out for the default.',
+    bad_limit: 'Send limit as a whole number from 1 to 25, or leave it out for 10.',
     is_wallet: 'This address is a wallet. Send the token’s contract address instead (or its pool, or a link containing one).',
     not_a_token: 'Nothing at this address behaves like a token. Check that the address is the token contract, not a router, an NFT or another contract.',
     no_pool: 'No pool was found at the venues read. A token still on its four.meme launch curve is answered by bsc_token_preflight and bsc_pool_scan from the curve.',
@@ -1051,11 +1059,11 @@ function errorAnswer(e) {
     capacity: 'Every watch slot is taken right now. Try again later; watches end after 30 days.',
     below_holder_line: 'The holder tier needs 1,000,000 $BOBAI in the signing wallet. Without wallet, issued and signature you get one watch free.',
   };
-  const bad = /Invalid BSC address|Give a BSC token|Give the wallet as the argument|must be a positive number/.test(msg); /* a missing wallet is a bad address, 400 (15.11.: was 422 not_measurable) */
+  const bad = /Invalid BSC address|Give a BSC token|Give the wallet as the argument|must be a positive number|limit must be a whole number/.test(msg); /* a missing wallet is a bad address, 400 (15.11.: was 422 not_measurable) */
   // the Workers runtime's own failures are passing, not an answer about the address (2026-11-19: a cross-request
   // promise error went out as not_measurable, "asking again will not change it", while the same call answered a second later)
   const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$|request that has since ended|connection (was )?lost|timed? ?out|aborted|internal error|exceeded/i.test(msg);
-  const code = bad ? (/must be a positive number/.test(msg) ? 'bad_usd' : 'bad_address')
+  const code = bad ? (/limit must be a whole number/.test(msg) ? 'bad_limit' : /must be a positive number/.test(msg) ? 'bad_usd' : 'bad_address')
     : HINTS[e?.code] && e.code !== 'bad_address' && e.code !== 'bad_usd' ? e.code
     // a refusal relayed from another worker keeps its own code, hint or not
     : e?.relayed && typeof e.code === 'string' && /^[a-z_]{2,40}$/.test(e.code) ? e.code
@@ -1118,7 +1126,7 @@ async function runTool(rawName, args, caller = {}) {
       // the id as a number, "#363709" or the CAIP form eip155:56:<registry>:<id> (15.11.: every digit was kept, so "0xabc"
       // read agent #0 and the CAIP form one 40-digit number)
       const id = (String(args?.agent_id ?? '').trim().match(/^(?:eip155:56:0x[0-9a-fA-F]{40}:)?#?(\d{1,12})$/) || [])[1];
-      if (!id) throw new Error('Give the agent’s ERC-8004 id on BNB Smart Chain (a number), e.g. 363709.');
+      if (!id) throw new Error(`Give the agent’s ERC-8004 id on BNB Smart Chain (a number) as the argument "agent_id", e.g. {"agent_id":"363709"}${args && !('agent_id' in args) && Object.keys(args).length ? ` — got ${Object.keys(args).slice(0, 4).map((k) => `"${k}"`).join(', ')}` : ''}.`);
       const r = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(20000) });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error || 'The agent chart is unavailable right now');
@@ -1127,7 +1135,7 @@ async function runTool(rawName, args, caller = {}) {
       return { ...j, pulse, jobs: j.jobs ? { ...j.jobs, trades: (j.jobs.trades || []).filter((t) => t.status !== 'OPEN').slice(0, 10), by_day: undefined } : null, chart: `https://brainonbnb.com/agent/${id}` };
     }
     case 'bnb_agents_by_evidence': {
-      const c = encodeURIComponent(String(args?.category || '').slice(0, 40)), l = Math.min(25, Math.max(1, Number(args?.limit) || 10));
+      const c = encodeURIComponent(String(args?.category || '').slice(0, 40)), l = limitArg(args?.limit);
       const r = await fetch(`https://agent.brainonbnb.com/chart/rank?category=${c}&limit=${l}`, { signal: AbortSignal.timeout(25000) });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error ? `${j.error}${j.categories ? ' — categories: ' + j.categories.join(', ') : ''}` : 'The ranking is unavailable right now');
@@ -1149,7 +1157,7 @@ async function runTool(rawName, args, caller = {}) {
       const sp = args?.speaks ? '&speaks=' + encodeURIComponent(String(args.speaks).slice(0, 40)) : '';
       // limit and hireable as the search's own answer names them (2026-10-29, the MCP fact-check: '&limit=25 … 13 more matched'
       // was a URL parameter an MCP caller could not send)
-      const lim = Math.min(25, Math.max(1, Number(args?.limit) || 10)), hire = args?.hireable === true || args?.hireable === 'true' ? '&hireable=1' : '';
+      const lim = limitArg(args?.limit), hire = args?.hireable === true || args?.hireable === 'true' ? '&hireable=1' : '';
       const r = await fetch(`https://agent.brainonbnb.com/find?q=${q}${sp}&limit=${lim}${hire}`, { signal: AbortSignal.timeout(9000) });
       // A 400 is the search's own plain-words refusal (an unknown category or
       // protocol, 2026-10-05) and is passed on; only the rest is an outage.

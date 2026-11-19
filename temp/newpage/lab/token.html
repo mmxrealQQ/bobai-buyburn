@@ -42,7 +42,7 @@
   <div class="intro hx tk-start"><h1>The <em>token</em></h1>
     <div class="hx-claim">Built by an AI agent. <em>Every slice of the 3% tax</em> is a transaction you can open.</div>
     <div class="hx-proof" id="tk-proof" aria-live="polite">
-      <div class="hx-proof-h"><span id="tk-proof-when">Reading the buyback bot&rsquo;s log&hellip;</span><span>The bot looks every 10 minutes and splits whatever tax has collected.</span></div>
+      <div class="hx-proof-h"><span id="tk-proof-when">Reading the buyback bot&rsquo;s log&hellip;</span><span>The token contract sends its tax on once <b id="tk-queue-at">400,000</b> $BOBAI have collected<span id="tk-queue"></span>; the bot looks every 10 minutes and splits what arrives.</span></div>
       <div id="tk-proof-rows"></div>
       <div class="hx-proof-f">One run of the public buyback wallet <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC&hellip;01ce</a> &middot; every run since March: <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">burns.json</a> &middot; dollars at today&rsquo;s price</div>
     </div>
@@ -54,7 +54,9 @@
       <div class="about-logo"><img src="logo.webp" width="256" height="256" alt="BOBAI" loading="lazy" decoding="async"></div>
       <div class="about-text">
         <h3><em>Brain On BNB AI</em> — A Smart Drip on BSC</h3>
-        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens and nothing hidden: the 3% rate is fixed in the contract, and every change of the split is announced and logged.</p>
+        <p>$BOBAI is an AI-built deflationary meme token on BNB Chain. Everything Brain On BNB AI runs — the buyback bot, this site, the games, the NFT drops — was designed and coded by AI. No dev tokens, and the owner is renounced: the 3% rate is fixed in the contract. The split of that 3% is not in the contract &mdash; our buyback bot makes it from the public wallet <a href="https://bscscan.com/address/0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce" target="_blank" rel="noopener">0xdeFC&hellip;01ce</a>, so it is our promise, kept in the open: every change announced and logged, every slice a transaction you can open.</p>
+        <p style="margin-top:10px">On chain the contract&rsquo;s name reads <b>BOB</b> and its symbol <b>BOBAI</b>, so a wallet may show &ldquo;BOB&rdquo;. Go by the address <b>0x245c&hellip;ffff</b>, never by the name: the $BOB the bot burned until Dec 1 is a different token.</p>
+        <p style="margin-top:10px"><b>Before you buy:</b> a small meme token with a thin pool &mdash; the price moves fast on small trades, the tax costs 3% each way (set about 6% slippage), and nothing here is financial advice.</p>
         <p style="margin-top:10px">Holding it does something: with <b>1,000,000 $BOBAI</b> in your wallet our six agents answer free, 20 a day, one signature each and no transaction &mdash; <a href="/pass">the holder pass</a>.</p>
         <div class="about-tags">
           <span>AI-Built</span>
@@ -145,7 +147,7 @@
             <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
-            <div class="ts-when">Nov 20 &rarr; Dec 1, 00:01 UTC, 2026</div>
+            <div class="ts-when">Nov 20, 00:01 UTC &rarr; Dec 1, 00:01 UTC, 2026</div>
             <div class="ts-name">Standard &mdash; the last days of the $BOB burn</div>
             <div class="ts-split"><b>1%</b> BOBAI burn &middot; <b>1%</b> BOB burn &middot; <b>1%</b> Creator</div>
           </div>
@@ -291,7 +293,7 @@
       </div>
       <div class="lb-table lb-bb3" style="margin-top:20px">
         <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%" title="The whole liquidity slice: about half of it buys $BOBAI first, the rest goes into the pool as BNB">BNB slice</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
           <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
         </div>
       </div>
@@ -319,7 +321,7 @@
       </div>
       <div class="lb-table" style="margin-top:20px">
         <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%" title="The whole liquidity slice: about half of it buys $BOBAI first, the rest goes into the pool as BNB">BNB slice</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
           <tbody id="lfg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first add lands with the first bot run after Dec 1, 00:01 UTC&hellip;</td></tr></tbody></table>
         </div>
       </div>

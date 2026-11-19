@@ -70,6 +70,7 @@
           "https://x.com/BrainOnBNB",
           "https://t.me/bobai_official",
           "https://www.coingecko.com/en/coins/brain-on-bnb-ai",
+          "https://dappbay.bnbchain.org/detail/brain-on-bnb-ai",
           "https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff",
           "https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff",
           "https://birdeye.so/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff",
@@ -246,10 +247,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1794926604288">
+<link rel="stylesheet" href="brain/brain.css?v=1795093443812">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1794926603">
+<link rel="stylesheet" href="terminal/terminal.css?v=1795093443">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -257,6 +258,7 @@
   <a class="bp-logo" href="/"><img src="logo-sm.webp" width="34" height="34" alt=""><span class="bp-name"><span><b>$BOBAI</b> Brain On BNB AI</span><small>Built to stay. Every number checked, every tool for everyone.</small></span></a>
   <div class="bp-tick"></div>
   <div class="bp-soc" role="navigation" aria-label="Socials"><a href="https://t.me/bobai_official" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.5 3.5 2.8 10.7c-1.3.5-1.3 1.2-.2 1.6l4.8 1.5 1.8 5.6c.2.6.1.9.8.9.5 0 .7-.2 1-.5l2.4-2.3 4.9 3.6c.9.5 1.5.2 1.8-.8L23 4.9c.3-1.4-.5-2-1.5-1.4Zm-3.3 3.6-8.9 8-.3 3.8-1.6-5.1 10.8-6.8c.5-.3.9 0 0 .1Z"/></svg></a><a href="https://x.com/BrainOnBNB" target="_blank" rel="noopener" aria-label="X Official" title="X Official"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3Zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5Z"/></svg><i class="bp-ok" aria-hidden="true">✓</i></a></div>
+  <button class="bp-chk-btn" type="button" aria-controls="bk-panel" aria-expanded="false" title="Check any BNB Chain token before you buy — read on-chain, live">Check a token</button>
   <a class="bp-sw" href="/classic" title="The classic page — the same figures">Classic</a>
   <a class="bp-buy" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
 </div>
@@ -298,6 +300,14 @@
   }, 15000);
 })();
 </script>
+<section class="bk-panel" id="bk-panel" aria-label="Check a token before you buy">
+  <form class="bk-form" id="bk-form" role="search" autocomplete="off">
+    <label class="bk-lbl" for="bk-in">Check any BNB Chain token before you buy <span>· measured on-chain now, no wallet</span></label>
+    <div class="bk-line"><input id="bk-in" type="text" spellcheck="false" autocapitalize="off" placeholder="Paste a token address or a DexScreener link"><button class="bk-go" type="submit">Check</button><button class="bk-x" type="button" aria-label="Close">&times;</button></div>
+    <div class="bk-opts"><span class="bk-sizes" role="group" aria-label="Your size in dollars"></span><span class="bk-try"><span>Try</span></span></div>
+  </form>
+  <div class="bk-out" id="bk-out" aria-live="polite"></div>
+</section>
 <div class="bp-grid" role="main">
   <div class="bp-side l"><button class="bw-card" style="--c:#F0B90B" type="button" data-open="w01"><span class="bw-n">01</span><span class="bw-k">THE TOKEN</span><b class="bw-t">What $BOBAI is</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">of the supply burned for good</span><i class="bw-go" aria-hidden="true">⤢</i></button>
 <button class="bw-card" style="--c:#2dd4bf" type="button" data-open="w02"><span class="bw-n">02</span><span class="bw-k">TOKENOMICS</span><b class="bw-t">Where the 3% goes</b><span class="bw-viz" aria-hidden="true"></span><span class="bw-v"></span><span class="bw-l">until this split ends</span><i class="bw-go" aria-hidden="true">⤢</i></button>
@@ -479,7 +489,7 @@
     </div>
     <div class="fi">
       <p class="ll">Listed on</p>
-      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
+      <div class="lr lr-top"><a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-bscscan.webp" alt="BscScan logo" loading="lazy" decoding="async">BscScan</a><a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-coingecko.webp" width="48" height="48" alt="CoinGecko logo" loading="lazy" decoding="async">CoinGecko</a><a href="https://dappbay.bnbchain.org/detail/brain-on-bnb-ai" target="_blank" rel="noopener"><img src="ico-dappbay.webp" width="48" height="48" alt="DappBay (BNB Chain) logo" loading="lazy" decoding="async">DappBay</a><a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener"><img src="ico-dexscreener.webp" alt="DEX Screener logo" loading="lazy" decoding="async">DEX Screener</a><a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener"><img src="ico-dextools.webp" width="66" height="66" alt="DEXTools.io logo" loading="lazy" decoding="async">DEXTools.io</a><a href="https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6" target="_blank" rel="noopener"><img src="ico-geckoterminal.webp" alt="GeckoTerminal logo" loading="lazy" decoding="async">GeckoTerminal</a></div>
       <p class="ll">Markets</p>
       <div class="lr"><a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener"><img src="ico-pancakeswap.svg" alt="PancakeSwap logo" loading="lazy" decoding="async">PancakeSwap · BOBAI/WBNB</a></div>
       <p class="ll">Available on</p>
@@ -505,7 +515,7 @@
       </div>
       <div class="lb-table" style="margin-top:20px">
         <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%" title="The whole liquidity slice: about half of it buys $BOBAI first, the rest goes into the pool as BNB">BNB slice</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
           <tbody id="bb3-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">First add lands with the next tax cycle&hellip;</td></tr></tbody></table>
         </div>
       </div>
@@ -527,7 +537,7 @@
       </div>
       <div class="lb-table" style="margin-top:20px">
         <div class="txw">
-          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%">BNB</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
+          <table><thead><tr><th style="width:38%">Time</th><th style="width:18%" title="The whole liquidity slice: about half of it buys $BOBAI first, the rest goes into the pool as BNB">BNB slice</th><th style="width:24%">LP Burned</th><th style="width:20%">TX</th></tr></thead>
           <tbody id="lfg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The first add lands with the first bot run after Dec 1, 00:01 UTC&hellip;</td></tr></tbody></table>
         </div>
       </div>
@@ -1522,9 +1532,10 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1794926603')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1795093443')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1794926604289" defer></script>
-<script src="brain/cards.js?v=1794926604289" defer></script>
-<script src="brain/hero.js?v=1794926604289" defer></script>
+<script src="brain/brain.js?v=1795093443812" defer></script>
+<script src="brain/cards.js?v=1795093443812" defer></script>
+<script src="brain/hero.js?v=1795093443812" defer></script>
+<script src="brain/check.js?v=1795093443812" defer></script>
 </body></html>

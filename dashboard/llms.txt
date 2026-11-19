@@ -117,6 +117,7 @@ issued: <ISO time>" with that wallet (personal_sign — no transaction, nothing 
 - Website: https://brainonbnb.com/
 - Contract (BscScan, verified): https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff
 - CoinGecko: https://www.coingecko.com/en/coins/brain-on-bnb-ai
+- DappBay (BNB Chain's dApp directory): https://dappbay.bnbchain.org/detail/brain-on-bnb-ai
 - DexScreener: https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff
 - GeckoTerminal: https://www.geckoterminal.com/bsc/pools/0x6eadd4cb786898b34929444988380ed0cc6fd9a6
 - DEXTools: https://www.dextools.io/token/bobai

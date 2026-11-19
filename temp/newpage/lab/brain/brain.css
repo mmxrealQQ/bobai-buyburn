@@ -598,3 +598,64 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 
 /* the contract address first where the line scrolls: a phone buyer pastes it before anything else (2026-11-01) */
 @media (max-width:1179px){.bp-buyline .ca{order:-1}}
+
+/* ---- BOBAI CHECKS A TOKEN (2026-11-19, check.js): the header's button (wide) or a row under the buy line (phone) ----
+   A wide screen gets no row of its own (2026-10-27: 34 px cut card 05 at 1440x900): the panel opens over the left
+   cards, under the header, and BOBAI stays in sight in the middle while he says the verdict. */
+.bp-chk-btn{padding:8px 12px;border-radius:10px;border:1px solid var(--bp-gold);background:rgba(240,185,11,.1);color:var(--bp-gold);font:700 12px 'Space Grotesk',sans-serif;white-space:nowrap;cursor:pointer}
+.bp-chk-btn:hover,.bp-chk-btn[aria-expanded="true"]{background:rgba(240,185,11,.2)}
+.bk-panel{display:none;position:fixed;z-index:30;top:calc(var(--bp-top) + 10px);left:12px;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - var(--bp-top) - 24px);max-height:calc(100svh - var(--bp-top) - 24px);overflow:auto;box-sizing:border-box;
+  padding:14px;border-radius:16px;border:1px solid var(--bp-line2);background:rgba(10,8,9,.97);box-shadow:0 18px 50px rgba(0,0,0,.6);color:var(--bp-text);font:500 13px/1.45 'Space Grotesk',Inter,sans-serif}
+.bk-panel.open{display:block}
+.bk-lbl{display:block;font:700 13px 'Space Grotesk',sans-serif;margin:0 0 8px}
+.bk-lbl span{font-weight:500;color:var(--bp-muted)}
+.bk-line{display:flex;gap:6px}
+.bk-line input{flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--bp-line2);background:#0d0a0b;color:var(--bp-text);font:500 13px var(--bp-mono)}
+.bk-line input:focus{outline:none;border-color:var(--bp-gold)}
+.bk-go{padding:0 16px;border-radius:10px;border:0;background:var(--bp-gold);color:#120d00;font:800 13px 'Space Grotesk',sans-serif;cursor:pointer}
+.bk-form.busy .bk-go{opacity:.55;cursor:wait}
+.bk-x{width:38px;border-radius:10px;border:1px solid var(--bp-line);background:none;color:var(--bp-muted);font:400 20px/1 sans-serif;cursor:pointer}
+.bk-opts{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:9px}
+.bk-sizes,.bk-try{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.bk-try > span{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-right:2px}
+.bk-chip,.bk-tryb{padding:4px 9px;border-radius:8px;border:1px solid var(--bp-line2);background:none;color:var(--bp-text);font:600 12px 'Space Grotesk',sans-serif;cursor:pointer}
+.bk-chip.on{border-color:var(--bp-gold);color:var(--bp-gold);background:rgba(240,185,11,.08)}
+.bk-tryb{color:var(--bp-muted)}
+.bk-out:empty{display:none}
+.bk-out{margin-top:12px;border-top:1px solid var(--bp-line);padding-top:12px}
+.bk-wait,.bk-msg{margin:0;color:var(--bp-muted)}
+.bk-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.bk-gate{padding:4px 10px;border-radius:8px;font:800 12px var(--bp-mono);letter-spacing:.08em}
+.bk-stop .bk-gate,.bk-fail .bk-gate{background:rgba(255,92,92,.16);color:#ff8f8f;border:1px solid rgba(255,92,92,.5)}
+.bk-weigh .bk-gate{background:rgba(240,185,11,.14);color:var(--bp-gold);border:1px solid rgba(240,185,11,.5)}
+.bk-clear .bk-gate{background:rgba(63,224,154,.13);color:#3fe09a;border:1px solid rgba(63,224,154,.45)}
+.bk-sym{font:700 15px 'Space Grotesk',sans-serif}
+.bk-rows{display:grid;gap:6px}
+.bk-r{display:grid;grid-template-columns:86px 1fr;gap:10px;align-items:baseline}
+.bk-k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted)}
+.bk-v{overflow-wrap:anywhere}
+.bk-r.bad .bk-v{color:#ff8f8f;font-weight:700}
+.bk-r.warn .bk-v{color:var(--bp-gold)}
+.bk-notes{margin:10px 0 0;padding:0 0 0 16px;display:grid;gap:5px;color:var(--bp-muted);font-size:12px}
+.bk-notes b{color:var(--bp-text)}
+.bk-n-stop b{color:#ff8f8f}
+.bk-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
+.bk-share{padding:7px 12px;border-radius:9px;border:1px solid var(--bp-gold);background:none;color:var(--bp-gold);font:700 12px 'Space Grotesk',sans-serif;cursor:pointer}
+.bk-full{color:var(--bp-text);font:700 12px 'Space Grotesk',sans-serif;text-decoration:none}
+.bk-full:hover{color:var(--bp-gold)}
+.bk-meta{margin-left:auto;font:600 10px var(--bp-mono);color:var(--bp-muted)}
+/* phone: a row of its own under the buy line, the terminal gives up the same height so it still fills the first screen */
+@media (max-aspect-ratio:3/4),(max-width:559px){
+  :root{--bp-top:136px}
+  .bp-chk-btn{display:none}
+  .bk-panel{display:block;position:static;width:auto;max-height:none;overflow:visible;margin:0;padding:7px 8px;border-radius:0;border:0;border-bottom:1px solid var(--bp-line);box-shadow:none;background:rgba(240,185,11,.03)}
+  .bk-lbl{display:none}
+  .bk-line input{padding:8px 10px;font-size:12px}
+  .bk-x{display:none}
+  .bk-opts{display:none}
+  .bk-panel.open .bk-opts{display:flex}
+  .bk-panel.open .bk-lbl{display:block;font-size:12px}
+  .bk-r{grid-template-columns:72px 1fr}
+}
+/* a tall screen of 1180 px and more (a monitor on its side): the buy line sits in the header, only the check row is added */
+@media (min-width:1180px) and (max-aspect-ratio:3/4){:root{--bp-top:100px}}

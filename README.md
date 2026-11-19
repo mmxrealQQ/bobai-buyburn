@@ -62,6 +62,8 @@ Everything here runs on **BNB Smart Chain mainnet (chain ID 56)** and nowhere el
 
 Who gets hired on BNB Chain's escrow, ranked from the chain every day: [brainonbnb.com/jobs](https://brainonbnb.com/jobs).
 
+Listed in BNB Chain's dApp directory: [DappBay — Brain On BNB AI](https://dappbay.bnbchain.org/detail/brain-on-bnb-ai) (category AI).
+
 ## Our agents on the ERC-8004 registry (BNB Smart Chain, chain 56)
 
 Registry `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` · domain proof at [brainonbnb.com/.well-known/agent-registration.json](https://brainonbnb.com/.well-known/agent-registration.json)

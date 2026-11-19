@@ -70,7 +70,12 @@ const DEST = [
   { k: 'creator', name: 'CREATOR',  pct: 0.8, c: '#c9b8a8' },
 ];
 const D = Object.fromEntries(DEST.map(d => [d.k, d]));
-const TIERS = ['NICE BUY', 'BIG BUY', 'HUGE BUY', 'WHALE BUY', 'THUNDER BUY', 'KRAKEN BUY'];
+// WHO IS SEEN, NOT WHO IS PAID (2026-11-19, operator before the 20 Nov switch to 1/1/1: "in the rot keep all six — the game
+// needs them — and only strike the text and the % of the ones not active; in the standard they can go"): a station with
+// a share is shown everywhere; one without a share stays on the brainrot stage (its picture and its place in the game; its
+// label is hidden, operator: "just take the label away") and leaves the standard terminal. Money (streams, the ring, the split, his lines) still follows d.pct > 0 alone.
+const shown = d => d.pct > 0 || win.classList.contains('br-on');
+const TIERS =['NICE BUY', 'BIG BUY', 'HUGE BUY', 'WHALE BUY', 'THUNDER BUY', 'KRAKEN BUY'];
 
 // ================= helpers =================
 const $ = id => document.getElementById(id === 'bt' ? 'bt' : 'bt-' + id);
@@ -515,21 +520,37 @@ function atWork(k) {
 }
 
 // ================= the split in force =================
+// the split before the one in force (its last minute), from the same phase table the page reads
+function prevPhase(p) {
+  if (!p || !isFinite(p.start) || typeof window.__bobaiNow !== 'function' || typeof window.__bobaiPhase !== 'function') return null;
+  const real = window.__bobaiNow; window.__bobaiNow = () => p.start - 60e3;
+  try { return window.__bobaiPhase() || null; } catch { return null; } finally { window.__bobaiNow = real; }
+}
+// THE SPLIT CHANGES WHILE THE PAGE IS OPEN (2026-11-19, before 20 Nov 00:01 UTC): applyPhase ran once at open, so a visitor
+// watching at midnight saw the old split until a reload. Every 30 s the phase in force is asked again; a new one is applied.
+let PH_AT = null, LAID = null; // LAID: which stations the last layout() placed
+setInterval(() => { try { const p = livePhase(); if (p && p.start !== PH_AT && opened) applyPhase(); } catch {} }, 30e3);
 function applyPhase() {
   ringP = -1; // a new split table redraws the ring's colours
   const p = livePhase(); if (!p) { $('phase').textContent = ''; return; }
   const n = v => parseFloat(v) || 0;
   const pct = { burnA: n(p.bobaiPct), burnB: n(p.bobPct), liq: n(p.liqPct), defi: n(p.lpPct), giggle: n(p.gigglePct), creator: n(p.creatorPct) };
-  const was = DEST.map(d => d.pct > 0).join();
+  const was = LAID; // the stations as last laid out (a brainrot switch changes shown() before this runs)
+  // a station whose share ended keeps the share it had before in its (hidden) label, for the checks
+  const before = prevPhase(p), had = before ? { burnA: n(before.bobaiPct), burnB: n(before.bobPct), liq: n(before.liqPct), defi: n(before.lpPct), giggle: n(before.gigglePct), creator: n(before.creatorPct) } : {};
+  const rot = win.classList.contains('br-on');
   for (const d of DEST) {
-    d.pct = pct[d.k]; const on = d.pct > 0;
+    d.pct = pct[d.k]; const on = d.pct > 0, vis = shown(d);
     if (d.k === 'liq' && d.el.querySelector('.n')) { d.name = liqProg().short; d.el.querySelector('.n').firstChild.textContent = d.name; }
-    d.el.style.display = on ? '' : 'none'; if (d.obj) d.obj.visible = on; d.orb.visible = on && !d.obj; d.halo.visible = on;
-    d.el.querySelector('.pc').textContent = d.pct + '%';
+    d.el.style.display = vis ? '' : 'none'; d.el.classList.toggle('off', !on);
+    // the 3D circles: the standard terminal's own (brainrot hides them for its pictures and gives them back in circles())
+    if (!rot) { if (d.obj) d.obj.visible = on; d.orb.visible = on && !d.obj; d.halo.visible = on; }
+    d.el.querySelector('.pc').textContent = (on ? d.pct : had[d.k] || 0) + '%';
   }
+  PH_AT = p.start;
   const end = isFinite(p.end) ? new Date(p.end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   $('phase').textContent = 'The 3% split in force' + (end ? ' until ' + end : '') + ' — the same split as in window 02, Tokenomics.';
-  if (was !== DEST.map(d => d.pct > 0).join() && A.figW) layout(); // a station came or went: the rest spread evenly again
+  if (was !== DEST.map(shown).join() && A.figW) layout(); // a station came or went: the rest spread evenly again
   buildStreams();
 }
 
@@ -548,7 +569,7 @@ const FIT = { scale: 1, tries: 0, at: 0 };
 function fitPortrait(now) {
   if (!portrait || FIT.tries > 12 || now < FIT.at) return;
   FIT.at = now + 250;
-  const bar = $('mtabs'), labsEls = DEST.filter(d => d.pct > 0).map(d => d.el); if (!bar || !labsEls.length) return;
+  const bar = $('mtabs'), labsEls = DEST.filter(shown).map(d => d.el); if (!bar || !labsEls.length) return;
   const floor = bar.getBoundingClientRect().top - 6, low = Math.max(...labsEls.map(e => e.getBoundingClientRect().bottom));
   if (low <= floor) { FIT.tries = 99; return; }
   FIT.scale *= Math.max(0.8, Math.min(0.97, 1 - (low - floor) / 900)); FIT.tries++; layout();
@@ -590,7 +611,7 @@ function layout() {
   bMat.uniforms.uScale.value = A.figH * (portrait ? 0.34 : 0.37); // the bots' ring runs around it, not through it (2026-09-28) // wide screen: fits between the edge and him
   // EVENLY OVER THE STATIONS IN FORCE (operator, 17.11.: "burn, add liq and creator should be evenly spaced"): from 1 Dec
   // three have a share; the hidden ones keep their old place, the live ones share the column (the phone's row) between them
-  const LIVE = DEST.filter(d => d.pct > 0), n = LIVE.length > 1 ? LIVE.length : DEST.length;
+  const LIVE = DEST.filter(shown), n = LIVE.length > 1 ? LIVE.length : DEST.length; LAID = DEST.map(shown).join();
   DEST.forEach((d, i0) => {
     const i = LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
     if (portrait) {
@@ -6575,7 +6596,7 @@ window.__btHwSeason = hwSeason;
     hudB = 0; for (const w of walls) if (w.e && w.e.closest('.hud')) hudB = Math.max(hudB, w.b);
     // the scene's own lights are no elements: the destinations' orbs, the buyback ring and the trades' orb keep their room too
     if (A.figHpx) { const o = (v, rad, k) => { const p = toScreen(v); walls.push({ l: p.x - rad, t: p.y - rad, r: p.x + rad, b: p.y + rad, e: null, k }); };
-      for (const d of DEST) if (d.pct > 0) o(d.pos, A.figHpx * (portrait ? 0.07 : 0.1), d.k); o(A.core, A.figHpx * (portrait ? 0.12 : 0.21), 'core'); o(A.src, A.figHpx * 0.06, 'src'); }
+      for (const d of DEST) if (shown(d)) o(d.pos, A.figHpx * (portrait ? 0.07 : 0.1), d.k); o(A.core, A.figHpx * (portrait ? 0.12 : 0.21), 'core'); o(A.src, A.figHpx * 0.06, 'src'); }
     return r;
   }
   const free = (b, pad = 5, withTerm = true) => b.l >= 2 && !walls.some(w => cut(b, w, pad)) && !(withTerm && term && cut(b, term, pad));
@@ -6619,7 +6640,7 @@ window.__btHwSeason = hwSeason;
     // --- every station wears its costume, on its own light
     const stage = fh * (portrait ? 0.11 : 0.138), SZ = { burnA: 0.92, burnB: 1.05, liq: 1.12, defi: 1.2, giggle: 1.08, creator: 1.15, src: 1.25 };
     for (const o of ORBS) {
-      const k = o.dataset.k, d = k === 'src' ? null : D[k]; if (d && !(d.pct > 0)) { put(o, null); continue; }
+      const k = o.dataset.k, d = k === 'src' ? null : D[k]; if (d && !shown(d)) { put(o, null); continue; }
       const c = toScreen(d ? d.pos : A.src), i = o.querySelector('img'), z = cl3(stage * SZ[k], 20, 60), ar = i.naturalWidth ? i.naturalHeight / i.naturalWidth : 1;
       const w = ar > 1.25 ? z / ar * 1.15 : z;
       // it leans away from its label: the label stands right of the light on a wide screen, under it on a phone
@@ -8114,7 +8135,7 @@ window.__btBrSeason = brSeason;
   function dress() {
     stL.replaceChildren();
     stage = document.createElement('div'); stage.className = 'br-stage'; stage.style.visibility = 'hidden'; stage.innerHTML = '<img alt="" draggable="false" src="' + pic('podium') + '">'; stL.appendChild(stage);
-    ST = [...DEST.filter(d => d.pct > 0 && POST[d.k]).map(d => ({ k: d.k, pos: d.pos, say: POST[d.k][2], e: costume(POST[d.k][0], POST[d.k][1], 'br-st') })),
+    ST = [...DEST.filter(d => shown(d) && POST[d.k]).map(d => ({ k: d.k, pos: d.pos, say: POST[d.k][2], e: costume(POST[d.k][0], POST[d.k][1], 'br-st') })),
       { k: 'src', pos: A.src, say: POST.src[2], e: costume(POST.src[0], POST.src[1], 'br-st') }];
     BOTS = WORKERS.map(w => ({ w, e: costume('mini', 'flap', 'br-bot'), was: 0 }));
     // THE DISCO BALL (operator: "the disco ball can come alive or switch on sometimes"; 5.11. night: "the disco ball should
@@ -8257,6 +8278,7 @@ window.__btBrSeason = brSeason;
   const hint = ms => { sw.classList.add('hw-say'); clearTimeout(sayT); sayT = setTimeout(() => sw.classList.remove('hw-say'), ms); };
   function set(v, byHand) {
     on = v; win.classList.toggle('br-on', on); sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+    try { applyPhase(); } catch {} // the stations the brainrot stage keeps (pictures, no label) and the standard terminal hides (shown())
     sw.title = on ? 'Brainrot mode is on — click for the standard terminal' : 'Brainrot mode is off — click to rot again';
     sw.querySelector('.hw-oo').textContent = on ? 'rot' : 'off';
     sw.setAttribute('aria-label', sw.title); sw.querySelector('.hw-t').dataset.t = on ? (portrait ? 'Brainrot on · tap = off' : 'Brainrot on · click = off') : (portrait ? 'Brainrot off · tap = on' : 'Brainrot off · click = on');

@@ -1576,3 +1576,7 @@
 #bt .xm-menu button.on{border-color:rgba(159,216,255,.6);background:rgba(159,216,255,.08)}
 #bt .xm-menu .xm-make{font:700 .66rem var(--mono);color:#F0B90B;text-decoration:none;padding:8px 10px 4px}
 #bt .xm-menu .xm-note{margin:4px 10px 2px;font:.62rem var(--mono);color:#ffb469}
+/* A STATION WHOSE SHARE ENDED, ON THE BRAINROT STAGE (2026-11-19, operator: "keep the pictures for the game, just take the
+   label away"): its picture and its place in the game stay, its name and % go. The standard terminal does not show such a
+   station at all (terminal.js shown()). */
+#bt .br-on .lab.dest.off{visibility:hidden}

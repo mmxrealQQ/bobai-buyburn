@@ -21,6 +21,9 @@ const STEPS = [
   // the jobs too (2026-10-30): the page said 'jobs 28 Oct' beside fresh quotes, and four of our agents' charts stood empty
   ['job scan', 'node', ['scripts/erc8183-job-scan.mjs']],
   ['agent jobs', 'node', ['scripts/agent-jobs-export.mjs']],
+  // /advantage too (2026-11-19: a Build the Era page still "measured 2026-11-02" with the ended sale price); it keeps
+  // the old report when a run is not whole and never stops the chain for that
+  ['advantage', 'node', ['scripts/advantage-refresh.mjs']],
   ['publish', 'node', ['scripts/erc8004-publish.mjs', '--dir', 'erc8004-v2']],
   ['deploy site', 'node', ['scripts/deploy-dashboard.mjs']],
   ['deploy worker', 'npx', ['wrangler', 'deploy', '--config', 'worker-agent/wrangler.toml']],

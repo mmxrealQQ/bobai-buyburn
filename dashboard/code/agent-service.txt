@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24904 lines.
+# one fetch. 75 files, 24913 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6664,6 +6664,7 @@ export async function runCanary(env) {
 // generated from it, and neither can describe an offer the other does not
 // have. Adding something we sell means adding it here, once.
 import { SERVICES } from './sell.js';
+import { SCAN_FREE_PER_DAY, SCAN_PASS_HOURS, SCAN_PASS_CAP, SCAN_PASS_PRICE_USD1, SCAN_PASS_URL } from '../shared/scan-pass.js';
 
 export const USD1_DECIMALS = 18n;
 
@@ -6774,6 +6775,14 @@ export const CAPABILITIES = {
       what: 'any of the deliveries in this catalog, one payment, the document at once — no escrow, no job, no dispute window. GET /answer lists them; POST once without payment for the terms',
       price: '0.10 USD1, USDC or $U per answer, or half that ($0.05) in $BOBAI at the 402’s quote',
       why_paid: 'it is the same measurement the agents deliver through the escrow, at the same price, for a buyer with a wallet who wants it now',
+    },
+    // listed here since 2026-11-19: a stranger test of /services found it on llms.txt, MCP and /.well-known/x402 but not on the page
+    {
+      name: 'pool scan day pass',
+      where: `POST ${SCAN_PASS_URL} (GET for the terms), then header X-Scan-Pass on every scan`,
+      what: `only past ${SCAN_FREE_PER_DAY.toLocaleString('en-US')} free pool scans per caller and UTC day: ${SCAN_PASS_HOURS} more hours of scans, up to ${SCAN_PASS_CAP.toLocaleString('en-US')}; nothing for a wallet holding 1,000,000 $BOBAI`,
+      price: `${fmtUsd1(SCAN_PASS_PRICE_USD1)} USD1 or USDC, or half that in $BOBAI at the 402’s quote`,
+      why_paid: `${SCAN_FREE_PER_DAY.toLocaleString('en-US')} scans a day stay free for every caller; the pass is for a bot that scans all day`,
     },
   ],
 };

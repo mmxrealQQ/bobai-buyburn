@@ -255,7 +255,7 @@ const GROUPS = [
   ['broker', 'Finding somebody else', 'We will happily point you at an agent that is not ours.'],
   ['hire', 'Handing over a task', 'One call, and it finds the agent, runs the task and names who produced the answer.'],
   ['record', 'Checking our claims', 'The track record is derived from a log, not typed in by the operator it flatters.'],
-  ['paid', 'What costs money', 'The lists above are free. Apart from the deliveries under “Hire us to deliver it”, two things cost money: a watch that keeps running after you close the tab, and any of those deliveries handed over at once, with no escrow in between.'],
+  ['paid', 'What costs money', 'The lists above are free. Apart from the deliveries under “Hire us to deliver it”, three things cost money: a watch that keeps running after you close the tab, any of those deliveries handed over at once, with no escrow in between, and a day pass for a bot that scans pools past the free 1,000 a day.'],
 ];
 
 function page() {

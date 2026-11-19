@@ -1036,7 +1036,9 @@ function errorAnswer(e) {
     below_holder_line: 'The holder tier needs 1,000,000 $BOBAI in the signing wallet. Without wallet, issued and signature you get one watch free.',
   };
   const bad = /Invalid BSC address|Give a BSC token|Give the wallet as the argument|must be a positive number/.test(msg); /* a missing wallet is a bad address, 400 (15.11.: was 422 not_measurable) */
-  const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$/i.test(msg);
+  // the Workers runtime's own failures are passing, not an answer about the address (2026-11-19: a cross-request
+  // promise error went out as not_measurable, "asking again will not change it", while the same call answered a second later)
+  const infra = /refused|unavailable|did not answer|every BSC endpoint|too many subrequests|multicall returned|empty aggregate|http \d{3}|failed\.?$|request that has since ended|connection (was )?lost|timed? ?out|aborted|internal error|exceeded/i.test(msg);
   const code = bad ? (/must be a positive number/.test(msg) ? 'bad_usd' : 'bad_address')
     : HINTS[e?.code] && e.code !== 'bad_address' && e.code !== 'bad_usd' ? e.code
     // a refusal relayed from another worker keeps its own code, hint or not

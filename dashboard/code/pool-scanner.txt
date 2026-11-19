@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7973 lines.
+# one fetch. 6 files, 7971 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2888,17 +2888,18 @@ const sha1Hex = async (s) => {
 // concatenation order was read correctly.
 export const goPlusSign = (key, time, secret) => sha1Hex(`${key}${time}${secret}`);
 
-// One token per isolate, renewed a minute before it lapses. `inflight` matters:
-// several scans can land at once on a cold isolate, and without it each would
-// fetch its own token.
-let gpTok = { value: null, expires: 0, inflight: null };
+// One token per isolate, renewed a minute before it lapses. Only the token (a string) is shared between requests,
+// never the fetch that gets it (2026-11-19): the old `inflight` promise was handed to every scan that landed while it
+// ran, and a Worker refuses a promise made by another request ("This promise was created by a request that has since
+// ended") — 6 of 9 concurrent preflights failed with it, and others hung until the client gave up. On a cold isolate
+// several scans may now each fetch a token; that costs one small request each, once.
+let gpTok = { value: null, expires: 0 };
 
 const goPlusToken = (env) => {
   if (!env || !env.GOPLUS_APP_KEY || !env.GOPLUS_APP_SECRET) return Promise.resolve(null);
   const now = () => Math.floor(Date.now() / 1000);
   if (gpTok.value && gpTok.expires > now() + 60) return Promise.resolve(gpTok.value);
-  if (gpTok.inflight) return gpTok.inflight;
-  gpTok.inflight = (async () => {
+  return (async () => {
     try {
       const time = now();
       const sign = await goPlusSign(env.GOPLUS_APP_KEY, time, env.GOPLUS_APP_SECRET);
@@ -2925,11 +2926,8 @@ const goPlusToken = (env) => {
     } catch {
       gpWhy.reason = 'account key request failed';
       return null;
-    } finally {
-      gpTok.inflight = null;
     }
   })();
-  return gpTok.inflight;
 };
 
 const askGoPlus = (a, env) => gpCached(a, async () => {

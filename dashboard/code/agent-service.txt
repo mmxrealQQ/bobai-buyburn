@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24915 lines.
+# one fetch. 75 files, 24920 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7004,7 +7004,12 @@ export function classifyAgent(agent, status = null, opts = {}) {
   // Anything else is returned only on request ({ withWeak: true }) and marked
   // `weak`, so the page can fold it under "possibly related" and /find, which
   // asks without the option, leaves it out of a category answer.
-  const { titles, prose } = evidenceOf(agent);
+  // A LIST OF CATEGORIES IS NOT A CAPABILITY (2026-11-19, a stranger test of /mcp/agents: our own MCP server #49467 sat
+  // in all four categories and led a "rebalance" search, because its agent-search tools name the four as argument
+  // values). A block that names three or more categories at once is a directory's menu, for any agent, and is not read
+  // as evidence of any of them.
+  const menu = (b) => CATEGORIES.filter((c) => c.strong.test(b.text)).length >= 3;
+  const ev = evidenceOf(agent), titles = ev.titles.filter((b) => !menu(b)), prose = ev.prose.filter((b) => !menu(b));
   const all = [...titles, ...prose];
   const onChain = all.some((b) => CHAIN_MENTION.test(b.text));
   const quotedFor = new Set((agent.quoted_for || []).map(String));
@@ -7489,7 +7494,7 @@ export function evidenceScore({ pulse, jobs, quote }) {
   // outside buyers' jobs only: a builder who hires their own agent buys nothing here
   if (t && t.funded_outside > 0) {
     const weight = Math.min(1, t.funded_outside / 3);
-    parts.push({ part: 'delivers paid work', max: 30, points: Math.round(30 * ((t.delivery_rate_outside_pct || 0) / 100) * weight * 10) / 10, basis: `${t.delivery_rate_outside_pct}% of ${t.funded_outside} job${t.funded_outside === 1 ? '' : 's'} funded by outside buyers delivered${weight < 1 ? ` (counted at ${Math.round(weight * 100)}% while under 3 jobs)` : ''}` });
+    parts.push({ part: 'delivers paid work', max: 30, points: Math.round(30 * ((t.delivery_rate_outside_pct || 0) / 100) * weight * 10) / 10, basis: `${t.delivery_rate_outside_pct}% of ${t.funded_outside} job${t.funded_outside === 1 ? '' : 's'} funded by outside buyers delivered${t.shared_address_jobs ? `, ${t.shared_address_jobs.funded_outside} of them on its shared address naming no agent (${t.shared_address_jobs.delivered} delivered), counted against every agent of the address` : ''}${weight < 1 ? ` (counted at ${Math.round(weight * 100)}% while under 3 jobs)` : ''}` });
   } else parts.push({ part: 'delivers paid work', max: 30, points: 0, basis: t && t.funded ? 'only its owner\'s own test purchases so far — they do not count' : 'no funded escrow job on record' });
   const b = t?.buyers_outside || 0;
   parts.push({ part: 'outside buyers', max: 20, points: Math.round(20 * Math.min(1, Math.log2(1 + b) / Math.log2(11)) * 10) / 10, basis: b ? `${b} wallet${b === 1 ? '' : 's'} not ours paid it` : 'nobody outside has paid it yet' });

@@ -67,7 +67,7 @@ const ownJobTotals = () => {
 // a row's hires: its own job record where it has one, the provider's count where not
 const rowEmployment = (r) => {
   const t = ownJobTotals()[r.agentId];
-  return t?.funded ? { ...r.employment, own: t, funded: t.funded, funded_outside: t.funded_outside, completed_outside: t.paid_out_outside, outside_buyers: t.buyers_outside, funded_by_us: t.funded - t.funded_outside, submitted_not_released: t.delivered_waiting, last_submission: t.last_delivery ? Math.floor(Date.parse(t.last_delivery) / 1000) : r.employment?.last_submission } : r.employment;
+  return t?.funded ? { ...r.employment, own: t, funded: t.funded, funded_outside: t.funded_outside_own ?? t.funded_outside, completed_outside: t.paid_out_outside, outside_buyers: t.buyers_outside, funded_by_us: t.funded - (t.funded_outside_own ?? t.funded_outside), /* own jobs only here: funded_outside also carries the shared address's unnamed jobs for the score (2026-11-19) */ submitted_not_released: t.delivered_waiting, last_submission: t.last_delivery ? Math.floor(Date.parse(t.last_delivery) / 1000) : r.employment?.last_submission } : r.employment;
 };
 
 let census = null;

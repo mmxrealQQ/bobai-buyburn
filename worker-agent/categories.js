@@ -172,7 +172,12 @@ export function classifyAgent(agent, status = null, opts = {}) {
   // Anything else is returned only on request ({ withWeak: true }) and marked
   // `weak`, so the page can fold it under "possibly related" and /find, which
   // asks without the option, leaves it out of a category answer.
-  const { titles, prose } = evidenceOf(agent);
+  // A LIST OF CATEGORIES IS NOT A CAPABILITY (2026-11-19, a stranger test of /mcp/agents: our own MCP server #49467 sat
+  // in all four categories and led a "rebalance" search, because its agent-search tools name the four as argument
+  // values). A block that names three or more categories at once is a directory's menu, for any agent, and is not read
+  // as evidence of any of them.
+  const menu = (b) => CATEGORIES.filter((c) => c.strong.test(b.text)).length >= 3;
+  const ev = evidenceOf(agent), titles = ev.titles.filter((b) => !menu(b)), prose = ev.prose.filter((b) => !menu(b));
   const all = [...titles, ...prose];
   const onChain = all.some((b) => CHAIN_MENTION.test(b.text));
   const quotedFor = new Set((agent.quoted_for || []).map(String));

@@ -38,7 +38,7 @@ export function evidenceScore({ pulse, jobs, quote }) {
   // outside buyers' jobs only: a builder who hires their own agent buys nothing here
   if (t && t.funded_outside > 0) {
     const weight = Math.min(1, t.funded_outside / 3);
-    parts.push({ part: 'delivers paid work', max: 30, points: Math.round(30 * ((t.delivery_rate_outside_pct || 0) / 100) * weight * 10) / 10, basis: `${t.delivery_rate_outside_pct}% of ${t.funded_outside} job${t.funded_outside === 1 ? '' : 's'} funded by outside buyers delivered${weight < 1 ? ` (counted at ${Math.round(weight * 100)}% while under 3 jobs)` : ''}` });
+    parts.push({ part: 'delivers paid work', max: 30, points: Math.round(30 * ((t.delivery_rate_outside_pct || 0) / 100) * weight * 10) / 10, basis: `${t.delivery_rate_outside_pct}% of ${t.funded_outside} job${t.funded_outside === 1 ? '' : 's'} funded by outside buyers delivered${t.shared_address_jobs ? `, ${t.shared_address_jobs.funded_outside} of them on its shared address naming no agent (${t.shared_address_jobs.delivered} delivered), counted against every agent of the address` : ''}${weight < 1 ? ` (counted at ${Math.round(weight * 100)}% while under 3 jobs)` : ''}` });
   } else parts.push({ part: 'delivers paid work', max: 30, points: 0, basis: t && t.funded ? 'only its owner\'s own test purchases so far — they do not count' : 'no funded escrow job on record' });
   const b = t?.buyers_outside || 0;
   parts.push({ part: 'outside buyers', max: 20, points: Math.round(20 * Math.min(1, Math.log2(1 + b) / Math.log2(11)) * 10) / 10, basis: b ? `${b} wallet${b === 1 ? '' : 's'} not ours paid it` : 'nobody outside has paid it yet' });

@@ -64,12 +64,6 @@
       "ours": false
     },
     {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "rebalancing",
-      "ours": true
-    },
-    {
       "id": 341628,
       "label": "IVL Rebalancer",
       "category": "rebalancing",
@@ -167,12 +161,6 @@
       "ours": false
     },
     {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "grid-trading",
-      "ours": true
-    },
-    {
       "id": 345085,
       "label": "GuardRail GridBot",
       "category": "grid-trading",
@@ -251,12 +239,6 @@
       "label": "Hevo Yield",
       "category": "yield-optimization",
       "ours": false
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "yield-optimization",
-      "ours": true
     },
     {
       "id": 395829,
@@ -354,12 +336,6 @@
       "label": "BNB Lending Guardian",
       "category": "health-factor",
       "ours": false
-    },
-    {
-      "id": 49467,
-      "label": "Brain On BNB AI ($BOBAI)",
-      "category": "health-factor",
-      "ours": true
     },
     {
       "id": 341565,

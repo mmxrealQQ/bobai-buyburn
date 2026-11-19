@@ -124,10 +124,27 @@ const byDay = (rows) => {
 };
 for (const [id, p] of per) agents[id] = { provider: p.provider, attributed_by: [...p.how], totals: summary(p.rows), by_day: byDay(p.rows), trades: trades(p.rows) };
 const providers = {};
+// A JOB NO AGENT IS NAMED IN COUNTS AGAINST EVERY AGENT OF ITS ADDRESS (2026-11-19, a stranger test of /mcp/agents: four
+// expired jobs on our shared address 0x7380 stood on nobody's score, so our agents ranked 100% delivered on that
+// address while the address delivered 80%). The delivery rate the score reads takes the address's unattributed outside
+// jobs in for each of its agents; buyers and earnings stay the agent's own, so nobody is credited with another's buyer.
+const outsideRows = (rows) => rows.filter((r) => r[1] !== 'OPEN' && !r[6] && r[2] >= REAL_U);
+const deliveredOf = (rows) => rows.filter((r) => r[1] === 'COMPLETED' || r[1] === 'SUBMITTED').length;
 for (const [prov, rows] of shared) {
-  providers[prov] = { agents: [...idsOf.get(prov)].sort((a, b) => a - b), totals: summary(rows), trades: trades(rows), note: 'jobs of an address that sells for several agents and does not say which one in the job' };
-  for (const id of idsOf.get(prov)) if (!agents[id]) agents[id] = { provider: prov, attributed_by: [], totals: null, trades: [], shared_provider: prov };
-  else agents[id].shared_provider = prov;
+  providers[prov] = { agents: [...idsOf.get(prov)].sort((a, b) => a - b), totals: summary(rows), trades: trades(rows), note: 'jobs of an address that sells for several agents and does not say which one in the job — counted in the delivery rate of every one of them' };
+  const extra = outsideRows(rows);
+  for (const id of idsOf.get(prov)) {
+    if (!agents[id]) agents[id] = { provider: prov, attributed_by: [], totals: extra.length ? summary([]) : null, trades: [] };
+    agents[id].shared_provider = prov;
+    if (!extra.length) continue;
+    const T = agents[id].totals, own = outsideRows(per.get(id)?.rows || []);
+    const f = own.length + extra.length, d = deliveredOf(own) + deliveredOf(extra);
+    T.delivery_rate_outside_pct_own = T.delivery_rate_outside_pct;
+    T.funded_outside_own = T.funded_outside;
+    T.funded_outside = f;
+    T.delivery_rate_outside_pct = Math.round((d / f) * 1000) / 10;
+    T.shared_address_jobs = { address: prov, funded_outside: extra.length, delivered: deliveredOf(extra) }; // what they are: providers[address].note
+  }
 }
 
 const out = {

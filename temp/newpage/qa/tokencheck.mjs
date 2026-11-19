@@ -45,10 +45,14 @@ for (const [W, H, mob] of [[1280, 900, 0], [390, 844, 1]]) {
   const said = await waitFor(`/cake/i.test(document.querySelector('#bt .say')?.textContent || '')`, 25000);
   pin(said, `${s}: BOBAI says the verdict in his bubble`, await ev(`document.querySelector('#bt .say')?.textContent`));
   fs.writeFileSync(`${OUT}/tokencheck-${W}.png`, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).result.data, 'base64'));
-  // a wallet answers in words
-  await ev(`(() => { const i = document.getElementById('bk-in'); i.value = '0x000000000000000000000000000000000000dEaD'; document.getElementById('bk-form').requestSubmit(); })()`);
-  const no = await waitFor(`/NO READING|لا قراءة/.test(document.querySelector('#bk-out .bk-gate')?.textContent || '')`, 30000);
-  pin(no && (await ev(`(document.querySelector('#bk-out .bk-msg')?.textContent || '').length > 10`)), `${s}: a wallet address answers NO READING in words`, await ev(`document.querySelector('#bk-out .bk-msg')?.textContent`));
+  // a wallet gets the wallet check (2026-11-19): the DeFi agent's wallet holds at least CAKE and $BOBAI (both on the major list)
+  await ev(`(() => { const i = document.getElementById('bk-in'); i.value = '0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A'; document.getElementById('bk-form').requestSubmit(); })()`);
+  const wc = await waitFor(`/WALLET CHECK|فحص المحفظة/.test(document.querySelector('#bk-out .bk-gate')?.textContent || '')`, 30000);
+  const wdone = wc && await waitFor(`document.querySelectorAll('#bk-out .bk-wr').length >= 2 && !document.querySelector('#bk-out .bk-wv.bk-wait') && /cannot be sold|لا تُباع/.test(document.querySelector('#bk-out .bk-wait, #bk-out p')?.textContent || '')`, 150000);
+  const wrows = await ev(`JSON.stringify([...document.querySelectorAll('#bk-out .bk-wr')].map(r => r.textContent.replace(/\\s+/g, ' ').slice(0, 60)))`);
+  pin(wc && wdone && /BOBAI/.test(wrows || '') && /Cake|CAKE/.test(wrows || ''), `${s}: a wallet gets the wallet check, its tokens with whether each sells back`, wrows);
+  pin(/received in the last|استلمتها المحفظة/.test(await ev(`document.querySelector('#bk-out .bk-msg')?.textContent || ''`)), `${s}: the wallet check says what it read and what it cannot see`);
+  fs.writeFileSync(`${OUT}/walletcheck-${W}.png`, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).result.data, 'base64'));
   pin(!errs.length, `${s}: no script error`, errs.join(' | '));
 }
 console.log(fail ? `\n${fail} FAIL` : '\nall PASS');

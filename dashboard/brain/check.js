@@ -165,6 +165,141 @@
   }
   const NOANSWER = () => t('the check did not answer — try again in a few seconds.', 'لم يُجب الفحص — أعد المحاولة بعد ثوانٍ.');
 
+  // ---- THE WALLET CHECK (2026-11-19, operator: "build the wallet check"): a wallet pasted into the same field. Which
+  // tokens it holds, read on-chain only, in the visitor's browser: (1) every ERC-20 it RECEIVED in the last days, from
+  // Transfer logs (the one public log node that answers without a contract address caps a call at 10,001 blocks, so
+  // the days are read in windows), plus a list of major BSC tokens; (2) every balance in one batch; (3) each token held
+  // through the same pre-trade check at the size the wallet holds — can it be sold back. What it cannot see is said on
+  // the card: a token received before the window and not on the list. Nothing is stored, no wallet is connected.
+  const LOG_RPC = 'https://bsc.api.pocket.network';
+  const CALL_RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc.publicnode.com', 'https://bsc-dataseed1.defibit.io'];
+  const TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+  const BLOCKS_PER_DAY = 192000; // 0.45 s blocks
+  const MAJORS = ['0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c', '0x55d398326f99059ff775485246999027b3197955', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d',
+    '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c', '0x2170ed0880ac9a755fd29b2688956bd959f933f8', '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82',
+    '0x245c386dcfed896f5c346107596141e5edcbffff', '0xc5f0f7b66764f6ec8c8dff7ba683102295e16409', '0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d',
+    '0x1d2f0da169ceb9fc7b3144628db156f3f6c60dbe', '0xba2ae424d960c26247dd6c32edc70b295c744c43', '0x3ee2200efb3400fabb9aacf31297cbdd1d435d47',
+    '0x7083609fce4d1d8dc0c979aab8c869ea2c873402', '0xf8a0bf9cf54bb92f17374d9e9a321e6a111a51bd', '0x4b0f1812e5df2a09796481ff14017e6005508003',
+    '0xcf6bb5389c92bdda8a3747ddb454cb7a64626c63', '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e', '0xce24439f2d9c6a2289f741120fe202248b666666',
+    '0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3', '0x4338665cbb7b2485a8855a139b75d5e34ab0db94', '0xbf5140a22578168fd562dccf235e5d43a02ce9b1',
+    '0x570a5d26f7765ecb712c0924e4de545b89fd43df', '0xfb5b838b6cfeedc2873ab27866079ac55363d37e', '0xc748673057861a797275cd8a068abb95a902e8de',
+    '0x2859e4544c4bb03966803b044a93563bd2d0dd4d', '0x40af3827f39d0eacbf4a168f8d4ee67c121d11c9'];
+  const pad = (a) => '000000000000000000000000' + a.slice(2).toLowerCase();
+  async function rpc(url, body) {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(15000) });
+    return r.json();
+  }
+  async function callBatch(calls) { // [{to, data}] -> [hex|null]
+    const outs = new Array(calls.length).fill(null);
+    for (let i = 0; i < calls.length; i += 40) {
+      const part = calls.slice(i, i + 40), body = part.map((c, k) => ({ jsonrpc: '2.0', id: i + k, method: 'eth_call', params: [{ to: c.to, data: c.data }, 'latest'] }));
+      for (const url of CALL_RPCS) {
+        try { const res = await rpc(url, body); if (!Array.isArray(res)) continue; for (const x of res) if (x && x.result && x.result !== '0x') outs[x.id] = x.result; break; } catch (e) { /* the next node */ }
+      }
+    }
+    return outs;
+  }
+  const strOf = (h) => {
+    if (!h || h.length < 66) return null;
+    try {
+      if (h.length >= 130) { const len = parseInt(h.slice(66, 130), 16); const hex = h.slice(130, 130 + len * 2); return decodeURIComponent(hex.replace(/(..)/g, '%$1')).replace(/[^\x20-\x7e -￿]/g, '').slice(0, 16) || null; }
+      return decodeURIComponent(h.slice(2, 66).replace(/(00)+$/, '').replace(/(..)/g, '%$1')).slice(0, 16) || null;
+    } catch (e) { return null; }
+  };
+  // two public log hosts answer a Transfer query without a contract address: 48.club up to 5,000 blocks, Pocket up to
+  // 10,001 — both refuse bursts (measured 19.11.: six at once on Pocket, every one "too many requests"). So 5,000-block
+  // windows from one queue, two at a time per host, a growing pause after a refusal; a day is 39 windows, 6-15 s.
+  const LOG_HOSTS = ['https://rpc-bsc.48.club', LOG_RPC];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const dw = (d) => (d === 1 ? 'day' : d + ' days'), dwAr = (d) => (d === 1 ? 'آخر يوم' : 'آخر ' + d + ' أيام');
+  async function receivedTokens(wallet, days, onProgress) {
+    let head = 0;
+    for (const u of CALL_RPCS) { try { head = parseInt((await rpc(u, { jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] })).result, 16) - 3; if (head > 0) break; } catch (e) { /* the next node */ } }
+    if (!(head > 0)) throw new Error('no head');
+    const queue = []; for (let to = head; to > head - days * BLOCKS_PER_DAY; to -= 5000) queue.push([Math.max(0, to - 4999), to]);
+    const total = queue.length, found = new Set(); let done = 0, failed = 0;
+    const worker = async (host) => {
+      while (queue.length) {
+        const [from, to] = queue.shift(); let ok = false;
+        for (let k = 0; k < 4 && !ok; k++) {
+          try {
+            const j = await rpc(host, { jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ fromBlock: '0x' + from.toString(16), toBlock: '0x' + to.toString(16), topics: [TRANSFER, null, '0x' + pad(wallet)] }] });
+            if (Array.isArray(j.result)) { for (const l of j.result) if (l.topics && l.topics.length === 3) found.add(String(l.address).toLowerCase()); ok = true; }
+          } catch (e) { /* refused or not JSON: wait and ask again */ }
+          if (!ok) await sleep(600 * (k + 1));
+        }
+        if (!ok) failed++;
+        done++; onProgress && onProgress(done, total);
+      }
+    };
+    await Promise.all([worker(LOG_HOSTS[0]), worker(LOG_HOSTS[0]), worker(LOG_HOSTS[1]), worker(LOG_HOSTS[1])]);
+    return { tokens: [...found], windows: total, failed };
+  }
+  const WLINES = AR ? {
+    bad: [(n, b) => `تحمل ${n} توكن. ${b} منها لا يمكنك بيعها.`, (n, b) => `فحصت ${n} توكن في هذه المحفظة: ${b} لا تُباع.`, (n, b) => `${b} من ${n} توكن هنا لن تخرج منها.`, (n, b) => `انتبه: ${b} من توكناتك الـ ${n} غير قابلة للبيع.`, (n, b) => `في المحفظة ${n} توكن، و${b} منها عالقة.`],
+    good: [(n) => `تحمل ${n} توكن، وكلها قابلة للبيع عند هذه الكتلة.`, (n) => `فحصت ${n} توكن: لا شيء عالق.`, (n) => `${n} توكن، والخروج يعمل لكل منها.`, (n) => `محفظة نظيفة: ${n} توكن، كلها تُباع.`, (n) => `لا توكن عالق بين الـ ${n} التي وجدتها.`],
+    none: [() => 'لم أجد توكنات في هذه المحفظة ضمن ما قرأته.', () => 'المحفظة فارغة فيما قرأته.', () => 'لا توكنات هنا في الأيام المقروءة.', () => 'لم يظهر أي توكن في هذه المحفظة.', () => 'لا شيء لفحصه في هذه المحفظة.'],
+  } : {
+    bad: [(n, b) => `You hold ${n} tokens. ${b} of them you could not sell back.`, (n, b) => `Checked ${n} tokens in this wallet: ${b} would not sell.`, (n, b) => `${b} of the ${n} tokens here have no way out.`, (n, b) => `Careful: ${b} of your ${n} tokens cannot be sold.`, (n, b) => `${n} tokens in the wallet, ${b} of them stuck.`],
+    good: [(n) => `You hold ${n} tokens, and every one sells back at this block.`, (n) => `Checked ${n} tokens: nothing stuck.`, (n) => `${n} tokens, the way out works for each.`, (n) => `A clean wallet: ${n} tokens, all of them sellable.`, (n) => `No stuck token among the ${n} I found.`],
+    none: [() => 'I found no tokens in this wallet in what I read.', () => 'This wallet is empty in what I read.', () => 'No tokens here in the days I read.', () => 'Not one token showed up for this wallet.', () => 'Nothing to check in this wallet.'],
+  };
+  async function walletCheck(wallet, days = 1) {
+    busy = true; form.classList.add('busy'); lastKey = wallet.toLowerCase() + '|w' + days;
+    out.textContent = '';
+    const head = el('div', 'bk-head bk-weigh'); head.append(el('span', 'bk-gate', t('WALLET CHECK', 'فحص المحفظة')), raw('span', 'bk-sym', short(wallet)));
+    const status = el('p', 'bk-wait', t('Reading which tokens this wallet received…', 'أقرأ التوكنات التي استلمتها هذه المحفظة…'));
+    const list = el('div', 'bk-wrows');
+    out.append(head, status, list);
+    try {
+      const rec = await receivedTokens(wallet, days, (d, n) => { status.textContent = t(`Reading the last ${dw(days)} of transfers… ${Math.round((d / n) * 100)}%`, `أقرأ تحويلات ${dwAr(days)}… ${Math.round((d / n) * 100)}%`); });
+      const cand = [...new Set([...rec.tokens, ...MAJORS])];
+      status.textContent = t(`Reading ${cand.length} balances…`, `أقرأ ${cand.length} رصيدًا…`);
+      const bal = await callBatch(cand.map((a) => ({ to: a, data: '0x70a08231' + pad(wallet) })));
+      let held = cand.map((a, i) => ({ a, raw: bal[i] ? BigInt(bal[i].slice(0, 66)) : 0n })).filter((x) => x.raw > 0n);
+      const meta = await callBatch(held.flatMap((x) => [{ to: x.a, data: '0x313ce567' }, { to: x.a, data: '0x95d89b41' }]));
+      held = held.map((x, i) => ({ ...x, dec: meta[2 * i] ? Number(BigInt(meta[2 * i].slice(0, 66))) : 18, sym: strOf(meta[2 * i + 1]) || short(x.a) }))
+        .map((x) => ({ ...x, amt: Number(x.raw) / 10 ** Math.min(36, x.dec) }));
+      const MAX = 15, todo = held.slice(0, MAX);
+      status.textContent = held.length ? t(`${held.length} token${held.length === 1 ? '' : 's'} held — checking whether each sells back…`, `${held.length} توكن — أفحص هل يُباع كل منها…`) : '';
+      const rows = new Map();
+      for (const x of todo) { const r = el('div', 'bk-wr'); r.append(raw('span', 'bk-ws', x.sym), raw('span', 'bk-wa', x.amt.toLocaleString('en-US', { maximumFractionDigits: 4 })), el('span', 'bk-wv bk-wait', '…')); list.appendChild(r); rows.set(x.a, r); }
+      let bad = 0, untested = 0, checked = 0;
+      const checkOne = async (x) => {
+        const r = rows.get(x.a), v = r.querySelector('.bk-wv');
+        try {
+          // first at $100 for the price, then the verdict is read at the size the wallet holds (between $10 and $10,000)
+          let j = await fetch(`/api/preflight?address=${x.a}&usd=100`, { cache: 'no-store', signal: AbortSignal.timeout(30000) }).then((q) => q.json());
+          const p = j && j.token && j.token.price_usd, worth = p ? x.amt * p : null;
+          if (worth != null && Math.abs(worth - 100) > 25 && worth >= 10) j = await fetch(`/api/preflight?address=${x.a}&usd=${Math.round(Math.min(10000, worth))}`, { cache: 'no-store', signal: AbortSignal.timeout(30000) }).then((q) => q.json());
+          checked++;
+          if (!j || j.error) { v.className = 'bk-wv warn'; v.textContent = t('no reading', 'لا قراءة'); untested++; return; }
+          const ex = j.exit || {};
+          if (worth != null) r.querySelector('.bk-wa').textContent += ` · ${worth < 0.01 ? '<$0.01' : usd(worth)}`; // a dust rest is not "$0"
+          if (ex.sellable === false) { bad++; r.classList.add('bad'); v.className = 'bk-wv bad'; v.textContent = t('cannot sell', 'لا يُباع'); list.prepend(r); }
+          else if (ex.sellable) { v.className = 'bk-wv ok'; v.textContent = t(`sells · keeps ${pct(ex.round_trip_keep_pct, 1)}`, `يُباع · يبقى ${pct(ex.round_trip_keep_pct, 1)}`); }
+          else { untested++; v.className = 'bk-wv warn'; v.textContent = t('sell not tested', 'البيع لم يُختبر'); }
+          const tx = j.tax || {}; if (tx.sell_pct > 0) v.textContent += t(` · sell tax ${pct(tx.sell_pct)}`, ` · ضريبة بيع ${pct(tx.sell_pct)}`);
+          const a = el('a', 'bk-wl', '→'); a.href = (AR ? '/ar' : '') + '/scanner?token=' + x.a; a.title = t('Full scan', 'الفحص الكامل'); r.appendChild(a);
+        } catch (e) { v.className = 'bk-wv warn'; v.textContent = t('no reading', 'لا قراءة'); untested++; }
+      };
+      for (let i = 0; i < todo.length; i += 3) await Promise.all(todo.slice(i, i + 3).map(checkOne));
+      status.textContent = held.length ? t(`${held.length} token${held.length === 1 ? '' : 's'} held${held.length > MAX ? ` (the first ${MAX} checked)` : ''} · ${bad} cannot be sold · ${untested} not tested`, `${held.length} توكن${held.length > MAX ? ` (فُحص أول ${MAX})` : ''} · ${bad} لا تُباع · ${untested} لم تُختبر`) : t('No tokens found.', 'لم يُعثر على توكنات.');
+      head.className = 'bk-head ' + (bad ? 'bk-stop' : untested ? 'bk-weigh' : 'bk-clear');
+      const note = el('p', 'bk-msg', t(`Read on-chain: tokens this wallet received in the last ${dw(days)}${rec.failed ? ` (${rec.failed} of ${rec.windows} windows did not answer)` : ''}, plus ${MAJORS.length} major BNB Chain tokens. A token received earlier and not on that list is not here — paste it above to check it.`, `قُرئ على السلسلة: التوكنات التي استلمتها المحفظة في ${dwAr(days)}${rec.failed ? ` (${rec.failed} من ${rec.windows} نافذة لم تُجب)` : ''}، و${MAJORS.length} توكنًا رئيسيًا على BNB Chain. توكن استُلم قبل ذلك وليس في القائمة لا يظهر هنا — الصقه أعلاه لفحصه.`));
+      out.appendChild(note);
+      if (days < 7) {
+        const more = el('button', 'bk-share', t(days < 3 ? 'Look back 3 days' : 'Look back 7 days', days < 3 ? 'ابحث 3 أيام' : 'ابحث 7 أيام')); more.type = 'button';
+        more.addEventListener('click', () => { if (!busy) walletCheck(wallet, days < 3 ? 3 : 7); });
+        const foot = el('div', 'bk-foot'); foot.append(more, el('span', 'bk-meta', t('measurement, not advice', 'قياس، لا نصيحة'))); out.appendChild(foot);
+      }
+      const n = held.length;
+      sayLine(n ? (bad ? pick(WLINES.bad)(n, bad) : pick(WLINES.good)(checked)) : pick(WLINES.none)());
+    } catch (e) {
+      status.className = 'bk-msg'; status.textContent = t('The chain did not answer just now — try again in a moment.', 'لم تُجب السلسلة الآن — أعد المحاولة بعد لحظة.'); lastKey = '';
+    } finally { busy = false; form.classList.remove('busy'); }
+  }
+
   async function run() {
     const asked = input.value.trim();
     if (!asked || busy) return;
@@ -177,6 +312,7 @@
       const r = await fetch(`/api/preflight?address=${encodeURIComponent(asked)}&usd=${size}`, { cache: 'no-store' });
       const j = await r.json().catch(() => null);
       if (!j) { fail(NOANSWER(), asked); lastKey = ''; }
+      else if (j.code === 'is_wallet' && /^0x[0-9a-fA-F]{40}$/.test(asked)) { await walletCheck(asked); return; } // a wallet: its tokens instead (run's finally clears busy after it)
       else if (j.error) fail(j.error, asked);
       else render(j, asked);
     } catch (e) { fail(NOANSWER(), asked); lastKey = ''; }

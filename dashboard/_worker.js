@@ -2707,7 +2707,19 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       }
       const bar = BAR_MEMO.bar || null;
       const [fRuns, fLiq] = await Promise.all([burnLog(), liqLog()]);
-      const r = ggRewriter(bb3Rewriter(burnRewriter(barRewriter(taxSplitRewriter(taxPhaseAt()), bar), fRuns), fLiq), fRuns).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
+      let r = ggRewriter(bb3Rewriter(burnRewriter(barRewriter(taxSplitRewriter(taxPhaseAt()), bar), fRuns), fLiq), fRuns).transform(await env.ASSETS.fetch(new Request(url.origin + '/brain/', request)));
+      // A SHARED CHECK LANDS ON BOBAI (2026-11-19): brainonbnb.com/?check=<token> opens the front page and runs the token
+      // check there (brain/check.js); X, Telegram and every link preview show that token's card, the scanner's /og/scan
+      const chk = (url.searchParams.get('check') || '').toLowerCase();
+      if (/^0x[0-9a-f]{40}$/.test(chk)) {
+        const img = `https://brainonbnb.com/og/scan/${chk}.png`, page = `https://brainonbnb.com/?check=${chk}`, title = 'BOBAI checked this token on BNB Chain: can you get in and out?';
+        const set = (v) => ({ element(e) { e.setAttribute('content', v); } });
+        r = new HTMLRewriter()
+          .on('meta[property="og:image"]', set(img)).on('meta[name="twitter:image"]', set(img)).on('meta[property="og:url"]', set(page))
+          .on('meta[property="og:title"]', set(title)).on('meta[name="twitter:title"]', set(title))
+          .on('head', { element(e) { e.append(`<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="BOBAI token check of ${chk}">`, { html: true }); } })
+          .transform(r);
+      }
       return new Response(r.body, { status: r.status, headers: secureHeaders(new Headers(r.headers)) });
     }
     if (url.pathname === '/classic' || url.pathname === '/classic/') {

@@ -142,7 +142,8 @@
     }
     const foot = el('div', 'bk-foot');
     const addr = (j.token && j.token.address) || asked;
-    const link = 'https://brainonbnb.com/scanner?token=' + encodeURIComponent(addr);
+    // the shared link lands on BOBAI, who runs the check again for whoever opens it; its preview is the token's card (_worker.js)
+    const link = 'https://brainonbnb.com/' + (AR ? 'ar/' : '') + '?check=' + encodeURIComponent(String(addr).toLowerCase());
     const label = t('Share this check', 'شارك هذا الفحص');
     const share = el('button', 'bk-share', label); share.type = 'button';
     share.addEventListener('click', async () => {

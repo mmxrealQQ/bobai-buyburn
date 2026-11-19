@@ -25,6 +25,10 @@ const cell = ((sch.match(/<td class="tl" colspan="12">([^<]*)</) || [])[1] || ''
 pin('/screener: the table says how many answered and names the top outside agents', !/^Reading/.test(cell) && sc && cell.includes(`${Number(sc.agents).toLocaleString('en-US')} agents`) && /Highest evidence scores outside ours: \S/.test(cell), cell);
 // the front page's bar (Price, MC, Liq, LP, Burned) opened as dashes; it carries the on-chain figures now (a minute old at most)
 const home = await raw('/'), bl = (k) => ((home.match(new RegExp(`data-bl="${k}">([^<]*)<`)) || [])[1] || '').trim();
+// a shared check (2026-11-19): /?check=<token> previews as that token's card, the plain front page keeps its banner
+{ const tok = '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', shared = await raw('/?check=' + tok);
+  pin('/?check=<token>: the link preview is the token\'s card', shared.includes(`content="https://brainonbnb.com/og/scan/${tok}.png"`) && /og:title" content="BOBAI checked this token/.test(shared));
+  pin('/: without ?check the banner stays', home.includes('content="https://brainonbnb.com/og-banner.png"')); }
 const pr = await fetch('https://brainonbnb.com/api/price', { headers: H }).then((r) => r.json()).catch(() => null);
 // since 8 Nov (3c25c4e) the line holds only CA, price, MC and liquidity; LP, burned and 24h volume left it on purpose
 pin('/: the bar carries Price, MC and Liq, no dash', ['price', 'mc', 'liq'].every((k) => bl(k) && bl(k) !== '—'), ['price', 'mc', 'liq'].map((k) => `${k} ${bl(k)}`).join(' · '));

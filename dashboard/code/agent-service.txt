@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24913 lines.
+# one fetch. 75 files, 24915 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -11828,6 +11828,8 @@ function lpSeriesSummary(series, { gas_bnb = null, owed_now_bnb = null, totals =
     // they count runs, not days (2026-10-09: 128 runs over 36 days read "108 days in range"); the old names stay for readers
     runs_in_range: series.filter((p) => p.in_range === true).length,
     runs_out_of_range: series.filter((p) => p.in_range === false).length,
+    // said in the JSON itself (2026-11-19, a stranger test: "181 days in range" beside 77 days covered read impossible)
+    how_to_read_the_counts: 'days_in_range and days_out_of_range count runs, not days — the same numbers as runs_in_range and runs_out_of_range, kept under the old names for existing readers. time_in_range is the share of the ten-minute price tape, which keeps the last 30 days, so its "from" moves forward every day.',
     days_it_acted: series.filter((p) => p.acted).length,
     // The share of TIME in range, from the ten-minute tape (2026-09-24, D3):
     // the run counts above lean high, a run happens when the agent acts.

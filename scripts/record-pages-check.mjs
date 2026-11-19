@@ -72,6 +72,13 @@ for (const p of ['/classic', '/']) {
 }
 const dh = await raw('/defi'), dcard = (dh.match(/<div class="agt-flow fi" id="defi-card">\s*<p class="agt-note">([^<]*)</) || [])[1] || '';
 pin('/defi: the portfolio says what went in, what it is worth and the result against holding', /^Put in: [\d.]+ BNB/.test(dcard) && /against simply holding/.test(dcard), dcard);
+// a stranger test (2026-11-19): fees + price did not add up to the result (gas unnamed), dollars read as history,
+// "±20%" hid that the range is +20% / −17% in price
+{ const num = (re) => { const m = dcard.match(re); return m ? Number(m[1].replace('−', '-').replace('+', '')) : null; };
+  const total = num(/Result: [^,]+, ([−+][\d.]+) BNB/), fees = num(/([−+][\d.]+) BNB from fees/), price = num(/([−+][\d.]+) BNB from the price/), gas = num(/([−+][\d.]+) BNB gas/);
+  pin('/defi: fees + price + gas add up to the result', [total, fees, price, gas].every((x) => x != null) && Math.abs(fees + price + gas - total) <= 0.0002, `${fees} + ${price} + ${gas} vs ${total}`);
+  pin('/defi: the dollars say they are at today’s BNB price', /Dollars are at today’s BNB price/.test(dcard));
+  pin('/defi: the vs-holding share names its base and the range both sides', /of the capital put in against simply holding/.test(dcard) && (!/This range alone/.test(dcard) || /\+\d+% \/ −\d+% around the price/.test(dcard)), dcard.slice(-260)); }
 pin('/defi: the series line says runs, days and where the fees went', /runs over \d+ days since/.test(inner(dh, 'ag-lp-series-sum')), inner(dh, 'ag-lp-series-sum'));
 // the A-Z pass, block 3 (4.11.): the figure tiles of /jobs, /settle, /venus and /pancakeswap opened as dashes
 const tileOf = (h, id) => ((h.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`)) || [])[1] || '').trim();

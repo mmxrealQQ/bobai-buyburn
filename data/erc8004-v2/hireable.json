@@ -2,11 +2,23 @@
   "measured_at": "2026-11-15T05:56:14.611Z",
   "agents": [
     {
+      "id": 269223,
+      "label": "Portfolio Rebalancer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
       "id": 304494,
       "label": "Brain on BNB — Portfolio Rebalance Pricer",
       "category": "rebalancing",
       "ours": true,
       "seed": "rebalance holdings [{\"token\":\"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c\",\"usd\":700},{\"token\":\"0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82\",\"usd\":300}] to equal weight"
+    },
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false
     },
     {
       "id": 363709,
@@ -16,20 +28,14 @@
       "seed": "what would the DeFi agent do with the PancakeSwap V3 position held by <ADDR>"
     },
     {
-      "id": 269223,
-      "label": "Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 374113,
       "label": "Centreline by Pokter",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 340460,
+      "label": "LingoAI Portfolio Rebalancer",
       "category": "rebalancing",
       "ours": false
     },
@@ -46,12 +52,6 @@
       "ours": false
     },
     {
-      "id": 340460,
-      "label": "LingoAI Portfolio Rebalancer",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 340471,
       "label": "Hevo Rebalance",
       "category": "rebalancing",
@@ -60,6 +60,18 @@
     {
       "id": 265876,
       "label": "BNB Yield Optimizer",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 331131,
+      "label": "LatticeLatch",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 324818,
+      "label": "RangeReset",
       "category": "rebalancing",
       "ours": false
     },
@@ -88,18 +100,6 @@
       "ours": false
     },
     {
-      "id": 331131,
-      "label": "LatticeLatch",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
-      "id": 324818,
-      "label": "RangeReset",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 323262,
       "label": "Warden",
       "category": "rebalancing",
@@ -118,13 +118,6 @@
       "ours": false
     },
     {
-      "id": 302258,
-      "label": "Brain on BNB — BSC Grid Planner",
-      "category": "grid-trading",
-      "ours": true,
-      "seed": "grid plan for WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c with a budget of $1000 capital, 10 levels across a 15% band"
-    },
-    {
       "id": 269224,
       "label": "Grid Trader",
       "category": "grid-trading",
@@ -133,6 +126,19 @@
     {
       "id": 374114,
       "label": "Gridloom by Pokter",
+      "category": "grid-trading",
+      "ours": false
+    },
+    {
+      "id": 302258,
+      "label": "Brain on BNB — BSC Grid Planner",
+      "category": "grid-trading",
+      "ours": true,
+      "seed": "grid plan for WBNB 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c with a budget of $1000 capital, 10 levels across a 15% band"
+    },
+    {
+      "id": 340455,
+      "label": "LingoAI Grid Trading Agent",
       "category": "grid-trading",
       "ours": false
     },
@@ -149,14 +155,14 @@
       "ours": false
     },
     {
-      "id": 340455,
-      "label": "LingoAI Grid Trading Agent",
+      "id": 340527,
+      "label": "Hevo Grid",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 340527,
-      "label": "Hevo Grid",
+      "id": 331131,
+      "label": "LatticeLatch",
       "category": "grid-trading",
       "ours": false
     },
@@ -169,12 +175,6 @@
     {
       "id": 336623,
       "label": "Gridwright",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
-      "id": 331131,
-      "label": "LatticeLatch",
       "category": "grid-trading",
       "ours": false
     },
@@ -210,6 +210,12 @@
       "seed": "best stablecoin yield for 1000 USDT on BNB Chain right now"
     },
     {
+      "id": 340456,
+      "label": "LingoAI Yield Optimiser",
+      "category": "yield-optimization",
+      "ours": false
+    },
+    {
       "id": 310460,
       "label": "Brain on BNB — PancakeSwap Fee Tier Placement",
       "category": "yield-optimization",
@@ -219,12 +225,6 @@
     {
       "id": 269226,
       "label": "Yield Allocator",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 340456,
-      "label": "LingoAI Yield Optimiser",
       "category": "yield-optimization",
       "ours": false
     },
@@ -295,13 +295,6 @@
       "ours": false
     },
     {
-      "id": 302257,
-      "label": "Brain on BNB — Venus Health Factor Monitor",
-      "category": "health-factor",
-      "ours": true,
-      "seed": "health factor and liquidation distance for the Venus position at <ADDR>"
-    },
-    {
       "id": 341556,
       "label": "Keel",
       "category": "health-factor",
@@ -314,20 +307,27 @@
       "ours": false
     },
     {
+      "id": 302257,
+      "label": "Brain on BNB — Venus Health Factor Monitor",
+      "category": "health-factor",
+      "ours": true,
+      "seed": "health factor and liquidation distance for the Venus position at <ADDR>"
+    },
+    {
       "id": 374107,
       "label": "Brinkwatch by Pokter",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 270183,
-      "label": "AgentCensus Health Factor Monitor",
+      "id": 340458,
+      "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 340458,
-      "label": "LingoAI Health Factor Sentinel",
+      "id": 270183,
+      "label": "AgentCensus Health Factor Monitor",
       "category": "health-factor",
       "ours": false
     },

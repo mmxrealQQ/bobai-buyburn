@@ -152,6 +152,9 @@ export async function agentRank(env, categoryRaw, limitRaw) {
     const listing = await readListing(env, id).catch(() => null);
     return { id: Number(id), score: ev.score, parts: Object.fromEntries(ev.parts.map((x) => [x.part, x.points])),
       uptime_30d_pct: pulse.last_30d.uptime_pct, days_measured: pulse.last_30d.days_measured, median_ms: pulse.last_30d.median_ms,
+      // said, not left blank (2026-11-19, a stranger test): our own agents run inside the worker that measures, a Worker
+      // cannot call itself over the network, so their daily answer carries no time
+      ...(pulse.last_30d.median_ms == null && pulse.series.some((x) => x.ok && x.ms == null) ? { median_ms_note: 'answered inside the measuring worker, so no network time — not a slow or failed answer' } : {}),
       outside_jobs_delivered_pct: t?.delivery_rate_outside_pct ?? null, outside_buyers: t?.buyers_outside || 0,
       quote: p.quote?.quotes ? p.quote.price : null, hire: p.hire, ours: !!p.ours,
       listed: listing && listing.status !== 'removed' ? { verified_and_maintained: listing.status === 'verified' } : null,

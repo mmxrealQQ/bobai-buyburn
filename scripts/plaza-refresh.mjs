@@ -24,6 +24,9 @@ const STEPS = [
   // /advantage too (2026-11-19: a Build the Era page still "measured 2026-11-02" with the ended sale price); it keeps
   // the old report when a run is not whole and never stops the chain for that
   ['advantage', 'node', ['scripts/advantage-refresh.mjs']],
+  // the ReputationRegistry too (2026-11-19: /api-reputation.json was 25 days old — it only ever ran by hand). Optional: a
+  // failed read keeps the last full file (the scan refuses a narrow run itself) and the chain goes on
+  ['reputation', 'node', ['scripts/erc8004-reputation-scan.mjs', '--all'], { optional: true }],
   ['publish', 'node', ['scripts/erc8004-publish.mjs', '--dir', 'erc8004-v2']],
   ['deploy site', 'node', ['scripts/deploy-dashboard.mjs']],
   ['deploy worker', 'npx', ['wrangler', 'deploy', '--config', 'worker-agent/wrangler.toml']],
@@ -33,8 +36,21 @@ const STEPS = [
   ['census-sync', 'node', ['scripts/census-sync.mjs', '--dir', 'erc8004-v2']],
   ['plaza page check (live)', 'node', ['temp/newpage/qa/reg1024.mjs', 'https://brainonbnb.com']],
 ];
+// NEVER SHIP UNFINISHED WORK (2026-11-19, the run became daily): before it starts and before every deploy, the working
+// tree may hold changes only in what this chain writes itself — dashboard/api-*.json, registry.html, advantage.html
+// (and data/, which is not deployed); a change in any other dashboard file or in worker-agent/ or shared/ stops it.
+const OWN_OUTPUT = /^dashboard\/(api-[a-z0-9-]+\.json|registry\.html|advantage\.html)$/;
+function foreignChanges() {
+  const r = spawnSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'dashboard', 'worker-agent', 'shared'], { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) return ['(git status failed)'];
+  return r.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).trim().replace(/^"|"$/g, '')).filter((f) => !OWN_OUTPUT.test(f));
+}
 say('Plaza refresh started');
-for (const [name, cmd, args] of STEPS) {
+for (const [name, cmd, args, opt = {}] of STEPS) {
+  if (name === 'scan' || name.startsWith('deploy')) {
+    const other = foreignChanges();
+    if (other.length) { say(`stopped before "${name}": the working tree holds work this chain did not write (${other.slice(0, 5).join(', ')}${other.length > 5 ? ' …' : ''}) — nothing deployed`); process.exit(1); }
+  }
   const t0 = Date.now();
   const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', timeout: 3 * 3600e3, maxBuffer: 64 * 1024 * 1024 });
   const out = `${r.stdout || ''}${r.stderr || ''}`.trim().split('\n').filter((l) => !/UV_HANDLE_CLOSING/.test(l));
@@ -42,6 +58,7 @@ for (const [name, cmd, args] of STEPS) {
   // the page check reads its own verdict: Node on Windows can abort on exit after the browser closed (UV_HANDLE_CLOSING)
   const ok = name.startsWith('plaza page check') ? /all PASS/.test(out.join('\n')) : r.status === 0;
   say(`${ok ? 'ok  ' : 'FAIL'} ${name} (${Math.round((Date.now() - t0) / 1000)} s)\n${tail}`);
+  if (!ok && opt.optional) { say(`"${name}" failed and is optional — its last good output stays, the chain goes on`); continue; }
   if (!ok) { say(`stopped at "${name}" — nothing after it ran`); process.exit(1); }
 }
 const page = await fetch('https://brainonbnb.com/registry?r=' + Date.now()).then((r) => r.text()).catch(() => '');

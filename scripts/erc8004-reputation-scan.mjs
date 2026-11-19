@@ -437,6 +437,12 @@ const payload = {
   ...analyse(kept),
   agents: kept,
 };
+// A RUN ON A BAD LINE NEVER REPLACES A GOOD ONE (2026-11-19, now a weekly step): over a tenth unreadable is the
+// line, not the chain — the last full file stays; --force writes it anyway
+if (!SELFTEST && failed > list.length / 10 && !process.argv.includes('--force')) {
+  console.error(`refused: ${failed} of ${list.length} agents could not be read — the file on disk stays; --force writes it anyway`);
+  process.exit(1);
+}
 fs.mkdirSync(DIR, { recursive: true });
 fs.writeFileSync(path.join(DIR, 'reputation.json'), JSON.stringify(payload, null, 1) + '\n');
 

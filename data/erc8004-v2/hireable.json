@@ -344,12 +344,6 @@
       "ours": false
     },
     {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
       "id": 340458,
       "label": "LingoAI Health Factor Sentinel",
       "category": "health-factor",
@@ -366,6 +360,12 @@
       "label": "Brain On BNB AI ($BOBAI)",
       "category": "health-factor",
       "ours": true
+    },
+    {
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
+      "category": "health-factor",
+      "ours": false
     },
     {
       "id": 345087,

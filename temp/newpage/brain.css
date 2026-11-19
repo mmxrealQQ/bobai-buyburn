@@ -650,7 +650,8 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
   .bp-chk-btn{display:none}
   .bk-panel{display:block;position:static;width:auto;max-height:none;overflow:visible;margin:0;padding:7px 8px;border-radius:0;border:0;border-bottom:1px solid var(--bp-line);box-shadow:none;background:rgba(240,185,11,.03)}
   .bk-lbl{display:none}
-  .bk-line input{padding:8px 10px;font-size:12px}
+  .bk-line input{padding:8px 10px;font-size:16px}
+  .bk-line input::placeholder{font-size:12px}
   .bk-x{display:none}
   .bk-opts{display:none}
   .bk-panel.open .bk-opts{display:flex}
@@ -670,3 +671,6 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .bk-wl{color:var(--bp-muted);text-decoration:none;font-weight:700}
 .bk-wl:hover{color:var(--bp-gold)}
 @media (max-width:559px){.bk-wr{grid-template-columns:1fr auto 18px}.bk-wa{grid-column:1/-1;order:3}}
+/* NO ZOOM ON FOCUS (2026-11-19, operator: "on mobile everything stays in the window"): a phone browser zooms in on a field
+   whose text is under 16 px; on a touch screen every field on the page types at 16 px, the hint keeps its small size */
+@media (pointer:coarse){.bk-line input,.cx01-in input,.faq-search input{font-size:16px}.bk-line input::placeholder{font-size:12px}}

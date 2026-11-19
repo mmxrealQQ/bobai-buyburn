@@ -26,10 +26,11 @@ pin('/screener: the table says how many answered and names the top outside agent
 // the front page's bar (Price, MC, Liq, LP, Burned) opened as dashes; it carries the on-chain figures now (a minute old at most)
 const home = await raw('/'), bl = (k) => ((home.match(new RegExp(`data-bl="${k}">([^<]*)<`)) || [])[1] || '').trim();
 const pr = await fetch('https://brainonbnb.com/api/price', { headers: H }).then((r) => r.json()).catch(() => null);
-pin('/: the bar carries Price, MC, Liq, LP and Burned, no dash', ['price', 'mc', 'liq', 'lp', 'burned'].every((k) => bl(k) && bl(k) !== '—'), ['price', 'mc', 'liq', 'lp', 'burned'].map((k) => `${k} ${bl(k)}`).join(' · '));
+// since 8 Nov (3c25c4e) the line holds only CA, price, MC and liquidity; LP, burned and 24h volume left it on purpose
+pin('/: the bar carries Price, MC and Liq, no dash', ['price', 'mc', 'liq'].every((k) => bl(k) && bl(k) !== '—'), ['price', 'mc', 'liq'].map((k) => `${k} ${bl(k)}`).join(' · '));
 const mc = Number(bl('mc').replace(/[$,]/g, ''));
 pin("/: the bar's MC is within 5% of /api/price", pr && mc > 0 && Math.abs(mc - pr.market_cap_usd) / pr.market_cap_usd < 0.05, `${mc} vs ${pr?.market_cap_usd}`);
-pin("/: 24h vol keeps its dash (it needs the chart's trades)", bl('vol') === '—', bl('vol'));
+pin('/: no LP, burned or 24h-volume slot came back to the line', !['lp', 'burned', 'vol'].some((k) => home.includes(`data-bl="${k}"`)));
 // 4.11. later: /nft/, /pass, /set-and-earn, /advantage, /pancakeswap and who is active on /board
 const nft = await fetch('https://brainonbnb.com/api/nft/state', { headers: H }).then((r) => r.json()).catch(() => null), nh = await raw('/nft/');
 const minted = inner(nh, 'stat-minted');

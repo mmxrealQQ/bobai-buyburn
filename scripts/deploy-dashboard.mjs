@@ -165,7 +165,15 @@ export function ecoNav(html, rel = '', ecoV = '1') {
     + `<div class="eco-links" aria-label="BOBAI apps">${links()}</div>`
     + `<details class="eco-m"><summary>Apps</summary><div class="eco-menu"><a class="eco-a" href="/">Brain Terminal</a>${links()}</div></details></div>`;
   // The gold "Brain Plaza" button five pages carried was the only way to the Plaza from there; the bar has it now.
-  const out = html.replace(PAIR, bar).replace(/\s*<a class="nb" href="\/registry">Brain Plaza<\/a>/, '');
+  let out = html.replace(PAIR, bar).replace(/\s*<a class="nb" href="\/registry">Brain Plaza<\/a>/, '');
+  // THE SAME RIGHT END ON EVERY PAGE (2026-11-20, A-Z: /list, /session and /advantage lost their only button with Brain
+  // Plaza, so they had no Buy and no EN | ع — the switch stands before the bar's button; /pancakeswap's "Pool Scanner" and
+  // /screener's "Home" repeated what the bar holds): those go, and a bar left with no button gets Buy $BOBAI
+  out = out.replace(/\s*<a class="nb" href="\/scanner">Pool Scanner<\/a>/, '').replace(/\s*<a class="nb" href="\/">Home<\/a>/, '');
+  const navEnd = out.indexOf('</div></nav>'), navStart = out.lastIndexOf('<div class="nav">', navEnd);
+  if (navEnd > 0 && navStart >= 0 && !out.slice(navStart, navEnd).includes('class="nb"')) {
+    out = out.slice(0, navEnd) + '  <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>\n  ' + out.slice(navEnd);
+  }
   return out.replace(/<\/head>/i, `<link rel="stylesheet" href="/eco.css?v=${ecoV}">\n</head>`);
 }
 
@@ -186,6 +194,10 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
     is('the app bar replaces back + name: all six apps, the open one lit once, the Buy button untouched', !/back-btn|brand-link/.test(s) && ECO_APPS.every(([h]) => s.includes(`href="${h}"`)) && s.split('aria-current="page"').length === 3 && s.includes('<a class="nb" href="/buy">Buy $BOBAI</a>') && s.includes('eco-here is-app">BOBAI Pool Scanner<'));
     const p = ecoNav(nav('/services', 'Services').replace('<a class="nb" href="/buy">', '<a class="nb" href="/registry">Brain Plaza</a>\n    <a class="nb" href="/buy">'));
     is('the doubled Brain Plaza button goes, Buy stays, and no bar link is a bare <a> the gold underline rule would catch', !p.includes('>Brain Plaza</a>') && p.includes('>Buy $BOBAI</a>') && !/<a href=/.test(p.slice(p.indexOf('eco-l'), p.indexOf('</details>'))));
+    // 2026-11-20: a page whose only button was Brain Plaza (/list, /session, /advantage) gets Buy $BOBAI, once
+    const lone = ecoNav(nav('/list', 'List your agent').replace('<a class="nb" href="/buy">Buy $BOBAI</a>', '<a class="nb" href="/registry">Brain Plaza</a>'));
+    const twice = ecoNav(nav('/list', 'List your agent'));
+    is('a bar left without a button gets Buy $BOBAI once; a bar that has Buy keeps it alone', !lone.includes('>Brain Plaza</a>') && lone.split('>Buy $BOBAI</a>').length === 2 && lone.indexOf('>Buy $BOBAI</a>') < lone.indexOf('</nav>') && twice.split('>Buy $BOBAI</a>').length === 2);
     const own = (rel) => ecoNav('<head><style>nav{}</style></head>' + nav('/nft/', 'BOBAI Buy Drops').replace(head, ''), rel, 'abc');
     is('nft/ keeps its own stylesheet and still gets the bar, with eco.css linked once in its head; worldcup/ with its own look does not', own('nft\\index.html').includes('eco-links') && own('nft/index.html').split('href="/eco.css?v=abc"').length === 2 && own('nft/index.html').indexOf('eco.css') < own('nft/index.html').indexOf('</head>') && !own('worldcup/index.html').includes('eco-links') && !own('worldcup/index.html').includes('eco.css'));
     is('a page outside the six keeps its name visible and lights nothing', t.includes('class="eco-here">The Token<') && !t.includes('aria-current'));

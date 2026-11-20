@@ -191,9 +191,9 @@
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
    "lines": 5908,
-   "zipBytes": 104352,
-   "txtBytes": 312776,
-   "sha256": "c7567110e843d4f5",
+   "zipBytes": 104370,
+   "txtBytes": 312877,
+   "sha256": "5e5516f1c46c7711",
    "reqs": [
     {
      "what": "A bot token",
@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7979,
-   "zipBytes": 180337,
-   "txtBytes": 539750,
-   "sha256": "958645fe35ed6936",
+   "lines": 7986,
+   "zipBytes": 180535,
+   "txtBytes": 540186,
+   "sha256": "e1e191ce3593b9f7",
    "reqs": [
     {
      "what": "A static host",
@@ -670,9 +670,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 4396,
-   "zipBytes": 157908,
-   "txtBytes": 472157,
-   "sha256": "8ca90a4e544d9d00",
+   "zipBytes": 157920,
+   "txtBytes": 472182,
+   "sha256": "5d14b3024c33cb45",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -824,10 +824,10 @@
    "title": "The Census — reading a whole registry",
    "tagline": "Every agent id on BNB Chain, and every job they were ever paid for.",
    "files": 7,
-   "lines": 5099,
-   "zipBytes": 115501,
-   "txtBytes": 333282,
-   "sha256": "20631790e4783b2c",
+   "lines": 5102,
+   "zipBytes": 115749,
+   "txtBytes": 333849,
+   "sha256": "8f8aba7e3db85a09",
    "reqs": [
     {
      "what": "Node 18+ and time",

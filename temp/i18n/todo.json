@@ -1,13 +1,1 @@
-{
- "/": [
-  "Xmas Terminal — the community builds the terminal's look",
-  "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
-  "A worker and a key-value store of their own",
-  "Cloudflare Workers + KV (bobai-xmas on workers.dev)",
-  "any server that stores a bundle per version and serves files with a CSP header",
-  "A page that can frame the themes",
-  "the Brain Terminal (terminal.js, the XMAS block): <iframe sandbox=\"allow-scripts\">",
-  "any page: two sandboxed frames and postMessage are the whole contract",
-  "Good to see you back. 4 days away, and the chain kept me busy: 41 buys and 29 sells, price +3.6%, 2 burn runs, 241.51K BOBAI (≈$40) burned, 0.0202 BNB (≈$12) into liquidity, LP burned, 5 NFT drops."
- ]
-}
+{}

@@ -1587,7 +1587,7 @@ const page = `<!doctype html>
      "did not quote" were once the same grey, and one of them is the answer. */
   .rgc-strip{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
   .rgc-strip li{font-size:.7rem;line-height:1.4;color:var(--muted);border:1px solid var(--line);
-    border-radius:999px;padding:3px 9px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+    border-radius:14px;padding:3px 9px;white-space:normal;max-width:100%} /* 2026-11-20 (A-Z): "100% delivered · l…" cut on an iPad; a long chip wraps */
   .rgc-strip li::before{content:'•';margin-right:5px;color:var(--muted)}
   .rgc-strip li.rgc-yes{color:var(--text);border-color:rgba(46,204,113,.45)}
   .rgc-strip li.rgc-yes::before{content:'✓';color:#2ecc71}
@@ -3091,12 +3091,15 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
     fetch('https://agent.brainonbnb.com/screener').then(function(r){return r.json()}).then(function(j){
       var F=j.fields,all=j.rows.map(function(r){var o={};F.forEach(function(f,i){o[f]=r[i]});return o});
       var pick=function(f,s){return all.filter(f).sort(s).slice(0,5)};
+      // one per fleet (2026-11-20, A-Z: all five 'down' slots were the same Ensoul fleet, #2436 #2497 #2502 #2503 #2504)
+      var fleet=function(a){var n=String(a.name||'');var i=n.indexOf(' · ');if(n.charAt(0)==='@'&&i>0)n=n.slice(i+3);while(n&&'0123456789# '.indexOf(n.charAt(n.length-1))>-1)n=n.slice(0,-1);return n.toLowerCase()||String(a.id)};
+      var pickU=function(f,s){var seen={},out=[];all.filter(f).sort(s).forEach(function(a){var k=fleet(a);if(!seen[k]&&out.length<5){seen[k]=1;out.push(a)}});return out};
       var row=function(a,i,m,sub){return '<a class="rg-tr" href="/agent/'+a.id+'"><span class="rg-tn">'+(i+1)+'</span><span class="rg-tt">'+(a.logo?'<img class="rg-tl" src="'+esc(window.rgL?rgL(a.logo):a.logo)+'" alt="" width="18" height="18" loading="lazy" decoding="async" onerror="this.remove()">':'')+'<span data-noar>'+esc(nm(a))+'</span><small>'+(a.ours?'<b style="color:#7fd1a3">ours</b> &middot; ':'')+'#'+a.id+' &middot; '+esc(sub)+'</small></span><span class="rg-tm">'+m+'</span></a>'};
       var B=[
         ['Top by evidence','#f0b90b',pick(function(a){return a.score>0},function(x,y){return y.score-x.score||num(y.uptime_30d)-num(x.uptime_30d)}),function(a){return a.score+'<small>of 100</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
         ['Most paid work','#4cc38a',pick(function(a){return a.outside_jobs>0},function(x,y){return y.outside_jobs-x.outside_jobs||y.outside_buyers-x.outside_buyers}),function(a){return a.outside_jobs+'<small>jobs</small>'},function(a){return a.outside_buyers+' buyer'+(a.outside_buyers===1?'':'s')}],
         ['Earned the most','#7fd1ff',pick(function(a){return a.earned_u>0},function(x,y){return y.earned_u-x.earned_u}),function(a){return Number(a.earned_u).toFixed(2)+' <small>$U</small>'},function(a){return a.outside_jobs+' paid job'+(a.outside_jobs===1?'':'s')}],
-        ['Down at their last check','#ff7a6e',pick(function(a){return a.days>0&&a.up_now===0},function(x,y){return num(y.uptime_30d)-num(x.uptime_30d)}),function(){return '<span style="color:#ff7a6e">down</span>'},function(a){return a.uptime_30d===0?'no answer yet · '+a.days+'d':'up '+a.uptime_30d+'% · '+a.days+'d'}]
+        ['Down at their last check','#ff7a6e',pickU(function(a){return a.days>0&&a.up_now===0},function(x,y){return num(y.uptime_30d)-num(x.uptime_30d)}),function(){return '<span style="color:#ff7a6e">down</span>'},function(a){return a.uptime_30d===0?'no answer yet · '+a.days+'d':'up '+a.uptime_30d+'% · '+a.days+'d'}]
       ];
       box.innerHTML=B.map(function(b){return '<div class="rg-top4" style="--c:'+b[1]+'"><h3><i></i>'+b[0]+'</h3>'+(b[2].length?b[2].map(function(a,i){return row(a,i,b[3](a),b[4](a))}).join(''):'<p class="rg-note">Nobody right now.</p>')+'</div>'}).join('');
     }).catch(function(){box.innerHTML='<p class="rg-note">The screener could not be read just now. <a href="/screener">Open it</a>.</p>'});

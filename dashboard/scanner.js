@@ -15,7 +15,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=40';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=41';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output

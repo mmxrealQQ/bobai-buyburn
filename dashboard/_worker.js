@@ -743,7 +743,7 @@ To sell: reverse the path, approve the router for $BOBAI first, then call \`swap
 
 ## Tokenomics (how it works — verify, don't trust)
 - **Model:** deflationary — circulating supply shrinks as trading volume grows.
-- **Mechanism:** 3% trade tax, split by a bot every 10 minutes into the creator share, burns ($BOBAI bought and sent to the dead address; $BOB too until Dec 1, 2026) and permanent BOBAI/BNB liquidity with the LP burned — every slice a transaction (\`bobai_tokenomics\` has the split of each phase). More volume → more burned, more liquidity locked for good → lower supply.
+- **Mechanism:** 3% trade tax, split by a bot every 10 minutes into the creator share, burns ($BOBAI bought and sent to the dead address, and $BOB from launch → Dec 1, 2026) and permanent BOBAI/BNB liquidity with the LP burned — every slice a transaction (\`bobai_tokenomics\` has the split of each phase). More volume → more burned, more liquidity locked for good → lower supply.
 - **Trust:** ownership renounced (no mint/pause/proxy) · LP burned (perma-locked) · fair launch on Four.Meme (no presale, no team allocation) · contract source verified and published on BscScan.
 - Verify: \`bobai_burned\`, \`bobai_circulating_supply\`, and BscScan. Describes the design, not a recommendation — meme tokens are high-risk, not financial advice.
 

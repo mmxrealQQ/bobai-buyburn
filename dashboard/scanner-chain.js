@@ -2073,14 +2073,21 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // at a handful of blocks per call, hence the windows. No event signature is
 // assumed: every log the manager writes about a token carries that token's
 // address in its first data word, and that is all this reads.
-export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
+// THREE CALLS, NOT THIRTY (2026-11-20, A-Z: one press sent 30 windows of 10 blocks at once to one host, 20 came back
+// HTTP 429 — red in the console, and the list read 5, 3, 3 tokens on three presses). Windows of 100 blocks, one after the
+// other, each split by getLogsSplit when a host refuses the range, the next host when one refuses the call.
+export async function curveFeed({blocks=300,window=100,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
   const {head:h0,url}=await logHead();   // the host that answered reads the windows too (15.11.)
   const head=h0-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
-  const logs=(await Promise.all(windows.map(([from,to])=>
-    rpc('eth_getLogs',[{address:FOURMEME_MANAGER,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],url).catch(()=>[])
-  ))).flat().filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
+  const hosts=[url,...LOGS_RPCS.filter(u=>u!==url)], got=[];
+  for(const [from,to] of windows){
+    let part=null;
+    for(const h of hosts){part=await getLogsSplit({address:FOURMEME_MANAGER},from,to,h).catch(()=>null);if(part)break}
+    if(part)got.push(...part);
+  }
+  const logs=got.filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
   // Newest first; one entry per token, the block it was last seen in.
   logs.sort((a,b)=>Number(b.blockNumber)-Number(a.blockNumber)||Number(b.logIndex)-Number(a.logIndex));
   const seen=new Map();

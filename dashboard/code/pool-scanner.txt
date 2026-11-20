@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7979 lines.
+# one fetch. 6 files, 7986 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2089,14 +2089,21 @@ export async function flapLadder(token,info,quoteUsd,sizesUsd,url){
 // at a handful of blocks per call, hence the windows. No event signature is
 // assumed: every log the manager writes about a token carries that token's
 // address in its first data word, and that is all this reads.
-export async function curveFeed({blocks=300,window=10,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
+// THREE CALLS, NOT THIRTY (2026-11-20, A-Z: one press sent 30 windows of 10 blocks at once to one host, 20 came back
+// HTTP 429 — red in the console, and the list read 5, 3, 3 tokens on three presses). Windows of 100 blocks, one after the
+// other, each split by getLogsSplit when a host refuses the range, the next host when one refuses the call.
+export async function curveFeed({blocks=300,window=100,max=8,quoteUsd={bnb:0},sizeUsd=100}={}){
   const {head:h0,url}=await logHead();   // the host that answered reads the windows too (15.11.)
   const head=h0-HEAD_BACK;
   const windows=[];
   for(let to=head;to>head-blocks;to-=window)windows.push([to-window+1,to]);
-  const logs=(await Promise.all(windows.map(([from,to])=>
-    rpc('eth_getLogs',[{address:FOURMEME_MANAGER,fromBlock:'0x'+from.toString(16),toBlock:'0x'+to.toString(16)}],url).catch(()=>[])
-  ))).flat().filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
+  const hosts=[url,...LOGS_RPCS.filter(u=>u!==url)], got=[];
+  for(const [from,to] of windows){
+    let part=null;
+    for(const h of hosts){part=await getLogsSplit({address:FOURMEME_MANAGER},from,to,h).catch(()=>null);if(part)break}
+    if(part)got.push(...part);
+  }
+  const logs=got.filter(l=>Array.isArray(l.topics)&&l.data&&l.data.length>=130);
   // Newest first; one entry per token, the block it was last seen in.
   logs.sort((a,b)=>Number(b.blockNumber)-Number(a.blockNumber)||Number(b.logIndex)-Number(a.logIndex));
   const seen=new Map();
@@ -4161,7 +4168,7 @@ export async function scan(input, env, timing = null) {
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=86" type="module"></script>
+<script src="scanner.js?v=87" type="module"></script>
 </body>
 </html>
 
@@ -4186,7 +4193,7 @@ import {RPC,GOPLUS,V2FACTORY,WBNB,BNB_PAIR,DEAD,NULLA,QUOTES,V2_FEE,STEPS,SEL as
   ladderV2,onePctV2,ladderV3,onePctV3,ladderInf,onePctInf,infinityFind,infinityPool,infReachUsd,INF_CL_QUOTER,
   measureTax,venues,measureVenues,FACTORIES,simulateRoundTrip,
   curveInfo,curveLadder,curveFeed,FOURMEME_MANAGER,decOf,
-  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=40';
+  readHolders,lpCustody,contractAges,readActivity,readFlow,knownHolder} from './scanner-chain.js?v=41';
 
 const $=id=>document.getElementById(id);
 const NF={};const nf=(n,d=0)=>(NF[d]||(NF[d]=new Intl.NumberFormat('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}))).format(Number(n)); // one formatter per decimal count, kept: toLocaleString built a new one on every call (35x slower, 2026-10-06), same output

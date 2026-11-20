@@ -183,7 +183,10 @@
       const more = document.createElement('details'); more.className = 'cx2-more';
       more.innerHTML = '<summary>Details · every liquidity add' + (pot ? ', the pot’s payments' : '') + ', how deep the pool is</summary>';
       sec.insertAdjacentElement('afterend', more);
-      more.append(boost); const lfg = $('#liq-for-good', body); if (lfg) more.append(lfg); if (pot) more.append(pot); if (lqd) more.append(lqd);
+      // the ended Boost III is in the archive (window 03, #liq-boost-bobai-3-done); in 02's details it opened the list with
+      // 0 / 0 / 0 and a 60-row table above the split in force (2026-11-20, A-Z)
+      if (now() >= Date.parse('2026-11-20T00:01:00Z')) boost.remove(); else more.append(boost);
+      const lfg = $('#liq-for-good', body); if (lfg) more.append(lfg); if (pot) more.append(pot); if (lqd) more.append(lqd);
       setInterval(() => { const w = $('#w02'); if (w && !w.hidden) fill02(); }, 30e3);
     }
     fill02();

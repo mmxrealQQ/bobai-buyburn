@@ -3058,7 +3058,7 @@ export function formatTaxCard(t, burns = [], nowMs = Date.now()) {
   if (last) {
     const bnb = +last.totalBnb || 0, bobai = +last.bobaiBurned || 0, bob = +last.bobBurned || 0;
     out.push(`🔥 Last buyback: <b>${span(nowMs - Date.parse(last.time))} ago</b>`,
-      `${bnb.toFixed(4)} BNB${usd(bnb * (t.bnbUsd || 0))} → ${fmtAmt(bobai)} BOBAI${bob > 0 ? ` + ${fmtAmt(bob)} BOB` : ''} burned`);
+      `${bnb.toFixed(4)} BNB${usd(bnb * (t.bnbUsd || 0))} split → ${fmtAmt(bobai)} BOBAI${bob > 0 ? ` + ${fmtAmt(bob)} BOB` : ''} burned${Date.parse(last.time) >= Date.parse('2026-12-01T00:01:00Z') ? ' + liquidity, LP burned' : ''}`);
     const day = runs.filter((e) => Date.parse(e.time) >= nowMs - 86400000), b24 = day.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     out.push(`📊 Last 24h: <b>${day.length}</b> buyback${day.length === 1 ? '' : 's'}${day.length ? ` · ${fmtAmt(b24)} BOBAI burned${usd(b24 * (t.price || 0))}` : ''}`);
   } else {

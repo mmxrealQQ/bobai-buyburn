@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-11-20T04:35:35.758Z",
+  "measured_at": "2026-11-20T06:33:10.265Z",
   "jobs": {
-    "job_counter": 57228,
-    "read": 57228,
+    "job_counter": 57230,
+    "read": 57230,
     "unread_after_retries": 0,
     "by_status": {
       "OPEN": 1054,
       "COMPLETED": 28495,
-      "SUBMITTED": 27272,
+      "SUBMITTED": 27274,
       "FUNDED": 300,
       "EXPIRED": 98,
       "REJECTED": 9
     },
-    "ever_funded": 56154,
+    "ever_funded": 56156,
     "escrow_released": 28486,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27272,
+    "deliverable_never_released": 27274,
     "never_funded": 1054,
-    "total_escrowed_u": 647.730677,
+    "total_escrowed_u": 647.930677,
     "distinct_buyers": 32865,
     "distinct_providers": 152,
     "providers_paid_by_more_than_one_buyer": 35,
-    "top_provider_share": 0.9815,
+    "top_provider_share": 0.9814,
     "top5_share": 0.9875,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 1061,
+      "jobs": 1063,
       "completed": 310,
-      "escrowed_u": 95.650677,
+      "escrowed_u": 95.850677,
       "providers": 151
     }
   },
@@ -85,20 +85,20 @@
           "name": "Keel"
         }
       ],
-      "jobs": 55,
-      "funded": 51,
+      "jobs": 56,
+      "funded": 52,
       "completed": 41,
-      "submitted_not_released": 7,
+      "submitted_not_released": 8,
       "awaiting_delivery": 0,
       "expired": 3,
       "rejected": 0,
       "never_funded": 4,
       "distinct_buyers": 15,
-      "escrowed_u": 2.6,
+      "escrowed_u": 2.65,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.8039,
+      "delivery_rate": 0.7885,
       "first_job_id": 56810,
-      "last_job_id": 57225
+      "last_job_id": 57229
     },
     {
       "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
@@ -144,20 +144,20 @@
           "name": "Bound"
         }
       ],
-      "jobs": 31,
-      "funded": 31,
+      "jobs": 32,
+      "funded": 32,
       "completed": 25,
-      "submitted_not_released": 5,
+      "submitted_not_released": 6,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 1,
       "never_funded": 0,
       "distinct_buyers": 10,
-      "escrowed_u": 4.65,
+      "escrowed_u": 4.8,
       "median_budget_u": 0.15,
-      "delivery_rate": 0.8065,
+      "delivery_rate": 0.7813,
       "first_job_id": 56809,
-      "last_job_id": 57226
+      "last_job_id": 57230
     },
     {
       "address": "0x253f7ad5d52099c4a2293418a661e9974dfb5e84",

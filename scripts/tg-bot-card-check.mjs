@@ -86,5 +86,17 @@ ok('/defi: plain text — no <pre>, no box-drawing glyphs (┃ ─) that Telegra
   ![below, mid, above].some((x) => /<pre>|[┃─]/.test(x)) && rb(-58100).split('\n')[0] === '|●' + '▱'.repeat(15) + '|' && rb(-56191).split('\n')[0] === '|' + '▱'.repeat(15) + '●|');
 ok('/defi: no range read = no bar (the card stays as it was)', formatRangeBar(null).length === 0 && /formatDefiCard\(pm, \{ range: pm \? await readDefiRange\(pm\.pool\) : null \}\)/.test(tg));
 
+// /giggle after the donation (2026-11-20): the file carries the amount to the wei; the card says it with 4 decimals, the tx
+// linked, and that it went in one transaction — "1.059134421456249329 BNB" read as noise on a phone
+{
+  const ggc = cut('export function formatGiggleCard', '// ==================== WHAT THE BOT DOES').replace('export ', '');
+  const pot = (tg.match(/const GG_POT_WALLET = '([^']+)'/) || [])[1], url = (tg.match(/const GG_DONATE_URL = '([^']+)'/) || [])[1];
+  const formatGiggleCard = new Function(`${consts}\nconst GG_POT_WALLET = '${pot}', GG_DONATE_URL = '${url}';\n${ggc}\nreturn formatGiggleCard;`)();
+  const tx = '0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d';
+  const g = formatGiggleCard([{ time: '2026-11-16T19:41:11Z', giggleBnb: '0.01211', giggleTx: '0x' + 'a'.repeat(64) }], Date.parse('2026-11-20T12:00:00Z'), 600, { tx, bnb: '1.059134421456249329', time: '2026-11-20T04:11:26Z' });
+  ok('/giggle donated: 4 decimals, the tx linked, "one transaction", no 18-decimal amount',
+    /<b>1\.0591 BNB<\/b>/.test(g) && g.includes('https://bscscan.com/tx/' + tx) && /one transaction/.test(g) && !/1\.05913442/.test(g), g.split('\n').find((l) => /Donated/.test(l)) || '');
+}
+
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

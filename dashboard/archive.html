@@ -97,6 +97,45 @@
       </div>
     </div>
 
+    <!-- Giggle Academy community pot — ARCHIVED on the day of its donation (2026-11-20, operator: "sofort ins Archiv").
+         Sep 17 00:01 to Nov 20 00:01 UTC 0.3% of every trade (0.1% out of each of the three slices) went as BNB to the old
+         prize-pool wallet 0x5E41; on Nov 20, UN World Children's Day, every wei of it (the sum of the bot's 89 sends) went to
+         Giggle Academy's donation address in one transaction (scripts/giggle-donate.js), registered on giggleacademy.com/support-us.
+         The receipt is written here as it is final; giggle-donation.json carries the same tx for the terminal, the Brain page
+         and TG /giggle. The sends and their total are still read from burns.json (app.js ggdata, _worker.js prefill).
+         The picture is the one posted on X that day (scene drawn with gpt-image-2, the receipt card set by us). -->
+    <div class="burns-wrap fi" id="giggle-arch" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive" id="giggle-done">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title">&#x2600;&#xFE0F; <em>Giggle Academy</em> <em>Community Pot</em></div>
+              <div class="lb-arch-meta">Sep 17 &ndash; Nov 20, 2026 &middot; <span style="color:var(--green)">&#x2713; Donated on World Children&rsquo;s Day</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <figure id="gg-done" style="margin:0 0 18px">
+              <a href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener"><img src="/giggle-donation.webp" width="1200" height="800" loading="lazy" decoding="async" alt="BOBAI watches children learn and laugh in a sunny classroom, beside the receipt: 1.0591 BNB donated to Giggle Academy on World Children's Day, 20 Nov 2026" style="display:block;width:100%;height:auto;border-radius:14px;border:1px solid rgba(240,185,11,.35)"></a>
+              <figcaption style="margin-top:12px;text-align:center;line-height:1.55;font-size:15px"><strong style="color:var(--gold)">1.0591 BNB</strong> donated to Giggle Academy on Nov 20, 2026, UN World Children&rsquo;s Day: every wei of the pot<br><a class="txl" href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener">see the transaction on BscScan</a></figcaption>
+            </figure>
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">--</div></div>
+              <div class="lb-stat"><div class="l">BNB Donated</div><div class="v" id="gg-bnb">--</div></div>
+              <div class="lb-stat"><div class="l">In USD Today</div><div class="v" id="gg-usd">--</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+            <p class="lb-note" style="margin-top:16px">From Sep 17 to Nov 20, 2026, 0.3% of every $BOBAI trade went as BNB to the pot wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>, every send a transaction of the buyback bot. On Nov 20 all of it went to Giggle Academy in <a href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener">one transaction</a>, registered on <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a> as &ldquo;Brain On BNB AI ($BOBAI)&rdquo;. It is not a lot, but it comes from all of us. Thank you, Giggle Academy.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+
     <!-- $BOBAI Permalocked Liquidity Boost III — ARCHIVED from its end (Nov 20, 2026, 00:01 UTC): app.js shows this card
          from that instant, when the homepage's live card gives way to LIQUIDITY FOR GOOD (operator, 2026-10-28). -->
     <div class="burns-wrap fi" id="liq-boost-bobai-3-arch" style="margin-top:24px;display:none">
@@ -232,6 +271,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Source code</a></p></div>
   </div></footer>
 </div>
-<script src="app.js?v=141" defer></script>
+<script src="app.js?v=144" defer></script>
 </body>
 </html>

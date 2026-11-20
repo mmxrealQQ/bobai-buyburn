@@ -496,7 +496,7 @@ const TOKENOMICS = {
     '3% tax on every $BOBAI trade (rate hardcoded, distribution transparent & published)',
     // 29.10. (the whitepaper check: it said the wallet; on chain the token holds the queued tax and its receiver getter names 0xdeFC)
     'the tax collects in the token contract itself; at its threshold the token swaps it to BNB and sends it to the public buyback wallet 0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce',
-    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 20 to Nov 20, 2026: 0.8% creator / 0.3% $BOB burn / 0.8% $BOBAI burn, plus 0.5% to Liquidity Boost III with the LP burned, 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot; Nov 20 to Dec 1 the base split; from Dec 1, 2026 for good 1% creator / 1% $BOBAI burn / 1% BOBAI/BNB liquidity with the LP burned, no $BOB burn) — live schedule on the dashboard',
+    'an autonomous bot runs every 10 minutes and splits it — base split ~1% creator / 1% $BOB burn / 1% $BOBAI burn; campaign phases re-route slices for a dated window, announced before they start (Sep 20 to Nov 20, 2026: 0.8% creator / 0.3% $BOB burn / 0.8% $BOBAI burn, plus 0.5% to Liquidity Boost III with the LP burned, 0.3% to the DeFi agent and 0.3% to the Giggle Academy pot, donated in full on Nov 20; Nov 20 to Dec 1 the base split; from Dec 1, 2026 for good 1% creator / 1% $BOBAI burn / 1% BOBAI/BNB liquidity with the LP burned, no $BOB burn) — live schedule on the dashboard',
     'bought-back $BOBAI is sent to the dead address = permanent, irreversible burn',
     'more volume -> more buybacks -> more burned -> lower circulating supply',
   ],

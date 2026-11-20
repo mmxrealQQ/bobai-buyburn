@@ -174,16 +174,16 @@
       const boost = $('#liq-boost-bobai-3', body), pot = $('#giggle', body), sec = $('section.sec', body), lqd = sec && $('.lqd', sec), hero = $('.bw-hero', body);
       if (!hero && !shape02.tries) shape02.tries = 0;
       if (!hero && shape02.tries++ < 20) { setTimeout(shape02, 300); return; }   // the ring is drawn on the same open
-      if (!boost || !pot || !sec || !hero) return;
+      if (!boost || !sec || !hero) return;   // the pot (#giggle) is in the archive since its donation (2026-11-20)
       body.dataset.shaped = '1';
       const k = document.createElement('div'); k.className = 'cx2k'; k.dataset.nousd = '1';
       k.innerHTML = `<div class="cx2c" data-k="boost"><b>Liq Boost III</b><p>0.5% of every trade into the BOBAI/BNB pool, its LP burned.</p><span class="ec-live" data-v>Running until Nov 20</span><small data-d></small></div>`
-        + `<div class="cx2c" data-k="pot"><b>Giggle Academy pot</b><p>0.3% of every trade, given to the kids on Nov 20.</p><span class="ec-live" data-v>Collecting until Nov 20</span><small data-d></small></div>`;
+        + (pot ? `<div class="cx2c" data-k="pot"><b>Giggle Academy pot</b><p>0.3% of every trade, given to the kids on Nov 20.</p><span class="ec-live" data-v>Collecting until Nov 20</span><small data-d></small></div>` : '');
       hero.insertAdjacentElement('afterend', k);
       const more = document.createElement('details'); more.className = 'cx2-more';
-      more.innerHTML = '<summary>Details · every liquidity add, the pot’s payments, how deep the pool is</summary>';
+      more.innerHTML = '<summary>Details · every liquidity add' + (pot ? ', the pot’s payments' : '') + ', how deep the pool is</summary>';
       sec.insertAdjacentElement('afterend', more);
-      more.append(boost); const lfg = $('#liq-for-good', body); if (lfg) more.append(lfg); more.append(pot); if (lqd) more.append(lqd);
+      more.append(boost); const lfg = $('#liq-for-good', body); if (lfg) more.append(lfg); if (pot) more.append(pot); if (lqd) more.append(lqd);
       setInterval(() => { const w = $('#w02'); if (w && !w.hidden) fill02(); }, 30e3);
     }
     fill02();
@@ -396,10 +396,12 @@
       [/Four\.Meme/, () => `${ext(`https://four.meme/token/${CA}`, 'the launch on Four.Meme')} · ${ext(`https://bscscan.com/token/${PAIR}`, 'the PancakeSwap pool')}`],
       [/owner renounced/, () => `${owner05 ? `owner() = ${owner05.v === '0x' + '0'.repeat(40) ? '<b>0x000…000</b> (nobody)' : `<b class="bad">${owner05.v}</b>`}, read from the contract ${Math.max(1, Math.round((Date.now() - owner05.at) / 1000))} s ago` : 'reading owner() from the contract…'} · LP at the dead address: <b>${N.lpLocked || '…'}</b> ${ext(`https://bscscan.com/token/${PAIR}#balances`, 'holders')}`],
       [/\$BOB.*day one|from day one/, () => firstBob ? `the first $BOB burn, ${dt(Date.parse(firstBob.time))}: ${tx(firstBob.burnTx || firstBob.bobBurnTx, 'transaction')}` : ''],
-      [/Every trade is a breath/, () => lastRun ? `the last split, ${dt(Date.parse(lastRun.time))}: ${tx(lastRun.bobaiBurnTx, '$BOBAI burn')} · ${tx(lastRun.bobBurnTx, '$BOB burn')} · ${tx(lastRun.lpAgentTx, 'DeFi')} · ${tx(lastRun.giggleTx, 'Giggle')}` : ''],
+      [/Every trade is a breath/, () => lastRun ? `the last split, ${dt(Date.parse(lastRun.time))}: ${[tx(lastRun.bobaiBurnTx, '$BOBAI burn'), tx(lastRun.bobBurnTx, '$BOB burn'), tx(lastRun.lpAgentTx, 'DeFi'), tx(lastRun.giggleTx, 'Giggle')].filter(Boolean).join(' · ')}` : ''],
       [/every 10 minutes/, () => bot05 ? `its heartbeat: last check ${Math.max(1, Math.round((Date.now() - bot05) / 60e3))} min ago — ${ext('https://logs.brainonbnb.com/health', 'read it')}` : ''],
       [/into the fire/, () => lastLiq ? `the last LP burn, ${dt(Date.parse(lastLiq.time))}: ${tx(lastLiq.lpBurnTx, 'transaction')} · ${N.bb3?.count ?? '…'} adds since Sep 19` : ''],
-      [/Giggle Academy/, () => N.gg?.bnb != null ? `the pot holds ${N.gg.bnb.toFixed(3)} BNB from ${N.gg.count} payments — ${ext(`https://bscscan.com/address/${POT}`, 'the pot on BscScan')}` : ''],
+      // the pot donated (2026-11-20): the new roadmap line and the pot's line point at the donation itself
+      [/Giggle pot went/, () => { const g = typeof GG_DONE !== 'undefined' && GG_DONE; return g ? `${tx(g.tx, 'the donation')}: ${(+g.bnb).toFixed(4)} BNB to Giggle Academy, every wei of the pot` : ''; }],
+      [/Giggle Academy/, () => typeof GG_DONE !== 'undefined' && GG_DONE && N.gg?.bnb != null ? `${N.gg.count} payments, ${N.gg.bnb.toFixed(4)} BNB, all donated on Nov 20 — ${tx(GG_DONE.tx, 'the donation')}` : N.gg?.bnb != null ? `the pot holds ${N.gg.bnb.toFixed(3)} BNB from ${N.gg.count} payments — ${ext(`https://bscscan.com/address/${POT}`, 'the pot on BscScan')}` : ''],
       [/Brain Terminal/, () => `live on this page, reading BNB Chain right now`],
       [/before you ape/, () => `<a href="/scanner">open the scanner</a>`],
       [/Brain Plaza/, () => `<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>`],
@@ -421,7 +423,7 @@
   // its name, one sentence, one proof; the phase now open with its goals and their live figures; every step of every
   // phase (with its proof, as before) under one closed Details. Phases are read from the page, so a new one appears.
   const SAY05 = { Build: 'Fair launch on Four.Meme, LP burned, owner renounced', Believe: 'Every trade feeds the bot, around the clock',
-    Brain: 'Terminal, scanner, Brain Plaza, Brain Board, DeFi agent, rug watch', 'Big Brain': 'Volume, more agents, the Giggle pot to the kids' };
+    Brain: 'Terminal, scanner, Brain Plaza, Brain Board, DeFi agent, rug watch', 'Big Brain': 'Volume, more agents; the Giggle pot went to the kids' };
   function shape05() {
     const body = $('#w06 .bw-body'), rmg = body && $('.rmg', body), hero = body && $('.bw-hero', body); if (!rmg) return;
     if (!hero) { if ((shape05.tries = (shape05.tries || 0) + 1) < 20) setTimeout(shape05, 300); return; }

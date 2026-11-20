@@ -2655,7 +2655,7 @@ const BOT_COMMANDS = [
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
   { command: 'defi',     description: 'The DeFi agent as a portfolio: put in, worth, P&L, last 24 h' },
-  { command: 'giggle',   description: 'Giggle Academy pot — countdown & BNB collected' },
+  { command: 'giggle',   description: 'Giggle Academy pot — donated Nov 20, every send with its tx' },
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
@@ -2873,7 +2873,8 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null, donat
   let clock;
   if (nowMs < GG_START) clock = `⏳ Collecting starts in <b>${span(GG_START - nowMs)}</b>  ·  Sep 17, 00:01 UTC`;
   else if (nowMs < GG_END) clock = `⏳ Collecting ends in <b>${span(GG_END - nowMs)}</b>  ·  Nov 20, 00:01 UTC`;
-  else clock = done ? `✅ Donated to Giggle Academy  ·  <b>${done.bnb} BNB</b>  ·  <a href="https://bscscan.com/tx/${done.tx}">tx</a>` : `✅ Collecting ended Nov 20  ·  the donation is on its way`;
+  // 4 decimals (2026-11-20): the file carries the amount to the wei, 1.059134421456249329 read as noise on a card
+  else clock = done ? `✅ Donated to Giggle Academy on Nov 20  ·  <b>${(+done.bnb).toFixed(4)} BNB</b>  ·  <a href="https://bscscan.com/tx/${done.tx}">tx</a>` : `✅ Collecting ended Nov 20  ·  the donation is on its way`;
   const lastLine = last ? `🕐 Last send: ${parseFloat(last.giggleBnb).toFixed(5)} BNB  ·  ${String(last.time).slice(0, 16).replace('T', ' ')} UTC  ·  <a href="https://bscscan.com/tx/${last.giggleTx}">tx</a>` : '🕐 Last send: none yet';
   // the window over (2026-11-04, the A-Z pass): the card stops saying "fills" and "so far" once nothing is sent any more
   const over = nowMs >= GG_END;
@@ -2886,13 +2887,13 @@ export function formatGiggleCard(burns, nowMs = Date.now(), bnbUsd = null, donat
     '',
     over ? '⚙️ <b>How it filled</b>' : '⚙️ <b>How it fills</b>',
     over ? '♻️ 0.3% of every trade — a tenth of each tax slice — was sent as BNB by the buyback bot, Sep 17 to Nov 20' : '♻️ 0.3% of every trade — a tenth of each tax slice — sent as BNB by the buyback bot',
-    '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
+    done ? '🎁 Every wei of it donated in one transaction on UN World Children’s Day, registered on Giggle Academy’s own page' : '🎁 One donation on UN World Children’s Day, in BNB, through Giggle Academy’s own page',
     '',
     over ? '💰 <b>Collected</b>' : '💰 <b>Collected so far</b>',
     `🪙 <b>${total.toFixed(4)} BNB</b>${bnbUsd > 0 ? ` (≈$${(total * bnbUsd).toFixed(2)})` : ''}  ·  ${sends.length} send${sends.length === 1 ? '' : 's'}`,
     lastLine,
     '',
-    `🏦 <a href="https://bscscan.com/address/${GG_POT_WALLET}">Pot wallet</a> · 🎓 <a href="${GG_DONATE_URL}">giggleacademy.com/support-us</a> · 📊 <a href="https://brainonbnb.com/#giggle">brainonbnb.com</a>`,
+    `🏦 <a href="https://bscscan.com/address/${GG_POT_WALLET}">Pot wallet</a> · 🎓 <a href="${GG_DONATE_URL}">giggleacademy.com/support-us</a> · 📊 <a href="https://brainonbnb.com/#giggle-done">brainonbnb.com</a>`,
   ].filter((l, i, a) => l !== '' || a[i - 1] !== '').join('\n');
 }
 
@@ -3584,7 +3585,7 @@ Here's what I can do:
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
 🤖 /defi — The DeFi agent as a portfolio: put in, worth, P&L, last 24 h
-☀️ /giggle — Giggle Academy pot: countdown & BNB collected
+☀️ /giggle — Giggle Academy pot: donated Nov 20, every send with its tx
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
 🎮 /pop — Brain Pop: today's board, the prize pool, play

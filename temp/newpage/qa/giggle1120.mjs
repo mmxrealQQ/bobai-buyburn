@@ -1,5 +1,5 @@
-// (giggle1120, 2026-11-09) The Giggle Academy donation day: no surface may say "donated" before the donation's
-// transaction stands in /giggle-donation.json, and once it does, Classic's #giggle card says so with the tx as a link.
+// (giggle1120, 2026-11-09; 2026-11-20 after the donation) The Giggle Academy donation day: no Brain page line may say
+// "donated" before the donation's transaction stands in /giggle-donation.json; Classic's archive card carries that tx.
 // The clock is moved in the page (Date shifted), the donation file is answered by this script (empty, or with a tx).
 // Three cases: today (collecting), Nov 20 08:00 UTC with the file empty, the same with a tx. Classic and the Brain page.
 // Usage: node giggle1120.mjs [origin]
@@ -32,24 +32,31 @@ async function at(iso) {
     class S extends D { constructor(...a) { a.length ? super(...a) : super(D.now() + off); } static now() { return D.now() + off; } }
     globalThis.Date = S; })();` })).result?.identifier : null;
 }
-const CARD = `(() => { const c = document.getElementById('giggle'); const p = document.getElementById('gg-phase'), l = document.getElementById('gg-cd-label');
-  return { card: c ? c.innerText : '', phase: p ? p.textContent : null, label: l ? l.textContent : null, link: p && p.querySelector('a') ? p.querySelector('a').href : null }; })()`;
+// SINCE THE DONATION (2026-11-20): the live card left Tokenomics for the archive (#giggle-done), its receipt written in
+// the HTML. Classic is read with the REAL donation file: the archive card must link exactly that tx and say its amount,
+// the old live card and its countdown must be gone, and no line may still say the pot is collecting or on its way.
+const real = await (await fetch(base + '/giggle-donation.json?r=' + Date.now())).json();
 const CASES = [
-  ['today', null, null],
   ['Nov 20 08:00, file empty', '2026-11-20T08:00:00Z', null],
   ['Nov 20 08:00, tx in the file', '2026-11-20T08:00:00Z', { tx: TX, bnb: '0.976', time: '2026-11-20T08:00:00Z' }],
 ];
-for (const [name, iso, dn] of CASES) {
-  await at(iso); donation = dn; served = 0;
-  await send('Page.navigate', { url: base + '/classic?r=' + Date.now() }); await sleep(8000);
-  const r = await ev(CARD);
-  if (!r || r.phase == null) { say(false, `${name}: Classic has no #gg-phase`); continue; }
-  if (!iso) say(/until collecting ends/.test(r.label) && /collecting now/.test(r.phase) && !/donated Nov|on its way/.test(r.phase), `${name}: Classic "${r.label}" / "${r.phase}"`);
-  else if (!dn) say(served > 0 && r.label === 'collecting ended' && /on its way/.test(r.phase) && !/donated/i.test(r.phase + ' ' + r.label) && !r.link, `${name}: Classic "${r.label}" / "${r.phase}" (file read ${served}x)`);
-  else say(/^donated Nov 20 · 0\.976 BNB · tx 0x7a7a…7a7a$/.test(r.phase) && r.link === 'https://bscscan.com/tx/' + TX && r.label === 'donated to Giggle Academy', `${name}: Classic "${r.label}" / "${r.phase}" -> ${r.link}`);
+{
+  await at(null); donation = real;
+  await send('Page.navigate', { url: base + '/classic?r=' + Date.now() }); await sleep(9000);
+  // the receipt's own links: the picture, its caption and the note (the sends table links each send, not the donation)
+  const r = await ev(`(() => { const d = document.getElementById('giggle-done'), t = document.body.innerText; if (d) d.open = true;
+    return { arch: !!d, links: d ? [...d.querySelectorAll('figure a, .lb-note a')].map((a) => a.href).filter((h) => h.includes('bscscan.com/tx/')) : [], text: d ? d.innerText : '',
+      live: !!document.getElementById('giggle') || !!document.getElementById('gg-days'), stale: /collecting now|on its way to Giggle|until collecting ends/i.test(t),
+      count: (document.getElementById('gg-count') || {}).textContent }; })()`);
+  const amt = (+real.bnb).toFixed(4), url = 'https://bscscan.com/tx/' + real.tx;
+  say(/^0x[0-9a-fA-F]{64}$/.test(real.tx || '') && +real.bnb > 0, `the donation file carries a tx and an amount (${real.tx && real.tx.slice(0, 10)}…, ${real.bnb})`);
+  say(r && r.arch && r.links.length >= 2 && r.links.every((h) => h === url), `Classic archive card links only the donation tx (${r && r.links.length} links)`);
+  say(r && r.text.includes(amt + ' BNB') && /donated to Giggle Academy/i.test(r.text), `Classic archive card says ${amt} BNB donated`);
+  say(r && !r.live && !r.stale, `Classic: no live pot card, no "collecting" / "on its way" left (live ${r && r.live}, stale ${r && r.stale})`);
+  say(r && +r.count > 0, `Classic archive card counts the sends (${r && r.count})`);
 }
 // the Brain page (front page, terminal inside): the Giggle line in the terminal's scene
-for (const [name, iso, dn] of CASES.slice(1)) {
+for (const [name, iso, dn] of CASES) {
   await at(iso); donation = dn;
   await send('Page.navigate', { url: base + '/?r=' + Date.now() }); await sleep(12000);
   // the 05 card's line rotates through its goals: read it for a while and keep every Giggle line seen

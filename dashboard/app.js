@@ -924,26 +924,11 @@ function lfgdata(all){try{if(!all)return;const entries=all.filter(x=>new Date(x.
   render();
 }();
 
-// === GIGGLE ACADEMY POT COUNTDOWN — to the start before Sep 17, to the end during the window ===
-!function(){
-  function tick(){
-    const now=Date.now();
-    const dEl=document.getElementById('gg-days');if(!dEl)return;
-    let diff,label,phase;
-    if(now<GG_START){diff=GG_START-now;label='until collecting starts';phase='collecting starts Sep 17, 00:01 UTC'}
-    else if(now<GG_END){diff=GG_END-now;label='until collecting ends';phase='collecting now — until Nov 20, 00:01 UTC'}
-    // after the window (2026-11-09): "donated" only once giggle-donation.json carries the transaction, with it as the proof
-    else if(GG_DONE){diff=0;label='donated to Giggle Academy';phase='donated Nov 20 · '+GG_DONE.bnb+' BNB · tx '+GG_DONE.tx.slice(0,6)+'…'+GG_DONE.tx.slice(-4)}
-    else{diff=0;label='collecting ended';phase='collected — the donation to Giggle Academy is on its way'}
-    const d=Math.floor(diff/86400000),h=Math.floor((diff%86400000)/3600000),m=Math.floor((diff%3600000)/60000);
-    dEl.textContent=d;
-    const hEl=document.getElementById('gg-hours'),mEl=document.getElementById('gg-mins'),lEl=document.getElementById('gg-cd-label'),pEl=document.getElementById('gg-phase');
-    if(hEl)hEl.textContent=h;if(mEl)mEl.textContent=m;if(lEl)lEl.textContent=label;if(pEl)pEl.textContent=phase;
-    if(pEl&&GG_DONE&&now>=GG_END){const a=document.createElement('a');a.className='txl';a.href='https://bscscan.com/tx/'+GG_DONE.tx;a.target='_blank';a.rel='noopener';a.textContent=phase;pEl.textContent='';pEl.appendChild(a)}
-  }
-  fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(j&&/^0x[0-9a-fA-F]{64}$/.test(j.tx||'')&&+j.bnb>0){GG_DONE=j;tick()}}).catch(()=>{});
-  tick();setInterval(tick,60000);
-}();
+// === GIGGLE ACADEMY POT — DONATED AND ARCHIVED (2026-11-20) ===
+// The countdown and its live card are gone: the pot ended Nov 20, 00:01 UTC and was donated the same day; the archive card
+// (#giggle-done) carries the receipt in its HTML. GG_DONE is still read for the Brain page's lines (brain/cards.js), and only a
+// transaction in /giggle-donation.json makes them say donated.
+fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(j&&/^0x[0-9a-fA-F]{64}$/.test(j.tx||'')&&+j.bnb>0)GG_DONE=j}).catch(()=>{});
 
 // === LIQ BOOST III COUNTDOWN — to the start before it, to the end during the window ===
 !function(){

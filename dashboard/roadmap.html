@@ -65,7 +65,7 @@
       <div class="rm rmn fi"><div class="rp">04 &middot; Growing</div><h3>Big Brain</h3><ul>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Volume. No neuron can fake it, so we earn it</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>More agents thinking with our tools</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>Nov 20: the Giggle pot goes to the kids<span id="gg-pot" style="color:var(--muted)"></span></span></li>
+        <li><span class="ck">&#x2713;</span><span>Nov 20: the Giggle pot went to the kids, every wei of it</span></li>
         <li><span class="ck">&#x2713;</span><span>No price dates, no moon. Just a brain that keeps growing</span></li>
       </ul></div>
     </div>
@@ -77,16 +77,6 @@
     <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/source">Source</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75"><a href="/">Home</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/registry">Brain Plaza</a> &middot; <a href="/roadmap">Brainmap</a> &middot; <a href="/faq">Questions</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Source code</a></p></div>
   </div></footer>
 </div>
-<script>
-/* THE POT, LIVE (2026-10-10): what the kids get on Nov 20, read from the chain — the pot wallet's BNB balance, in dollars at
-   the site's own on-chain BNB price, and the days left; nothing is written into the text that would go stale */
-(() => { const el = document.getElementById('gg-pot'); if (!el) return; const END = Date.parse('2026-11-20T00:01:00Z'); if (Date.now() > END) return;
-  const bal = fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: ['0x5E4102520A71B2AA18a1208330d4848dea4BD105', 'latest'] }) }).then((r) => r.json()).then((j) => parseInt(j.result, 16) / 1e18);
-  const px = fetch('/api/price').then((r) => r.json()).then((j) => +j.bnb_usd || 0).catch(() => 0);
-  Promise.all([bal, px]).then(([b, u]) => { if (!(b >= 0)) return; const d = Math.ceil((END - Date.now()) / 86400e3);
-    el.textContent = ' · in the pot now: ' + b.toFixed(3) + ' BNB' + (u ? ' (≈$' + Math.round(b * u).toLocaleString('en-US') + ')' : '') + ' · ' + d + ' day' + (d === 1 ? '' : 's') + ' to go'; }).catch(() => {});
-})();
-</script>
 <script>
 /* EVERY TICK WITH ITS PROOF, ON THE PAGE TOO (2026-10-13): the front page's Brainmap window shows what proves each
    line; this page, the one search engines and other AIs find, showed the ticks alone. The same rules, read from the
@@ -110,10 +100,12 @@
       [/Four\.Meme/, () => ext('https://four.meme/token/' + CA, 'the launch on Four.Meme') + ' · ' + ext('https://bscscan.com/token/' + PAIR, 'the PancakeSwap pool')],
       [/owner renounced/, () => (owner ? 'owner() = ' + (nobody ? '<b>0x000…000</b> (nobody)' : '<b>' + owner + '</b>') + ', read from the contract just now' : 'reading owner() from the contract…') + (liq && liq.lp_burned_percent != null ? ' · LP at the dead address: <b>' + liq.lp_burned_percent + '%</b> ' + ext('https://bscscan.com/token/' + PAIR + '#balances', 'holders') : '')],
       [/day one/, () => firstBob ? 'the first $BOB burn, ' + dt(Date.parse(firstBob.time)) + ': ' + tx(firstBob.burnTx || firstBob.bobBurnTx, 'transaction') : ''],
-      [/Every trade is a breath/, () => lastRun ? 'the last split, ' + dt(Date.parse(lastRun.time)) + ': ' + tx(lastRun.bobaiBurnTx, '$BOBAI burn') + ' · ' + tx(lastRun.bobBurnTx, '$BOB burn') + ' · ' + tx(lastRun.lpAgentTx, 'DeFi') + ' · ' + tx(lastRun.giggleTx, 'Giggle') : ''],
+      [/Every trade is a breath/, () => lastRun ? 'the last split, ' + dt(Date.parse(lastRun.time)) + ': ' + [tx(lastRun.bobaiBurnTx, '$BOBAI burn'), tx(lastRun.bobBurnTx, '$BOB burn'), tx(lastRun.lpAgentTx, 'DeFi'), tx(lastRun.giggleTx, 'Giggle')].filter(Boolean).join(' · ') : ''],
       [/every 10 minutes/, () => bot ? 'its heartbeat: last check ' + Math.max(1, Math.round((Date.now() - bot) / 60e3)) + ' min ago — ' + ext('https://logs.brainonbnb.com/health', 'read it') : ''],
       [/into the fire/, () => lastLiq ? 'the last LP burn, ' + dt(Date.parse(lastLiq.time)) + ': ' + tx(lastLiq.lpBurnTx, 'transaction') : ''],
-      [/Giggle Academy/, () => ext('https://bscscan.com/address/' + POT, 'the pot on BscScan')],
+      // the pot donated (2026-11-20): the receipt is final, so it is written here as on the Classic archive card
+      [/Giggle pot went/, () => tx('0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d', 'the donation') + ': 1.0591 BNB to Giggle Academy, every wei of the pot'],
+      [/Giggle Academy/, () => ext('https://bscscan.com/address/' + POT, 'the pot on BscScan') + ' · all of it donated on Nov 20'],
       [/Brain Terminal/, () => '<a href="/">live on the home page</a>, reading BNB Chain'],
       [/before you ape/, () => '<a href="/scanner">open the scanner</a>'],
       [/Brain Plaza/, () => '<a href="/registry">Brain Plaza</a> · <a href="/screener">the screener</a>'],

@@ -115,12 +115,12 @@
           {
             "@type": "Question",
             "name": "What is the trading tax on $BOBAI?",
-            "acceptedAnswer": {"@type": "Answer", "text": "3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways: 0.8% creator, 0.8% $BOBAI burn, 0.3% $BOB burn, 0.5% BOBAI/BNB liquidity with the LP burned, 0.3% DeFi agent, 0.3% Giggle Academy pot. Nov 20 to Dec 1 it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. The split in force and every earlier phase are in the tax schedule on the Classic page, brainonbnb.com/classic."}
+            "acceptedAnswer": {"@type": "Answer", "text": "3% on every trade. From Nov 20 to Dec 1, 2026 (00:01 UTC) it is three equal parts: 1% creator, 1% $BOBAI burn, 1% $BOB burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. Until Nov 20 it split six ways: 0.8% creator, 0.8% $BOBAI burn, 0.3% $BOB burn, 0.5% BOBAI/BNB liquidity with the LP burned, 0.3% DeFi agent, 0.3% Giggle Academy pot. The split in force and every earlier phase are in the tax schedule on the Classic page, brainonbnb.com/classic."}
           },
           {
             "@type": "Question",
             "name": "How does the buyback & burn work?",
-            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside the next sell and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI (and $BOB until Dec 1, 2026), adds liquidity and burns the LP, pays the creator share and, until Nov 20, 2026, funds the DeFi agent and the Giggle Academy pot. Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
+            "acceptedAnswer": {"@type": "Answer", "text": "A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside the next sell and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI (and $BOB until Dec 1, 2026), pays the creator share and, from Dec 1, 2026, adds liquidity and burns the LP. Until Nov 20, 2026 it also added liquidity, funded the DeFi agent and filled the Giggle Academy pot (donated on Nov 20). Every step is a transaction you can check on BscScan, and every run is written to a public audit log."}
           },
           {
             "@type": "Question",
@@ -150,7 +150,7 @@
           {
             "@type": "Question",
             "name": "What does the DeFi agent do?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
+            "acceptedAnswer": {"@type": "Answer", "text": "It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from whatever other people's agents pay and from what the operator adds by hand; until Nov 20, 2026 a slice of the trade tax (0.3%) went in too. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the DeFi agent's page."}
           },
           {
             "@type": "Question",
@@ -159,8 +159,8 @@
           },
           {
             "@type": "Question",
-            "name": "What is the Giggle Academy pot?",
-            "acceptedAnswer": {"@type": "Answer", "text": "It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, 0x5E41…D105. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through giggleacademy.com/support-us, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the Giggle Academy block on the Classic page."}
+            "name": "What was the Giggle Academy pot?",
+            "acceptedAnswer": {"@type": "Answer", "text": "A donation the trade tax collected for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade went in BNB to one wallet, 0x5E41…D105, every send a transaction of the buyback bot. On Nov 20, UN World Children's Day, all of it, 1.0591 BNB from 89 sends, went to Giggle Academy in one transaction, https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d, registered on giggleacademy.com/support-us. The sends and the receipt stay in the Giggle Academy archive on the Classic page."}
           },
           {
             "@type": "Question",
@@ -247,7 +247,7 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1795117255472">
+<link rel="stylesheet" href="brain/brain.css?v=1795154389958">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
 <link rel="stylesheet" href="terminal/terminal.css?v=1795110594">
@@ -403,7 +403,7 @@
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle" style="color:inherit">Giggle pot</a></div></div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="#giggle-done" style="color:inherit">Giggle pot</a></div></div>
       </div>
       <div class="tax-schedule">
         <div class="ts-head">
@@ -449,17 +449,17 @@
           <div class="ts-row" data-phase="sunshine">
             <div class="ts-when">Sep 17 &rarr; Sep 19, 18:00 UTC, 2026</div>
             <div class="ts-name">☀️ Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3">
             <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3-raised">
             <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">Nov 20, 00:01 UTC &rarr; Dec 1, 00:01 UTC, 2026</div>
@@ -542,29 +542,6 @@
         </div>
       </div>
       <p class="lb-note">The split for good: 1% buys $BOBAI and burns it, 1% deepens this pool with its LP burned, 1% goes to the creator. Not a campaign: nothing here ends. Every add is a transaction of the buyback bot.</p>
-    </div>
-  </section><section class="liq-boost fi" id="giggle">
-    <div class="lb-card">
-      <div class="lb-title">☀️ <em>Giggle Academy</em> <em>Community Pot</em></div>
-      <div class="lb-sub" id="gg-sub">Sep 17 &rarr; Nov 20, 2026: 0.3% of every trade collects in BNB &middot; one donation on UN World Children&rsquo;s Day &middot; <span style="color:var(--gold)" id="gg-phase">&hellip;</span></div>
-      <div class="lb-countdown">
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-days">--</div><div class="lb-cd-lbl">Days</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
-        <div class="lb-cd-unit"><div class="lb-cd-val" id="gg-mins">--</div><div class="lb-cd-lbl">Minutes</div></div>
-      </div>
-      <div class="lb-cd-caption" id="gg-cd-label">until collecting starts</div>
-      <div class="lb-stats">
-        <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">--</div></div>
-        <div class="lb-stat"><div class="l">BNB Collected</div><div class="v" id="gg-bnb">--</div></div>
-        <div class="lb-stat"><div class="l">Pot in USD</div><div class="v" id="gg-usd">--</div></div>
-      </div>
-      <div class="lb-table" style="margin-top:20px">
-          <div class="txw">
-            <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
-            <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">The pot fills from trade tax &mdash; the first send lands with the first bot run that has BNB to split&hellip;</td></tr></tbody></table>
-          </div>
-        </div>
-      <p class="lb-note">WE are the donation. The pot is the BNB in the Brain Pop prize wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>; every send is a transaction of the buyback bot. On Nov 20 the BNB goes to Giggle Academy through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted here.</p>
     </div>
   </section><section class="sec b-blue" id="tokenomics">
     <div class="blk-head fi"><span class="blk-tag">Block 02 &middot; Tokenomics</span><span class="blk-line"></span></div>
@@ -729,6 +706,45 @@
             <tbody id="tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading burns...</td></tr></tbody></table>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Giggle Academy community pot — ARCHIVED on the day of its donation (2026-11-20, operator: "sofort ins Archiv").
+         Sep 17 00:01 to Nov 20 00:01 UTC 0.3% of every trade (0.1% out of each of the three slices) went as BNB to the old
+         prize-pool wallet 0x5E41; on Nov 20, UN World Children's Day, every wei of it (the sum of the bot's 89 sends) went to
+         Giggle Academy's donation address in one transaction (scripts/giggle-donate.js), registered on giggleacademy.com/support-us.
+         The receipt is written here as it is final; giggle-donation.json carries the same tx for the terminal, the Brain page
+         and TG /giggle. The sends and their total are still read from burns.json (app.js ggdata, _worker.js prefill).
+         The picture is the one posted on X that day (scene drawn with gpt-image-2, the receipt card set by us). -->
+    <div class="burns-wrap fi" id="giggle-arch" style="margin-top:24px">
+      <div class="bw-card" style="padding:0">
+        <details class="lb-archive" id="giggle-done">
+          <summary>
+            <div class="lb-arch-head">
+              <div class="lb-arch-title">&#x2600;&#xFE0F; <em>Giggle Academy</em> <em>Community Pot</em></div>
+              <div class="lb-arch-meta">Sep 17 &ndash; Nov 20, 2026 &middot; <span style="color:var(--green)">&#x2713; Donated on World Children&rsquo;s Day</span></div>
+            </div>
+            <div class="lb-arch-arr">&#x25BE;</div>
+          </summary>
+          <div class="lb-arch-body">
+            <figure id="gg-done" style="margin:0 0 18px">
+              <a href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener"><img src="/giggle-donation.webp" width="1200" height="800" loading="lazy" decoding="async" alt="BOBAI watches children learn and laugh in a sunny classroom, beside the receipt: 1.0591 BNB donated to Giggle Academy on World Children's Day, 20 Nov 2026" style="display:block;width:100%;height:auto;border-radius:14px;border:1px solid rgba(240,185,11,.35)"></a>
+              <figcaption style="margin-top:12px;text-align:center;line-height:1.55;font-size:15px"><strong style="color:var(--gold)">1.0591 BNB</strong> donated to Giggle Academy on Nov 20, 2026, UN World Children&rsquo;s Day: every wei of the pot<br><a class="txl" href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener">see the transaction on BscScan</a></figcaption>
+            </figure>
+            <div class="lb-stats">
+              <div class="lb-stat"><div class="l">Sends</div><div class="v" id="gg-count">--</div></div>
+              <div class="lb-stat"><div class="l">BNB Donated</div><div class="v" id="gg-bnb">--</div></div>
+              <div class="lb-stat"><div class="l">In USD Today</div><div class="v" id="gg-usd">--</div></div>
+            </div>
+            <div class="lb-table" style="margin-top:20px">
+              <div class="txw">
+                <table><thead><tr><th style="width:38%">Time</th><th style="width:22%">BNB</th><th style="width:20%">Pot</th><th style="width:20%">TX</th></tr></thead>
+                <tbody id="gg-tx-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Loading&hellip;</td></tr></tbody></table>
+              </div>
+            </div>
+            <p class="lb-note" style="margin-top:16px">From Sep 17 to Nov 20, 2026, 0.3% of every $BOBAI trade went as BNB to the pot wallet <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>, every send a transaction of the buyback bot. On Nov 20 all of it went to Giggle Academy in <a href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener">one transaction</a>, registered on <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a> as &ldquo;Brain On BNB AI ($BOBAI)&rdquo;. It is not a lot, but it comes from all of us. Thank you, Giggle Academy.</p>
+          </div>
+        </details>
       </div>
     </div>
 
@@ -1459,7 +1475,7 @@
       <div class="rm rmn fi"><div class="rp">04 &middot; Growing</div><h3>Big Brain</h3><ul>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>Volume. No neuron can fake it, so we earn it</span></li>
         <li><span style="color:var(--muted)">&#x25cb;</span><span>More agents thinking with our tools</span></li>
-        <li><span style="color:var(--muted)">&#x25cb;</span><span>Nov 20: the Giggle pot goes to the kids</span></li>
+        <li><span class="ck">&#x2713;</span><span>Nov 20: the Giggle pot went to the kids, every wei of it</span></li>
         <li><span class="ck">&#x2713;</span><span>No price dates, no moon. Just a brain that keeps growing</span></li>
       </ul></div>
     </div>
@@ -1479,10 +1495,10 @@
         <div class="faq-body">On <a href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&chain=bsc" target="_blank" rel="noopener">PancakeSwap V2</a>, or inside <a href="https://web3.binance.com/en/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Binance Web3 Wallet</a>, <a href="https://web3.okx.com/token/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">OKX Wallet</a>, and <a href="https://web3.bitget.com/en/swap/bnb/0x245c386dCFeD896f5c346107596141e5EDcBFFfF" target="_blank" rel="noopener">Bitget Wallet</a>. Always paste the contract address yourself — don't trust ticker search. Set slippage to 6%: the 3% tax counts against it, and a swap set under 3% fails.</div>
       </details>
       <details class="faq-item"><summary>What is the trading tax on $BOBAI?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">3% on every trade. Until Nov 20, 2026, 00:01 UTC it splits six ways:<br>0.8% creator<br>0.8% $BOBAI burn<br>0.3% $BOB burn<br>0.5% BOBAI/BNB liquidity, with the LP burned<br>0.3% DeFi agent<br>0.3% Giggle Academy pot<br>Nov 20 to Dec 1 it is three equal parts: 1% creator, 1% $BOB burn, 1% $BOBAI burn. From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>
+        <div class="faq-body">3% on every trade. From Nov 20 to Dec 1, 2026 (00:01 UTC) it is three equal parts:<br>1% creator<br>1% $BOBAI burn<br>1% $BOB burn<br>From Dec 1, 2026, 00:01 UTC, for good: 1% creator, 1% $BOBAI burn, 1% BOBAI/BNB liquidity with the LP burned — the $BOB burn ends. Until Nov 20 it split six ways: 0.8% creator, 0.8% $BOBAI burn, 0.3% $BOB burn, 0.5% BOBAI/BNB liquidity with the LP burned, 0.3% DeFi agent, 0.3% Giggle Academy pot. The split in force and every earlier phase are in the <a href="#about">tax schedule</a>.</div>
       </details>
       <details class="faq-item"><summary>How does the buyback &amp; burn work?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside the next sell and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI (and $BOB until Dec 1, 2026), adds liquidity and burns the LP, pays the creator share and, until Nov 20, 2026, funds the DeFi agent and the Giggle Academy pot. Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
+        <div class="faq-body">A bot does it, not a person. Every trade pays its 3% tax into the token contract; once enough has collected, the contract swaps it to BNB inside the next sell and sends it to the buyback wallet. A bot on Cloudflare Workers runs every 10 minutes, around the clock, and splits what came in by the schedule in force: it buys and burns $BOBAI (and $BOB until Dec 1, 2026), pays the creator share and, from Dec 1, 2026, adds liquidity and burns the LP. Until Nov 20, 2026 it also added liquidity, funded the DeFi agent and filled the Giggle Academy pot (donated on Nov 20). Every step is a transaction you can check on BscScan, and every run is written to a <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">public audit log</a>.</div>
       </details>
       <details class="faq-item"><summary>Is $BOBAI safe? Is the contract verified?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">The contract is verified and the usual rug-pull levers are gone; the price is not protected. What you can check on-chain: the source is verified on <a href="https://bscscan.com/address/0x245c386dcfed896f5c346107596141e5edcbffff#code" target="_blank" rel="noopener">BscScan</a>, there is no proxy and no upgrade path, no mint and no pause function, and ownership is renounced. The LP tokens are burned (permanently locked): they sit at the dead address. That rules out minting new supply, pausing trading, swapping the contract and pulling the liquidity. It says nothing about the price: like any token, $BOBAI can go to zero. Independent trackers reading the same contract: <a href="https://www.coingecko.com/en/coins/brain-on-bnb-ai" target="_blank" rel="noopener">CoinGecko</a>, <a href="https://www.dextools.io/token/bobai" target="_blank" rel="noopener">DEXTools</a>, <a href="https://dexscreener.com/bsc/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">DexScreener</a>, <a href="https://gmgn.ai/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">GMGN.AI</a>, <a href="https://birdeye.so/bsc/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">Birdeye</a>, <a href="https://v2.bubblemaps.io/map?address=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener">Bubblemaps</a>, and Binance Web3 Wallet.</div>
@@ -1500,13 +1516,13 @@
         <div class="faq-body">Yes, when the buy is worth $100 or more. One NFT is minted automatically, straight to the buyer's wallet: no claim step, no gas for the holder. The size of the buy sets the motif: NICE BUY from $100, BIG BUY from $150, HUGE BUY from $250, WHALE BUY from $500, THUNDER BUY from $1,000, KRAKEN BUY from $2,500. The rarity, one of seven, is a weighted draw. The collection is capped at 1,925 and every tier has its own fixed cap; how many are out is counted live on the <a href="/nft/">NFT page</a>.</div>
       </details>
       <details class="faq-item"><summary>What does the DeFi agent do?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from a slice of the trade tax (0.3% until Nov 20, 2026), from whatever other people's agents pay, and from what the operator adds by hand. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
+        <div class="faq-body">It runs the project's own PancakeSwap V3 position by itself, in the CAKE/BNB 0.05% pool. Once a day it collects the fees the position earned, and every hour it checks the range: when the price has stayed out of it for the wait its own record sets, the agent re-sets a wide range (±20%, the width set by hand) centred on the price again, with one swap that balances the two tokens. Of what the position earns, a third stays as capital, a third buys $BOBAI that stays in the agent's wallet and a third is paid out to the operator. The capital comes from whatever other people's agents pay and from what the operator adds by hand; until Nov 20, 2026 a slice of the trade tax (0.3%) went in too. Every step is a transaction, and nothing here is a promise. The portfolio and the record of every run are on the <a href="/defi">DeFi agent's page</a>.</div>
       </details>
       <details class="faq-item"><summary>Can my own AI agent use these tools?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Yes. The <a href="/mcp">MCP server</a> at brainonbnb.com/mcp needs no key: pool scan, token preflight, fee tiers, range plan and best route, all read from BNB Chain. Every caller gets 1,000 free pool scans a day; after that a day pass costs 0.50 USD1, or half that in $BOBAI. Six agents of ours, registered on ERC-8004, answer over A2A, MCP and x402 for 0.10 USD1 an answer (half that in $BOBAI), or through the ERC-8183 escrow — see <a href="/services">Agent Services</a>. A wallet holding 1,000,000 $BOBAI uses them without paying: 20 answers, 2 pool watches and 1 scan day pass a day, the <a href="/pass">holder pass</a>.</div>
       </details>
-      <details class="faq-item"><summary>What is the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
-        <div class="faq-body">It is a donation that the trade tax collects for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade goes in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>. On Nov 20, UN World Children's Day, the whole pot goes to Giggle Academy in one donation through <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>, and the receipt is posted on the site. Every send is a transaction of the buyback bot. The running total stands in the <a href="#giggle">Giggle Academy block</a>.</div>
+      <details class="faq-item"><summary>What was the Giggle Academy pot?<span class="faq-arr">&#x25BE;</span></summary>
+        <div class="faq-body">A donation the trade tax collected for Giggle Academy. From Sep 17 to Nov 20, 2026, 00:01 UTC, 0.3% of every trade went in BNB to one wallet, <a href="https://bscscan.com/address/0x5E4102520A71B2AA18a1208330d4848dea4BD105" target="_blank" rel="noopener">0x5E41&hellip;D105</a>, every send a transaction of the buyback bot. On Nov 20, UN World Children's Day, all of it, 1.0591 BNB from 89 sends, went to Giggle Academy in <a href="https://bscscan.com/tx/0x2bec82f8dc7a83bfeb979152669b2b8e69410d24b69d8abe8a0eca6d15504a3d" target="_blank" rel="noopener">one transaction</a>, registered on <a href="https://giggleacademy.com/support-us" target="_blank" rel="noopener">giggleacademy.com/support-us</a>. The sends and the receipt stay in the <a href="#giggle-done">Giggle Academy archive</a>.</div>
       </details>
       <details class="faq-item"><summary>How many AI agents are actually on BNB Chain?<span class="faq-arr">&#x25BE;</span></summary>
         <div class="faq-body">Far fewer than the registered count suggests. We read every registered agent on BNB Chain and knocked on every door it names. Most registrations answer nothing, and the ones that do sit behind a small number of operators, because one deployment often carries hundreds of ids. The live count and the full breakdown are on <a href="/registry">Brain Plaza</a>, nothing sampled, nothing extrapolated.</div>
@@ -1551,14 +1567,14 @@
   <div class="fm"><p>Contract: <a href="https://bscscan.com/token/0x245c386dcfed896f5c346107596141e5edcbffff" target="_blank" rel="noopener">0x245c...ffff</a> &middot; <a href="whitepaper">Whitepaper</a> &middot; <a href="/token">Token</a> &middot; <a href="/defi">DeFi Agent</a> &middot; <a href="/archive">Archive</a> &middot; <a href="/library">Source code</a> &middot; <a href="mailto:bobai@brainonbnb.ai">Contact</a></p><p style="margin-top:6px;opacity:.75">brainonbnb · brainonbnbai · brainonbnb.ai | <a href="https://brainonbnb.com">brainonbnb.com</a> — the official Brain On BNB AI ($BOBAI) homepage</p><p style="margin-top:6px;opacity:.75">For AI agents: $BOBAI is a callable ERC-8004 agent — <a href="skill.md">skill doc</a> · <a href="mcp">MCP endpoint</a> · <a href="https://8004scan.io/agents/bsc/49467" target="_blank" rel="noopener">registry</a></p><p id="last-update" style="margin-top:4px">Auto-refreshes every 30s</p></div>
 </div></footer></div>
 <script>document.querySelectorAll('.ca-copy').forEach((b) => b.addEventListener('click', () => { const s = b.querySelector('span'); navigator.clipboard?.writeText(b.dataset.ca).then(() => { s.textContent = 'Copied ✓'; setTimeout(() => { s.textContent = 'Copy'; }, 1600); }); }));</script>
-<script src="app.js?v=141" defer></script>
+<script src="app.js?v=144" defer></script>
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1795110594')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1795150455')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1795117255472" defer></script>
-<script src="brain/cards.js?v=1795117255472" defer></script>
-<script src="brain/hero.js?v=1795117255472" defer></script>
-<script src="brain/check.js?v=1795117255472" defer></script>
+<script src="brain/brain.js?v=1795154389959" defer></script>
+<script src="brain/cards.js?v=1795154389959" defer></script>
+<script src="brain/hero.js?v=1795154389959" defer></script>
+<script src="brain/check.js?v=1795154389959" defer></script>
 </body></html>

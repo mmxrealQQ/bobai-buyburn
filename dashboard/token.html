@@ -91,7 +91,7 @@
         <div class="ta" id="tf-lp-arrow" style="display:none">&#x2192;</div>
         <div class="tf" id="tf-lp" style="display:none"><div class="p" id="tax-pct-lp" style="color:var(--gold)">0.3%</div><div class="d"><a href="/defi" style="color:inherit">DeFi Agent</a></div></div>
         <div class="ta" id="tf-giggle-arrow" style="display:none">&#x2192;</div>
-        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="/#giggle" style="color:inherit">Giggle pot</a></div></div>
+        <div class="tf" id="tf-giggle" style="display:none"><div class="p" id="tax-pct-giggle" style="color:var(--gold)">0.3%</div><div class="d"><a href="/archive#giggle-done" style="color:inherit">Giggle pot</a></div></div>
       </div>
       <div class="tax-schedule">
         <div class="ts-head">
@@ -137,17 +137,17 @@
           <div class="ts-row" data-phase="sunshine">
             <div class="ts-when">Sep 17 &rarr; Sep 19, 18:00 UTC, 2026</div>
             <div class="ts-name">☀️ Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.8%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/archive#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3">
             <div class="ts-when">Sep 19, 18:00 UTC &rarr; Sep 20, 06:00 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.5%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.3%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/archive#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="bobai-liq-3-raised">
             <div class="ts-when">Sep 20, 06:00 UTC &rarr; Nov 20, 00:01 UTC, 2026</div>
             <div class="ts-name">$BOBAI Liq Boost III raised to 0.5% + Giggle Academy pot + DeFi Agent</div>
-            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/#giggle">Giggle Academy pot</a></div>
+            <div class="ts-split"><b>0.8%</b> BOBAI burn &middot; <b>0.3%</b> BOB burn &middot; <b>0.8%</b> Creator &middot; <b>0.5%</b> &rarr; <a data-b3-link="/archive#liq-boost-bobai-3-done" href="#liq-boost-bobai-3">BOBAI liq add + LP burn</a> &middot; <b>0.3%</b> &rarr; <a href="/defi">DeFi Agent</a> &middot; <b>0.3%</b> &rarr; <a href="/archive#giggle-done">Giggle Academy pot</a></div>
           </div>
           <div class="ts-row" data-phase="standard-final">
             <div class="ts-when">Nov 20, 00:01 UTC &rarr; Dec 1, 00:01 UTC, 2026</div>
@@ -365,12 +365,17 @@
       ['Giggle Academy pot', r.giggleBnb, r.giggleBnb ? num(r.giggleBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.giggleBnb * bu) : '') : 'none in this run', tx(r.giggleTx)],
       ['Creator', r.creatorBnb, num(r.creatorBnb, 5) + ' BNB' + (bu ? ' &middot; ' + usd(r.creatorBnb * bu) : ''), tx(r.creatorTx)],
     ];
+    // A SLICE THAT NO LONGER EXISTS IS NOT "none in this run" (2026-11-20): from Nov 20, 00:01 UTC the DeFi agent and the Giggle
+    // pot get nothing for good, and the liquidity slice is away until it comes back as liquidity for good on Dec 1
+    const rt = Date.parse(r.time), over = rt >= Date.parse('2026-11-20T00:01:00Z'), noLiq = over && rt < Date.parse('2026-12-01T00:01:00Z');
+    const gone = { 'DeFi agent': over, 'Giggle Academy pot': over, '$BOBAI liquidity added, LP burned': noLiq };
+    for (let i = rows.length - 1; i >= 0; i--) if (!rows[i][1] && gone[rows[i][0]]) rows.splice(i, 1);
     box.innerHTML = rows.map(([k, bnb, v, t]) => '<div class="hx-row"><span class="k">' + k + (bnb ? ' <i>' + share(+bnb) + '</i>' : '') + '</span><span class="v">' + v + '</span><span class="t">' + t + '</span></div>').join('');
     const all = tot, sum = [r.creatorBnb, r.bobBurnBnb, r.bobaiBurnBnb, r.lpAgentBnb, r.giggleBnb, liq && liq.bnb].reduce((a, x) => a + (+x || 0), 0);
     when.innerHTML = '<b>Last split</b> ' + r.time.slice(8, 10).replace(/^0/, '') + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+r.time.slice(5, 7) - 1] + ' ' + r.time.slice(11, 16) + ' UTC &middot; ' + ago(r.time) + ' &middot; ' + num(all, 5) + ' BNB' + (bu ? ' (' + usd(all * bu) + ')' : '') + ' of tax' + (Math.abs(sum - tot) < 1e-9 ? ' &middot; the slices add up to it exactly' : '');
   }).catch(() => { when.innerHTML = 'The log could not be read just now &mdash; <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">open it yourself</a>'; });
 })();
 </script>
-<script src="app.js?v=141" defer></script>
+<script src="app.js?v=144" defer></script>
 </body>
 </html>

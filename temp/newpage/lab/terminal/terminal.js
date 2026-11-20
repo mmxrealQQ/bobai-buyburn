@@ -708,11 +708,13 @@ function info(k) {
       note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and a third of what it earns buys BOBAI it keeps.',
       links: [['agent wallet', bsc('0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')], ['full record', SITE + '/liquidity']] };
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
-      ['In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
-      ['Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
+      [GG_DONE ? 'Donated' : 'In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
+      [GG_DONE ? 'Sends' : 'Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
       note: GIGGLE_OPEN() ? pctOf('giggle') + ' of every trade collects here. On Nov 20 collecting ends, and the pot goes to Giggle Academy in one donation.'
+        : GG_DONE ? 'Collecting ended on Nov 20, World Children’s Day, and the same day every wei of the pot (' + (+GG_DONE.bnb).toFixed(4) + ' BNB) went to Giggle Academy in one donation. Tap the donation to see it on BscScan.'
         : 'Collecting ended on Nov 20, World Children’s Day. The pot goes to Giggle Academy in one donation; tap the pot wallet to see on BscScan when it left.',
-      links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
+      // the receipt (2026-11-20): once giggle-donation.json carries the tx, the window links it
+      links: [...(GG_DONE ? [['the donation', 'https://bscscan.com/tx/' + GG_DONE.tx]] : []), ['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     // each figure carries its own time: next to "dev bot runs · last <today>" an untimed payout read as today's (operator, 2026-10-11)
     case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1], oldSp = !!dv && !(dv.builder5Bnb && dv.builder6Bnb); return { t: 'Creator share → d38', c: D.creator.c, rows: [
       ['Share of each trade', pctOf('creator')], ['Last in from 1ce', lastRun ? bnbF(lastRun.creatorBnb) + ' · ' + agoL(lastRun.time) : '…'], ['Last payout from d38', dv ? bnbF(dv.availableBnb) + ' · ' + agoL(dv.time) + (oldSp ? ' · old split 80% · 6 builders' : '') : '…'],
@@ -891,6 +893,9 @@ function circleLine(k) {
       `My DeFi agent has ${v} in CAKE/BNB. ${r ? 'Out of range for now; if it stays out, it re-sets around the price.' : 'Fees coming in.'}`]); },
     giggle: () => { const p = bnb4(ggBnb()); return GIGGLE_OPEN() ? vary('v10', [`The Giggle pot holds ${p} for Giggle Academy. Every trade adds to it until November 20.`, `${p} in the Giggle pot so far. It goes to Giggle Academy on November 20.`,
       `Every trade adds a coin for Giggle Academy. The pot: ${p}.`, `The Giggle pot: ${p}, growing with every trade until November 20.`, `For the kids of Giggle Academy: ${p} in the pot, and counting.`])
+      // donated (2026-11-20): once giggle-donation.json carries the tx, he says it went, not that it is waiting
+      : GG_DONE ? vary('v31', [`Donated: ${p} went to Giggle Academy on World Children's Day.`, `Every wei of the Giggle pot, ${p}, is with Giggle Academy now.`,
+        `${p} from every trade, given to the kids of Giggle Academy on November 20.`, `The Giggle pot did its job: ${p} donated to Giggle Academy.`, `For the kids: ${p} donated to Giggle Academy, one transaction, all on chain.`])
       : vary('v11', [`Collecting is over: ${p} for Giggle Academy, from every trade.`, `${p} from every trade, for Giggle Academy.`, `The Giggle pot is closed: ${p} for Giggle Academy.`, `Giggle Academy's pot: ${p}, one donation from every trade.`, `${p} for Giggle Academy, made by every trade.`]); },
     creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders, the old split; from the next payout 80% creator, 20% to 6 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,

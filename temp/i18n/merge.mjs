@@ -17,6 +17,8 @@ for (const f of fs.readdirSync(DIR).filter((x) => /^ar-.*\.json$/.test(x)).sort(
     if (dict.t[k] !== v) { dict.t[k] = v; added++; }
   }
 }
-fs.writeFileSync(OUT, JSON.stringify({ v: (dict.v || 0) + (added ? 1 : 0), t: dict.t }) + '\n');
-console.log(`merged: ${added} new/changed, ${bad} refused, ${Object.keys(dict.t).length} entries, v${dict.v + (added ? 1 : 0)}`);
+// v is stored as a string ("85"): "85" + 1 made "851" (2026-11-20); count as a number, keep the string
+const v = String(Number(dict.v || 0) + (added ? 1 : 0));
+fs.writeFileSync(OUT, JSON.stringify({ v, t: dict.t }) + '\n');
+console.log(`merged: ${added} new/changed, ${bad} refused, ${Object.keys(dict.t).length} entries, v${v}`);
 process.exit(bad ? 1 : 0);

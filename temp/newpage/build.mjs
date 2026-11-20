@@ -33,7 +33,8 @@ function sections(html) {
 const secs = sections(body);
 const find = (test) => { const s = secs.find((x) => test(x.html)); if (!s) throw new Error('section not found: ' + test); return s.html; };
 const byBlock = (n) => find((h) => h.includes(`Block 0${n} &middot;`));
-const giggle = find((h) => /id="giggle"/.test(h)), boost = find((h) => /id="liq-boost-bobai-3"/.test(h));
+// the Giggle pot left window 02 on the day of its donation (2026-11-20): its card is in the archive with the burns now
+const boost = find((h) => /id="liq-boost-bobai-3"/.test(h));
 // the liquidity card for good (2026-10-28): app.js shows it instead of Boost III from Nov 20 on, here as on Classic
 const lfg = find((h) => /id="liq-for-good"/.test(h));
 const hero = find((h) => /class="hero"/.test(h)), stats = find((h) => /id="stats"/.test(h));
@@ -77,7 +78,7 @@ const MORE = `<div class="bw-more"><div class="mo-g">${[
 <p class="mo-f">brainonbnb.com is the official home of Brain On BNB AI ($BOBAI).</p></div>`;
 const W = [
   { n: '01', k: 'THE TOKEN', t: 'What $BOBAI is', html: byBlock(1) + socials, mirror: null, lab: 'of the supply burned for good' },
-  { n: '02', k: 'TOKENOMICS', t: 'Where the 3% goes', html: boost + lfg + giggle + byBlock(2), mirror: null, lab: 'until this split ends' },
+  { n: '02', k: 'TOKENOMICS', t: 'Where the 3% goes', html: boost + lfg + byBlock(2), mirror: null, lab: 'until this split ends' },
   { n: '03', k: 'PROOF', t: 'Every burn, on-chain', html: byBlock(3), mirror: null, lab: 'Burned by the bot, last 7 days · bars: 14 days' },
   { n: '04', k: 'ECOSYSTEM', t: 'Hire an agent, use the tools', html: byBlock(4), mirror: null, lab: 'apps, agents and tools' },
   // 05 is not a block of the classic page: it opens the terminal's own chart view (the scanner, plaza, services and

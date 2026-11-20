@@ -44,9 +44,9 @@
     "yield-optimization",
     "health-factor"
   ],
-  "quote_asks": 63,
-  "quote_agents_asked": 57,
-  "quoted_when_asked": 35,
+  "quote_asks": 59,
+  "quote_agents_asked": 56,
+  "quoted_when_asked": 31,
   "quoted_of_hireable": 30,
-  "quotes_measured_at": "2026-11-15T05:59:10.332Z"
+  "quotes_measured_at": "2026-11-20T06:15:42.742Z"
 }

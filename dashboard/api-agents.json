@@ -230,19 +230,7 @@
         "Live price",
         "Liquidity depth"
       ],
-      "agent_card": "https://brainonbnb.com/.well-known/agent-card.json",
-      "quoted_for": [
-        "grid-trading",
-        "health-factor",
-        "rebalancing",
-        "yield-optimization"
-      ],
-      "escrow": {
-        "answer": "quotes",
-        "price": "0.1 $U",
-        "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
-      }
+      "agent_card": "https://brainonbnb.com/.well-known/agent-card.json"
     },
     {
       "id": 302257,
@@ -311,7 +299,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -385,7 +373,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -455,7 +443,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -529,7 +517,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -603,7 +591,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -714,7 +702,7 @@
         "answer": "input",
         "said": "unknown skill \"negotiate\"",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -834,7 +822,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -1291,7 +1279,7 @@
         "answer": "input",
         "said": "seller answered, but its reply carries no price",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -5534,7 +5522,7 @@
         "answer": "input",
         "said": "Method not found",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -22052,7 +22040,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -22160,7 +22148,7 @@
         "answer": "quotes",
         "price": "5 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28086,7 +28074,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28155,7 +28143,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28187,7 +28175,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28219,7 +28207,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28251,7 +28239,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28282,7 +28270,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28310,7 +28298,7 @@
         "answer": "none",
         "said": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28456,7 +28444,7 @@
         "answer": "none",
         "said": "Missing Authentication Token",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28500,7 +28488,7 @@
         "answer": "none",
         "said": "Missing Authentication Token",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28636,7 +28624,7 @@
         "answer": "none",
         "said": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28666,7 +28654,7 @@
         "answer": "none",
         "said": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28696,7 +28684,7 @@
         "answer": "none",
         "said": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -28726,7 +28714,7 @@
         "answer": "none",
         "said": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29698,7 +29686,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29730,7 +29718,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29762,7 +29750,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29794,7 +29782,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29847,7 +29835,7 @@
         "answer": "quotes",
         "price": "8 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29900,7 +29888,7 @@
         "answer": "quotes",
         "price": "10 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -29931,7 +29919,7 @@
         "answer": "quotes",
         "price": "10 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30426,7 +30414,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30460,7 +30448,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30494,7 +30482,7 @@
         "answer": "quotes",
         "price": "0.05 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30548,7 +30536,7 @@
         "answer": "input",
         "said": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30675,7 +30663,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30706,7 +30694,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30737,7 +30725,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30768,7 +30756,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -30864,7 +30852,7 @@
         "answer": "input",
         "said": "seller answered, but its reply carries no price",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -31105,7 +31093,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -31274,7 +31262,7 @@
         "answer": "quotes",
         "price": "0.01 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -32037,7 +32025,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -32073,7 +32061,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -32109,7 +32097,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -32145,7 +32133,7 @@
         "answer": "quotes",
         "price": "0.08 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -32340,7 +32328,7 @@
         "answer": "input",
         "said": "Provide yield-floor-report skill, owner and minimumAprPercent (decimal string from 0 to 100).",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43071,7 +43059,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43109,7 +43097,7 @@
         "answer": "input",
         "said": "The deployment could not be found on Vercel.",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43183,7 +43171,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 503 text/html, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43260,7 +43248,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "grid-trading",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43289,7 +43277,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43318,7 +43306,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43409,7 +43397,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43552,7 +43540,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {
@@ -43625,7 +43613,7 @@
         "answer": "input",
         "said": "The deployment could not be found on Vercel.",
         "category": "health-factor",
-        "asked_at": "2026-11-15T05:59:10.332Z"
+        "asked_at": "2026-11-20T06:15:42.742Z"
       }
     },
     {

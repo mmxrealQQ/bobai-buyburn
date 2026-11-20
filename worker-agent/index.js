@@ -3234,6 +3234,11 @@ ${pageTail}`;
     }
 
     if (path === '/stats') {
+      // ONE MINUTE AT THE EDGE (2026-11-20, A-Z: 1.5-2.7 s on every call, no-store, 52 KB — every counter key is read each
+      // time; /services and /defi waited on it): the answer is built at most once a minute per edge, generated_at says when
+      const statsKey = new Request('https://agent.brainonbnb.com/stats?edge=60');
+      const cachedStats = globalThis.caches ? await caches.default.match(statsKey).catch(() => null) : null;
+      if (cachedStats) { const h = new Headers(cachedStats.headers); h.set('cache-control', 'public, max-age=30'); h.set('access-control-allow-origin', '*'); return new Response(cachedStats.body, { status: 200, headers: h }); }
       const [counters, earnings, watches] = await Promise.all([
         readCounters(env),
         readEarnings(env),
@@ -3248,7 +3253,7 @@ ${pageTail}`;
       const external = Object.fromEntries(
         Object.entries(counters.byKind).filter(([k]) => !INTERNAL.has(k)),
       );
-      return json({
+      const statsRes = json({
         asked: {
           total: Object.values(external).reduce((a, b) => a + b, 0),
           by_kind: external,
@@ -3274,6 +3279,8 @@ ${pageTail}`;
         capabilities: offering(),
         generated_at: new Date().toISOString(),
       });
+      if (globalThis.caches) { const c = statsRes.clone(); const h = new Headers(c.headers); h.set('cache-control', 'public, max-age=60'); ctx.waitUntil(caches.default.put(statsKey, new Response(c.body, { status: 200, headers: h })).catch(() => {})); }
+      return statsRes;
     }
 
     // Called by the dashboard worker so that MCP and REST traffic lands in the

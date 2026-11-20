@@ -808,5 +808,31 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
   // a sale ends by itself (2026-10-28): its words go the moment it is over, without a rebuild (worker-agent/sell.js SALE_UNTIL)
   document.querySelectorAll('.sv-sale[data-until]').forEach(function (s) { if (Date.now() >= Date.parse(s.dataset.until)) s.remove(); });
 </script>
+<script>
+  // A REAL ANSWER, READABLE (2026-11-20, A-Z: "See a real answer, free" opened a wall of raw JSON for a person): the answer
+  // opens under the link — what was asked, when, how long it took, then the JSON indented in its own scroll box, and the
+  // raw link for an agent. Without JavaScript the link still opens the JSON itself.
+  document.querySelectorAll('a.sv-example').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      var box = a.nextElementSibling && a.nextElementSibling.classList.contains('sv-ex-box') ? a.nextElementSibling : null;
+      if (box) { box.remove(); return; }
+      box = document.createElement('div'); box.className = 'sv-ex-box';
+      box.style.cssText = 'margin:10px 14px 0;border:1px solid rgba(240,185,11,.3);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.25);font-size:.8rem';
+      box.textContent = 'Reading the answer…'; a.after(box);
+      fetch(a.href).then(function (r) { return r.json(); }).then(function (j) {
+        box.textContent = '';
+        var head = document.createElement('p'); head.style.margin = '0 0 8px';
+        var when = j.produced_at ? new Date(j.produced_at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '';
+        head.textContent = (j.task ? j.task : (j.name || j.service || '')) + (when ? ' · answered ' + when : '') + (j.took_ms ? ' · in ' + (j.took_ms / 1000).toFixed(1) + ' s' : '');
+        var pre = document.createElement('pre'); pre.style.cssText = 'margin:0;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.45';
+        pre.textContent = JSON.stringify(j.result || j, null, 2);
+        var raw = document.createElement('a'); raw.href = a.href; raw.target = '_blank'; raw.rel = 'noopener'; raw.textContent = 'the raw JSON, as an agent gets it ↗'; raw.style.cssText = 'display:inline-block;margin-top:8px;color:var(--gold,#f0b90b)';
+        box.append(head, pre, raw);
+      }).catch(function () { box.textContent = 'The answer could not be read just now — '; var r = document.createElement('a'); r.href = a.href; r.textContent = 'open it directly'; box.append(r); });
+    });
+  });
+</script>
 </body>
 </html>

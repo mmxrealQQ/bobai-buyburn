@@ -376,7 +376,8 @@
     // whole days, as the pot's own countdown counts them (2026-10-19: this said 32 d beside 02's "31 days left")
     // after the window (2026-11-09): "0 d left" said nothing; the pot is on its way, then donated once app.js has the tx
     const ggDone = typeof GG_DONE !== 'undefined' && GG_DONE;
-    if (N.gg?.bnb != null && N.gg?.end && Date.now() >= N.gg.end) out.pot = `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${ggDone ? 'donated to Giggle Academy' : 'on its way to Giggle Academy'}`;
+    // the card's own line is ~30 characters wide (2026-11-20, A-Z: "… donated to Giggle Aca…" cut at 1366): short there
+    if (N.gg?.bnb != null && N.gg?.end && Date.now() >= N.gg.end) out.pot = short && ggDone ? `Giggle pot: ${N.gg.bnb.toFixed(3)} BNB donated` : `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${ggDone ? 'donated to Giggle Academy' : 'on its way to Giggle Academy'}`;
     else if (N.gg?.bnb != null && N.gg?.end) { const d = Math.max(0, Math.floor((N.gg.end - Date.now()) / 86400e3)); out.pot = short ? `Giggle pot ${bnbP ? `≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : `${N.gg.bnb.toFixed(3)} BNB`} · ${d} d left`
       : `Giggle pot ${N.gg.bnb.toFixed(3)} BNB${bnbP ? ` ≈$${cmp(Math.round(N.gg.bnb * bnbP))}` : ''} · ${d} d to the kids`; }
     return out;
@@ -572,7 +573,7 @@
     if (!body || !calc || !proof || !about || body.dataset.shaped) return;
     body.dataset.shaped = '1';
     const k = document.createElement('div'); k.className = 'cx1'; k.dataset.nousd = '1';
-    k.innerHTML = `<p class="cx1-s">A meme token on BNB Chain whose 3% trade tax buys back and burns, adds liquidity and funds a DeFi agent — every step a transaction.</p>`
+    k.innerHTML = `<p class="cx1-s">A meme token on BNB Chain whose 3% trade tax buys back and burns, pays the creator and, from Dec 1, deepens its liquidity for good — every step a transaction.</p>`
       + `<div class="cx1-row"><code title="the $BOBAI contract on BNB Chain">${CA}</code><button type="button" class="cx1-copy">Copy</button>`
       + `<a class="cx1-buy" href="https://pancakeswap.finance/swap?outputCurrency=${CA}&chain=bsc" target="_blank" rel="noopener">Buy on PancakeSwap →</a></div>`;
     body.prepend(k);

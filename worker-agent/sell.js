@@ -402,7 +402,8 @@ export const extractParams = (text = '', given = {}) => {
 // endpoint had been made from Node.
 const RPC_HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
 const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result }, { headers: RPC_HEADERS });
-const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
+// an error whose request id is unknown (unparsable JSON) answers id null, as JSON-RPC 2.0 says (2026-11-20, A-Z: it answered 1)
+const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id === null ? null : id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
 // The list and the flat negotiate as an A2A Message (2026-10-10). The card says
 // protocolVersion 0.3.0, whose message/send returns a Message or a Task; these
 // two returned a bare object, which a strict 0.3 client rejects. Everything now
@@ -913,6 +914,16 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
   }
 
+  // SKILLS THE CARD LISTS THAT RUN ON THEIR OWN ROUTE (2026-11-20, A-Z: agent_screener, agent_watch, rug_watch, pool_watch and
+  // paid_answers answered -32601 "unknown skill" although the card names them): say where each one runs, as data, not an error
+  const ROUTED = {
+    agent_screener: { how: 'GET, free', endpoint: 'https://agent.brainonbnb.com/screener', one_agent: 'https://agent.brainonbnb.com/chart/<id>', ranked: 'https://agent.brainonbnb.com/chart/rank?category=<category>', mcp: 'bnb_agent_chart / bnb_agents_by_evidence at https://brainonbnb.com/mcp' },
+    agent_watch: { how: 'POST to register, GET for the terms', endpoint: 'https://agent.brainonbnb.com/agent-watch' },
+    rug_watch: { how: 'POST to register, GET for the terms', endpoint: 'https://agent.brainonbnb.com/rug-watch', mcp: 'bsc_rug_watch at https://brainonbnb.com/mcp' },
+    pool_watch: { how: 'POST to register (paid), GET for the terms', endpoint: 'https://agent.brainonbnb.com/watch', mcp: 'bsc_pool_watch at https://agent.brainonbnb.com/mcp' },
+    paid_answers: { how: 'GET, x402 per answer', endpoint: 'https://agent.brainonbnb.com/example', terms: 'https://brainonbnb.com/.well-known/x402' },
+  };
+  if (ROUTED[skill]) return rpcOk(id, flatMessage({ skill, runs_over: 'its own route, not this A2A endpoint', ...ROUTED[skill] }));
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
 }
 

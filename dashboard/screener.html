@@ -15,7 +15,7 @@
 <meta property="og:image" content="https://brainonbnb.com/og-banner.png">
 <meta property="og:url" content="https://brainonbnb.com/screener">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="/styles.css?v=78">
+<link rel="stylesheet" href="/styles.css?v=79">
 <style>
   .scr{max-width:1280px;margin:0 auto;display:grid;gap:14px}
   .scr h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(26px,4.6vw,40px);line-height:1.08;margin:0}
@@ -241,6 +241,8 @@
   document.querySelectorAll('[data-cat]').forEach(function(b){b.addEventListener('click',function(){cat=b.dataset.cat;document.querySelectorAll('[data-cat]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});page=0;draw()})});
   document.querySelectorAll('[data-f]').forEach(function(b){b.addEventListener('click',function(){var on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',on?'true':'false');flags[b.dataset.f]=on;page=0;draw()})});
   var t;document.getElementById('q').addEventListener('input',function(e){clearTimeout(t);t=setTimeout(function(){q=e.target.value.trim();page=0;draw()},150)});
+  // A SEARCH IN THE LINK (2026-11-20, A-Z): /screener?q=keel opens with it typed (the Plaza's filter hands over here)
+  (function(){try{var u=(new URLSearchParams(location.search).get('q')||'').trim().slice(0,60);if(u){document.getElementById('q').value=u;q=u}}catch(e){}})();
   // a page turn goes to the top of the table, so the next page starts where the eye is
   document.getElementById('pg').addEventListener('click',function(e){var x=e.target.closest('button[data-p]');if(!x||x.disabled)return;page=+x.dataset.p;draw();var tw=document.querySelector('.tw');if(tw){tw.scrollTop=0;var y=tw.getBoundingClientRect().top+scrollY-90;if(scrollY>y)scrollTo({top:y,behavior:'smooth'})}});
   // crossing the phone/desktop line keeps the first agent shown on the page it lands on

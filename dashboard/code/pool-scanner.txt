@@ -2,7 +2,7 @@
 # Reads any BNB Chain pool. No backend at all.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
-# one fetch. 6 files, 7971 lines.
+# one fetch. 6 files, 7979 lines.
 # Download as a zip: https://brainonbnb.com/code/pool-scanner.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -3699,8 +3699,8 @@ export async function scan(input, env, timing = null) {
        has been there already has it in cache. Nav, footer, section frame, the
        colour tokens and the aurora all come from it — this page is part of the
        site rather than a lookalike. Bump this ?v= together with index.html. -->
-  <link rel="preload" href="styles.css?v=78" as="style">
-  <link rel="stylesheet" href="styles.css?v=78">
+  <link rel="preload" href="styles.css?v=79" as="style">
+  <link rel="stylesheet" href="styles.css?v=79">
   <style>
     /* Only what the dashboard has no equivalent for: the search field, the
        result header, the ladder and the flag grid. Everything reuses the
@@ -4083,7 +4083,7 @@ export async function scan(input, env, timing = null) {
       </div>
       <div class="sc-status" id="sc-status" role="status" aria-live="polite"></div>
       <div class="sc-try" id="sc-try"></div>
-      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span><b>Still being built.</b> Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span><span>Building a bot? <a href="/api/">The same scan as JSON, no key</a></span></p>
+      <p class="hx-trust"><span><span class="hx-dot"></span>Free, no wallet, nothing sent from your account</span><span>Our own reading of the chain, never advice. <a href="#sc-note">Read the note</a></span><span>On PancakeSwap? <a href="/pancakeswap">All PancakeSwap tools</a></span><span>Building a bot? <a href="/api/">The same scan as JSON, no key</a></span></p>
       <!-- The launch curve, live. Read from four.meme's own contract on
            demand: which tokens traded in the last few minutes, how far the
            raise is, and what $100 costs to buy and to sell — before any pool
@@ -5867,7 +5867,7 @@ async function scanOnce(input){
     if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0])){
       // A wallet is told so (2026-10-09 review): no contract code at all is a fact the chain gives, not a guess
       const code=await fetch(RPC,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getCode',params:[token,'latest']}),signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(j=>j&&j.result).catch(()=>null);
-      if(code==='0x')return fail('That is a wallet, not a token.','There is no contract code at this address. Paste the token’s contract address instead — it is on the token’s BscScan page, or in the swap that bought it.');
+      if(code==='0x')return fail('No contract at this address.','It is a wallet, or the address is mistyped (one wrong character is another address). Paste the token’s contract address instead — it is on the token’s BscScan page, or in the swap that bought it.');
       return fail('That address is not a BSC token.',
         'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
     }
@@ -5881,6 +5881,9 @@ async function scanOnce(input){
         const quoteUsd=cv.quoteSym==='BNB'?bnbUsd:cv.quoteIsStable?1:0;
         const rows=await curveLadder(token,cv,quoteUsd,STEPS);
         renderCurve(gp,token,name,symb,cv,rows,quoteUsd);
+        // a token on its curve is the one people share most (2026-11-20, A-Z: no link, no ?token=, a reload lost it)
+        try{history.replaceState(null,'','?token='+token)}catch(e){}
+        shareBar(token,symb);
         remember(token,symb);
         return;
       }
@@ -5896,6 +5899,8 @@ async function scanOnce(input){
         const cvF={...fl,quoteSym:fl.quoteSym||(hopQ&&hopQ.sym)||null,feePct:fl.feeBuyPct,sellFeePct:fl.feeSellPct,indexUsd:otherLiq};
         const rows=await flapLadder(token,fl,quoteUsd,STEPS);
         renderCurve(gp,token,name,symb,cvF,rows,quoteUsd);
+        try{history.replaceState(null,'','?token='+token)}catch(e){}
+        shareBar(token,symb);
         remember(token,symb);
         return;
       }
@@ -6302,6 +6307,9 @@ export { flagsCard, verdictCard };
       .nb{padding:7px 14px;font-size:.72rem}
       /* 360 px: both buttons on one line each, the label centred (2026-10-02: it wrapped and sat left) */
       @media (max-width:380px){.nb{padding:7px 10px}.nb-group{gap:6px}}
+      /* 2026-11-20 (A-Z): with the EN | ع switch in the row, "Buy $BOBAI" ran 39 px past a 390 px screen (to 429) and 69 px
+         past a 344 px Fold; up to 440 px the terminal button says "Terminal" (the dot keeps it the live one) */
+      @media (max-width:440px){.nb{padding:7px 10px}.nb-group{gap:6px}.nbt{font-size:0!important;gap:6px}.nbt::after{content:'Terminal';font-size:.72rem}}
       .nav{gap:8px}
       .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     }

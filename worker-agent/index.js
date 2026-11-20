@@ -2612,10 +2612,11 @@ export default {
     // their own script, the seller's own page — can still track it here.
     if (path === '/job') {
       const id = url.searchParams.get('id');
-      if (!/^\d+$/.test(id || '')) return json({ error: 'id is required — the numeric jobId' }, 400);
+      if (!/^\d+$/.test(id || '')) return json({ error: id ? 'id must be the numeric jobId' : 'id is required — the numeric jobId', id: id || null }, 400);
       const raw = await call(ERC8183.commerce, JOB_CALL(id)).catch(() => null);
       const job = raw ? decodeJob(raw) : null;
-      if (!job) return json({ error: 'job not found or unreadable', id }, 404);
+      // the kernel answers an empty record for an id it never issued (2026-11-20, A-Z: id 999999999 read as an OPEN job of 0x000…)
+      if (!job || String(job.id) === '0' || /^0x0{40}$/i.test(job.client || '')) return json({ error: 'job not found — the kernel has no job with this id', id }, 404);
       ctx.waitUntil(bump(env, 'job'));
       // SUBMITTED is not COMPLETED, and the difference is money: a
       // deliverable exists, the escrow has not released. Saying so here keeps
@@ -2941,7 +2942,7 @@ ${v.resets.rows.map((r) => `<tr><td>${h(when(r.at))}${r.forced_by_deposit ? ' ·
 </table></div>
 <p class="note">${h(v.resets.basis.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}. The loss to the price is what the earnings test charges every replayed re-set; here it is read off the re-sets that happened.</p></div>` : ''}
 ${log.last_error ? (() => { const since = (Array.isArray(log.windows) ? log.windows : []).filter((w) => w && w.at && Date.parse(w.at) > Date.parse(log.last_error.at)).length; return `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} (${h(log.last_error.error)}). ${since ? `${h(since)} window${since === 1 ? '' : 's'} recorded since; it is skipped, not guessed.` : 'Skipped, not guessed.'}</p>`; })() : ''}
-<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · which pool: <a href="/lp/pools">the pool record</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · which pool: <a href="/lp/pools">the pool record</a> · <a href="https://brainonbnb.com/defi">how it works</a></p>
 ${pageTail}`;
         return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
       }

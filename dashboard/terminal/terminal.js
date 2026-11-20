@@ -612,8 +612,13 @@ function layout() {
   // EVENLY OVER THE STATIONS IN FORCE (operator, 17.11.: "burn, add liq and creator should be evenly spaced"): from 1 Dec
   // three have a share; the hidden ones keep their old place, the live ones share the column (the phone's row) between them
   const LIVE = DEST.filter(shown), n = LIVE.length > 1 ? LIVE.length : DEST.length; LAID = DEST.map(shown).join();
+  // BRAINROT ON A STACKED SCREEN (2026-11-20, operator on his iPad: "in rot the lower 3 symbols are not well visible"): all six
+  // creatures stand in two rows, but only the stations that are paid carry a name — and the names of the top row sat on the
+  // heads of the bottom row's creatures, reading as their names. The three without a name go to the top row, the three
+  // named ones to the bottom row, where nothing stands under their names.
+  const paid = DEST.filter(d => d.pct > 0), ORD = portrait && LIVE.length === 6 && paid.length === 3 ? [...DEST.filter(d => !(d.pct > 0)), ...paid] : null;
   DEST.forEach((d, i0) => {
-    const i = LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
+    const i = ORD ? ORD.indexOf(d) : LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
     if (portrait) {
       // 0.55 below the core, not 0.95: labels that wrap on a 360-390 px phone kept the second row clear of the view tabs (A3, 2026-09-25)
       // a little further apart (operator, 2026-10-05: "give the six points on the phone a bit more distance"): the rows
@@ -8183,9 +8188,13 @@ window.__btBrSeason = brSeason;
     // the bob is part of the one transform written here (a CSS bob on top of it was a second moving layer on each of twelve
     // costumes: 19 fps instead of 41 at 1024, brainrot.mjs rule 7); whole pixels, so an unchanged frame writes nothing
     const now = performance.now() / 1000;
-    for (const s of ST) { if (!s.pos) continue; const q0 = toScreen(s.pos), q = { x: q0.x + shove(q0), y: q0.y }, ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
-      s._x = q.x - sz / 2; s._y = q.y - sz * 0.78;
-      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
+    // A TALL PICTURE STAYS AS TALL AS THE OTHERS (2026-11-20, A-Z: the $BOB builder's brick stack stood ~1.85x as tall as the
+    // other creatures and reached into the one below it): a creature taller than 1.25x its width is drawn narrower to match
+    for (const s of ST) { if (!s.pos) continue; if (s.r == null) { const im = s.e.querySelector('img'); if (im && im.naturalWidth) s.r = im.naturalHeight / im.naturalWidth; }
+      const w = s.r > 1.25 ? Math.round(sz * 1.25 / s.r) : sz;
+      const q0 = toScreen(s.pos), q = { x: q0.x + shove(q0), y: q0.y }, ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - w / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
+      s._x = q.x - w / 2; s._y = q.y - sz * 0.78;
+      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== w) { s.e.style.width = (s._w = w) + 'px'; } }
     for (const b of BOTS) { const q = toScreen(b.w.pos), tf = 'translate(' + Math.round(q.x - bz / 2) + 'px,' + Math.round(q.y - bz * 0.7) + 'px)', op = b.w.pos.z > A.head.z ? '1' : '.4';
       if (b._tf !== tf) { b.e.style.transform = b._tf = tf; b.e.style.visibility = ''; } if (b._w !== bz) { b.e.style.width = (b._w = bz) + 'px'; } if (b._op !== op) { b.e.style.opacity = b._op = op; }
       // a bot that really ran: its brain spins (the flare jumps to 1.4 at every beat)

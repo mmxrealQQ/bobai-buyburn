@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5097 lines.
+# one fetch. 7 files, 5099 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1637,7 +1637,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const lastMs = tsMs(e.last_submission);
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${e.own?.delivery_rate_pct != null ? ` &middot; ${e.own.delivery_rate_pct}% delivered` : ''}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${(e.own?.delivery_rate_outside_pct ?? e.own?.delivery_rate_pct) != null ? ` &middot; ${e.own.delivery_rate_outside_pct ?? e.own.delivery_rate_pct}% delivered` : ''}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded_outside)} ${e.funded_outside === 1 ? 'time' : 'times'} by others through the escrow${e.completed_outside ? `, ${fmt(e.completed_outside)} paid out` : ', none paid out yet'}${e.funded_by_us ? `, and ${fmt(e.funded_by_us)} more by our own wallets` : ''}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -2581,7 +2581,7 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
       <div class="rg-tablebox"><div class="rg-scroll"><table class="rg"><thead><tr><th>Operator</th><th>What it is &amp; what it can do</th><th>Endpoint</th></tr></thead><tbody id="rg-body">
 ${liveRows}
       </tbody></table></div></div>
-      <div class="rg-empty" id="rg-none" hidden>Nothing matches that.</div>
+      <div class="rg-empty" id="rg-none" hidden>Nothing in this list matches that. It holds the agents that answered, by operator; <a id="rg-none-go" href="/screener">search every agent by name or id in the Screener &rarr;</a></div>
     </details>` : ''}
 
     ${reputation ? `<details class="rg-box rg-fold" id="rg-rated">
@@ -3567,6 +3567,8 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
         r.hidden=!hit; if(hit)shown++;
       });
       n.hidden=shown>0;
+      // a name or id the list does not hold goes on to the Screener (2026-11-20, A-Z: "keel" and "341556" found nothing here)
+      var g=document.getElementById('rg-none-go');if(g)g.href='/screener'+(t?'?q='+encodeURIComponent(t):'');
     });
   })();
 </script>

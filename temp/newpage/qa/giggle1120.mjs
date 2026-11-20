@@ -64,6 +64,6 @@ for (const [name, iso, dn] of CASES) {
   for (let i = 0; i < 8; i++) { const x = await ev(`document.body.innerText`) || ''; t += '\n' + x; x.split('\n').filter((l) => /giggle pot/i.test(l)).forEach((l) => seen.add(l.trim())); await sleep(2500); }
   const lines = [...seen].slice(0, 6);
   if (!dn) say(lines.some((l) => /on its way to Giggle Academy/.test(l)) && !/donated to Giggle Academy|donated Nov 20| 0 d left/i.test(t), `${name}: Brain page says on its way, nothing donated — ${JSON.stringify(lines)}`);
-  else say(lines.some((l) => /donated to Giggle Academy/.test(l)) && !/on its way| 0 d left/.test(t), `${name}: Brain page says donated — ${JSON.stringify(lines)}`);
+  else say(lines.some((l) => /donated to Giggle Academy|Giggle pot: [\d.]+ BNB donated/.test(l)) && !/on its way| 0 d left/.test(t), `${name}: Brain page says donated — ${JSON.stringify(lines)}`);
 }
 ws.close(); ch.kill(); console.log(bad ? `\n${bad} FAIL` : '\nall PASS'); process.exit(bad ? 1 : 0);

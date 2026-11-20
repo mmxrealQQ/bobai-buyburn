@@ -398,7 +398,9 @@ async function probeDefiAgent(env) {
     return {
       ready: true,
       checked_at: at,
-      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
+      // 2026-11-20 (A-Z): this read "width_pct: 10" beside an agent that runs ±20% set by hand — the 10 is the width record's
+      // earnings pick, not the range in force; named for what it is
+      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_record_pick_pct: plan.width_record?.width_pct ?? null, width_note: 'the width the price record would pick for earnings; the range in force is set by hand (±20%, LP_WIDTH_PCT), see /lp/agent' },
       headline: plan.verdict ? clipHeadline(plan.verdict, 220) : 'position read, no verdict formed',
       measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
       not_ready_because: null,

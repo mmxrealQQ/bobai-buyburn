@@ -1696,7 +1696,7 @@ async function scanOnce(input){
     if(!pool&&!others.length&&!gpOk&&!(supply>0)&&!decStr(nameInfo[0])){
       // A wallet is told so (2026-10-09 review): no contract code at all is a fact the chain gives, not a guess
       const code=await fetch(RPC,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_getCode',params:[token,'latest']}),signal:AbortSignal.timeout(8000)}).then(r=>r.json()).then(j=>j&&j.result).catch(()=>null);
-      if(code==='0x')return fail('That is a wallet, not a token.','There is no contract code at this address. Paste the token’s contract address instead — it is on the token’s BscScan page, or in the swap that bought it.');
+      if(code==='0x')return fail('No contract at this address.','It is a wallet, or the address is mistyped (one wrong character is another address). Paste the token’s contract address instead — it is on the token’s BscScan page, or in the swap that bought it.');
       return fail('That address is not a BSC token.',
         'It answers nothing to symbol() or totalSupply(), has no pool at any venue this page can read, and GoPlus does not list it. A wallet address, or a contract that is not a token, looks exactly like this.');
     }
@@ -1710,6 +1710,9 @@ async function scanOnce(input){
         const quoteUsd=cv.quoteSym==='BNB'?bnbUsd:cv.quoteIsStable?1:0;
         const rows=await curveLadder(token,cv,quoteUsd,STEPS);
         renderCurve(gp,token,name,symb,cv,rows,quoteUsd);
+        // a token on its curve is the one people share most (2026-11-20, A-Z: no link, no ?token=, a reload lost it)
+        try{history.replaceState(null,'','?token='+token)}catch(e){}
+        shareBar(token,symb);
         remember(token,symb);
         return;
       }
@@ -1725,6 +1728,8 @@ async function scanOnce(input){
         const cvF={...fl,quoteSym:fl.quoteSym||(hopQ&&hopQ.sym)||null,feePct:fl.feeBuyPct,sellFeePct:fl.feeSellPct,indexUsd:otherLiq};
         const rows=await flapLadder(token,fl,quoteUsd,STEPS);
         renderCurve(gp,token,name,symb,cvF,rows,quoteUsd);
+        try{history.replaceState(null,'','?token='+token)}catch(e){}
+        shareBar(token,symb);
         remember(token,symb);
         return;
       }

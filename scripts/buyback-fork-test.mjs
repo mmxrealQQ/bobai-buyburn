@@ -193,16 +193,22 @@ const log = console.log; const out = []; console.log = (...a) => out.push(a.join
 try { await worker.scheduled({}, env, {}); } finally { console.log = log; }
 
 const entries = JSON.parse(kv.get('burns.json') || '[]'), e = entries[0] || {};
-ok('one entry went into the burn log, with every leg of today\'s split', entries.length === 1 && ['creatorTx', 'bobSwapTx', 'bobBurnTx', 'bobaiSwapTx', 'bobaiBurnTx', 'lpAgentTx', 'giggleTx'].every((k) => /^0x[0-9a-f]{64}$/.test(e[k] || '')), Object.keys(e).filter((k) => /Tx$/.test(k)).join(', ') || out.slice(-3).join(' / '));
-if (entries.length === 1) {
-  const receipts = await Promise.all(['creatorTx', 'bobSwapTx', 'bobBurnTx', 'bobaiSwapTx', 'bobaiBurnTx', 'lpAgentTx', 'giggleTx'].map((k) => pub.getTransactionReceipt({ hash: e[k] })));
+// TODAY'S LEGS BY TODAY'S SPLIT (2026-11-20, A-Z: this first run uses the real clock and still asked for the DeFi agent's and
+// the Giggle pot's sends after both ended on Nov 20 — it failed, then crashed on a receipt of null before the Nov 20 and
+// Dec 1 sections could run). Until Nov 20 seven legs; Nov 20 -> Dec 1 the five of 1/1/1; from Dec 1 no $BOB legs.
+const T0 = Date.now(), OLD = T0 < Date.parse('2026-11-20T00:01:00Z'), BOBLEG = T0 < Date.parse('2026-12-01T00:01:00Z');
+const LEGS = ['creatorTx', ...(BOBLEG ? ['bobSwapTx', 'bobBurnTx'] : []), 'bobaiSwapTx', 'bobaiBurnTx', ...(OLD ? ['lpAgentTx', 'giggleTx'] : [])];
+ok('one entry went into the burn log, with every leg of today\'s split', entries.length === 1 && LEGS.every((k) => /^0x[0-9a-f]{64}$/.test(e[k] || '')), Object.keys(e).filter((k) => /Tx$/.test(k)).join(', ') || out.slice(-3).join(' / '));
+if (entries.length === 1 && LEGS.every((k) => /^0x[0-9a-f]{64}$/.test(e[k] || ''))) {
+  const receipts = await Promise.all(LEGS.map((k) => pub.getTransactionReceipt({ hash: e[k] })));
   ok('every one of them is in a block with status success', receipts.every((r) => r.status === 'success'));
   const available = parseEther('0.1') - parseEther('0.003');
   const split = (out.find((l) => /BOBAI burn \d+/.test(l)) || '').trim();
   const bpsOf = (re) => BigInt((out.join('\n').match(re) || [])[1] || -1);
   const cBps = bpsOf(/Creator:\s+\S+ BNB \((\d+) bps\)/), lBps = bpsOf(/LP agent:\s+\S+ BNB \((\d+) bps\)/), gBps = bpsOf(/Giggle pot:\s+\S+ BNB \((\d+) bps\)/);
   const got = { creator: (await bal(CREATOR)) - before.creator, lpa: (await bal(LPA)) - before.lpa, pot: (await bal(POT)) - before.pot };
-  ok('creator, DeFi agent and Giggle pot received exactly their bps of what was available', got.creator === (available * cBps) / 300n && got.lpa === (available * lBps) / 300n && got.pot === (available * gBps) / 300n, `${formatEther(got.creator)} / ${formatEther(got.lpa)} / ${formatEther(got.pot)} BNB at ${cBps}/${lBps}/${gBps} bps — ${split}`);
+  // from Nov 20 the DeFi agent and the pot have no slice: they must receive nothing (no "LP agent" / "Giggle pot" line to read)
+  ok('creator, DeFi agent and Giggle pot received exactly their bps of what was available', got.creator === (available * cBps) / 300n && (OLD ? got.lpa === (available * lBps) / 300n && got.pot === (available * gBps) / 300n : got.lpa === 0n && got.pot === 0n), `${formatEther(got.creator)} / ${formatEther(got.lpa)} / ${formatEther(got.pot)} BNB at ${cBps}/${lBps}/${gBps} bps — ${split}`);
   const burnedBob = (await tok(BOB, DEAD)) - before.deadBob, burnedBobai = (await tok(BOBAI, DEAD)) - before.deadBobai;
   ok('the dead address holds more $BOB by what the log says, and the wallet keeps none', burnedBob === parseEther(e.bobBurned) && (await tok(BOB, bot)) === 0n, `${Number(e.bobBurned).toFixed(0)} BOB`);
   // the wallet keeps 808.41 $BOBAI and burns only what is above it (operator, 2026-10-08: KEEP_TOKENS / spendable)
@@ -212,7 +218,9 @@ if (entries.length === 1) {
   const ROUTER = parseAbi(['function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable']);
   const minOf = async (hash) => decodeFunctionData({ abi: ROUTER, data: (await pub.getTransaction({ hash })).input }).args[0];
   const minBobai = await minOf(e.bobaiSwapTx), minBob = await minOf(e.bobSwapTx);
-  const gotBobai = parseEther(e.bobaiBurned), gotBob = parseEther(e.bobBurned);
+  // what ARRIVED is what was burned plus the 808.41 the fresh wallet kept out of it (2026-11-20: with a third of the split
+  // instead of 0.8% the kept 808.41 is a larger share of the buy, and "burned" alone read 4.28% of room)
+  const gotBobai = parseEther(e.bobaiBurned) + keptBobai, gotBob = parseEther(e.bobBurned);
   const room = (g, m) => Number(((g - m) * 100000n) / g) / 1000;
   ok('the $BOBAI swap leaves 5% of room against what ARRIVES (it was 2.06%)', room(gotBobai, minBobai) > 4.9 && room(gotBobai, minBobai) < 5.1, `${room(gotBobai, minBobai).toFixed(2)}% between minimum and received`);
   ok('the $BOB swap leaves its 5% as before', room(gotBob, minBob) > 4.9 && room(gotBob, minBob) < 5.1, `${room(gotBob, minBob).toFixed(2)}%`);
@@ -248,7 +256,8 @@ console.log('\nthe run on Nov 20, 2026 (standard 1/1/1)');
   const env3 = { ...env, BUYBACK_PRIVATE_KEY: key3, LOGS: { get: async (k) => (kv3.has(k) ? kv3.get(k) : null), put: async (k, v) => { kv3.set(k, v); }, delete: async (k) => { kv3.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv3.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) } };
   const c0 = await bal(CREATOR), l0 = await bal(LPA), p0 = await bal(POT), deadBob0 = await tok(BOB, DEAD), deadBobai0 = await tok(BOBAI, DEAD);
   const realNow = Date.now; const out3 = [];
-  Date.now = () => Date.parse('2026-11-20T00:02:00Z'); console.log = (...a) => out3.push(a.join(' '));
+  // inside the Nov 20 window, but never behind the fork's own block time (the swaps' deadlines are Date.now() + 300 s)
+  Date.now = () => Math.min(Math.max(realNow(), Date.parse('2026-11-20T00:02:00Z')), Date.parse('2026-12-01T00:00:00Z')); console.log = (...a) => out3.push(a.join(' '));
   try { await worker.scheduled({}, env3, {}); } finally { console.log = log; Date.now = realNow; }
   const said = out3.join('\n'), e3 = JSON.parse(kv3.get('burns.json') || '[]')[0] || {};
   const avail3 = parseEther('0.1') - parseEther('0.003');

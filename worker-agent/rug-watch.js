@@ -933,7 +933,8 @@ export async function handleRugWatch(request, env, path, deps = {}) {
     return register(request, env, { now, note, bump, fetchFn, rpc: deps.rpc });
   }
   const m = path.match(/^\/rug-watch\/([0-9a-f-]{36})$/i);
-  if (!m) return refuse(404, 'not_found', 'No such route: GET /rug-watch for the terms, GET /rug-watch/<id> for a watch.');
+  // an id that is not a watch id is a watch that does not exist, not a missing route (2026-11-20, A-Z; /watch/<id> said it so)
+  if (!m) return refuse(404, /^\/rug-watch\/[^/]+$/.test(path) ? 'no_such_watch' : 'not_found', /^\/rug-watch\/[^/]+$/.test(path) ? 'No watch with that id — a watch id is the uuid POST /rug-watch returned; it may also have ended.' : 'No such route: GET /rug-watch for the terms, GET /rug-watch/<id> for a watch.');
   const key = RUG_PREFIX + m[1].toLowerCase();
   const raw = await env.AGENT.get(key);
   if (!raw) return refuse(404, 'no_such_watch', 'No such watch, or it has ended.');

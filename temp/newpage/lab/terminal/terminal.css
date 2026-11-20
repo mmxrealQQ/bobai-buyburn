@@ -651,6 +651,8 @@
 #bt .portrait .dest .n{font-size:8.5px;gap:2px}
 #bt .portrait .dest .pc{font-size:8.5px;padding:0 2px}
 #bt .portrait .dest .v{font-size:10.5px}
+/* a tablet stacked (2026-11-20, A-Z: the names read 8.5 px on an iPad, on a busy brainrot sky): the phone keeps its small names */
+@media (min-width:700px){#bt .portrait .dest .n{font-size:11px}#bt .portrait .dest .pc{font-size:10.5px}}
 #bt .portrait .core .n{font-size:8.5px}
 #bt .portrait .core .v{font-size:12px}
 /* PHONE SCENES (2026-09-26, operator: "in the replay the card covers BOBAI — the six destinations can go meanwhile"):
@@ -1580,3 +1582,5 @@
    label away"): its picture and its place in the game stay, its name and % go. The standard terminal does not show such a
    station at all (terminal.js shown()). */
 #bt .br-on .lab.dest.off{visibility:hidden}
+/* the names on the brainrot sky (2026-11-20, A-Z: "BURN $BOBAI" orange on an orange sunset): a dark rim keeps them readable */
+#bt .br-on .lab.dest .n,#bt .br-on .lab.dest .pc,#bt .br-on .lab.src .n{text-shadow:0 0 3px #000,0 0 6px rgba(0,0,0,.85),0 1px 2px #000}

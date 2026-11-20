@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 75 files, 24923 lines.
+# one fetch. 75 files, 24938 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -13363,10 +13363,11 @@ export default {
     // their own script, the seller's own page — can still track it here.
     if (path === '/job') {
       const id = url.searchParams.get('id');
-      if (!/^\d+$/.test(id || '')) return json({ error: 'id is required — the numeric jobId' }, 400);
+      if (!/^\d+$/.test(id || '')) return json({ error: id ? 'id must be the numeric jobId' : 'id is required — the numeric jobId', id: id || null }, 400);
       const raw = await call(ERC8183.commerce, JOB_CALL(id)).catch(() => null);
       const job = raw ? decodeJob(raw) : null;
-      if (!job) return json({ error: 'job not found or unreadable', id }, 404);
+      // the kernel answers an empty record for an id it never issued (2026-11-20, A-Z: id 999999999 read as an OPEN job of 0x000…)
+      if (!job || String(job.id) === '0' || /^0x0{40}$/i.test(job.client || '')) return json({ error: 'job not found — the kernel has no job with this id', id }, 404);
       ctx.waitUntil(bump(env, 'job'));
       // SUBMITTED is not COMPLETED, and the difference is money: a
       // deliverable exists, the escrow has not released. Saying so here keeps
@@ -13692,7 +13693,7 @@ ${v.resets.rows.map((r) => `<tr><td>${h(when(r.at))}${r.forced_by_deposit ? ' ·
 </table></div>
 <p class="note">${h(v.resets.basis.replace(/^[a-z]/, (ch) => ch.toUpperCase()))}. The loss to the price is what the earnings test charges every replayed re-set; here it is read off the re-sets that happened.</p></div>` : ''}
 ${log.last_error ? (() => { const since = (Array.isArray(log.windows) ? log.windows : []).filter((w) => w && w.at && Date.parse(w.at) > Date.parse(log.last_error.at)).length; return `<p class="note">Last hour that could not be measured: ${h(when(log.last_error.at))} (${h(log.last_error.error)}). ${since ? `${h(since)} window${since === 1 ? '' : 's'} recorded since; it is skipped, not guessed.` : 'Skipped, not guessed.'}</p>`; })() : ''}
-<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · which pool: <a href="/lp/pools">the pool record</a> · <a href="https://brainonbnb.com/liquidity">how it works</a></p>
+<p class="note">Same facts as JSON: <a href="/lp/windows?format=json">/lp/windows?format=json</a> · the agent's record: <a href="/lp/agent">/lp/agent</a> · which pool: <a href="/lp/pools">the pool record</a> · <a href="https://brainonbnb.com/defi">how it works</a></p>
 ${pageTail}`;
         return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' } });
       }
@@ -20228,7 +20229,8 @@ export async function handleRugWatch(request, env, path, deps = {}) {
     return register(request, env, { now, note, bump, fetchFn, rpc: deps.rpc });
   }
   const m = path.match(/^\/rug-watch\/([0-9a-f-]{36})$/i);
-  if (!m) return refuse(404, 'not_found', 'No such route: GET /rug-watch for the terms, GET /rug-watch/<id> for a watch.');
+  // an id that is not a watch id is a watch that does not exist, not a missing route (2026-11-20, A-Z; /watch/<id> said it so)
+  if (!m) return refuse(404, /^\/rug-watch\/[^/]+$/.test(path) ? 'no_such_watch' : 'not_found', /^\/rug-watch\/[^/]+$/.test(path) ? 'No watch with that id — a watch id is the uuid POST /rug-watch returned; it may also have ended.' : 'No such route: GET /rug-watch for the terms, GET /rug-watch/<id> for a watch.');
   const key = RUG_PREFIX + m[1].toLowerCase();
   const raw = await env.AGENT.get(key);
   if (!raw) return refuse(404, 'no_such_watch', 'No such watch, or it has ended.');
@@ -21056,7 +21058,8 @@ export const extractParams = (text = '', given = {}) => {
 // endpoint had been made from Node.
 const RPC_HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' };
 const rpcOk = (id, result) => Response.json({ jsonrpc: '2.0', id: id ?? 1, result }, { headers: RPC_HEADERS });
-const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
+// an error whose request id is unknown (unparsable JSON) answers id null, as JSON-RPC 2.0 says (2026-11-20, A-Z: it answered 1)
+const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id === null ? null : id ?? 1, error: { code, message } }, { headers: RPC_HEADERS });
 // The list and the flat negotiate as an A2A Message (2026-10-10). The card says
 // protocolVersion 0.3.0, whose message/send returns a Message or a Task; these
 // two returned a bare object, which a strict 0.3 client rejects. Everything now
@@ -21567,6 +21570,16 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, { kind: 'message', role: 'agent', messageId: crypto.randomUUID(), parts: [{ kind: 'text', text: JSON.stringify(out) }, { kind: 'data', data: out }] });
   }
 
+  // SKILLS THE CARD LISTS THAT RUN ON THEIR OWN ROUTE (2026-11-20, A-Z: agent_screener, agent_watch, rug_watch, pool_watch and
+  // paid_answers answered -32601 "unknown skill" although the card names them): say where each one runs, as data, not an error
+  const ROUTED = {
+    agent_screener: { how: 'GET, free', endpoint: 'https://agent.brainonbnb.com/screener', one_agent: 'https://agent.brainonbnb.com/chart/<id>', ranked: 'https://agent.brainonbnb.com/chart/rank?category=<category>', mcp: 'bnb_agent_chart / bnb_agents_by_evidence at https://brainonbnb.com/mcp' },
+    agent_watch: { how: 'POST to register, GET for the terms', endpoint: 'https://agent.brainonbnb.com/agent-watch' },
+    rug_watch: { how: 'POST to register, GET for the terms', endpoint: 'https://agent.brainonbnb.com/rug-watch', mcp: 'bsc_rug_watch at https://brainonbnb.com/mcp' },
+    pool_watch: { how: 'POST to register (paid), GET for the terms', endpoint: 'https://agent.brainonbnb.com/watch', mcp: 'bsc_pool_watch at https://agent.brainonbnb.com/mcp' },
+    paid_answers: { how: 'GET, x402 per answer', endpoint: 'https://agent.brainonbnb.com/example', terms: 'https://brainonbnb.com/.well-known/x402' },
+  };
+  if (ROUTED[skill]) return rpcOk(id, flatMessage({ skill, runs_over: 'its own route, not this A2A endpoint', ...ROUTED[skill] }));
   return rpcErr(id, -32601, `unknown skill "${skill}". Send skill:"list" to see what is for sale.`);
 }
 
@@ -23005,7 +23018,9 @@ async function probeDefiAgent(env) {
     return {
       ready: true,
       checked_at: at,
-      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_pct: plan.width_record?.width_pct ?? null },
+      // 2026-11-20 (A-Z): this read "width_pct: 10" beside an agent that runs ±20% set by hand — the 10 is the width record's
+      // earnings pick, not the range in force; named for what it is
+      live: { position: plan.position ?? plan.position_id ?? null, verdict: plan.verdict || null, width_record_pick_pct: plan.width_record?.width_pct ?? null, width_note: 'the width the price record would pick for earnings; the range in force is set by hand (±20%, LP_WIDTH_PCT), see /lp/agent' },
       headline: plan.verdict ? clipHeadline(plan.verdict, 220) : 'position read, no verdict formed',
       measures: 'its own PancakeSwap V3 position, planned by the code a hired job runs',
       not_ready_because: null,

@@ -6,5 +6,8 @@ rem entries; weekly on purpose, so the board is not filled daily). Their own log
 rem board; this adds the console output.
 cd /d D:\ai\fourmeme
 node scripts\plaza-refresh.mjs >> data\plaza-refresh-console.log 2>&1
+set BOBAI_RC=%ERRORLEVEL%
 for /f %%d in ('powershell -NoProfile -Command "(Get-Date).DayOfWeek"') do set BOBAI_DOW=%%d
-if /i "%BOBAI_DOW%"=="Sunday" node scripts\board-outreach.mjs --confirm >> data\board-outreach-console.log 2>&1
+if /i "%BOBAI_DOW%"=="Sunday" if "%BOBAI_RC%"=="0" node scripts\board-outreach.mjs --confirm >> data\board-outreach-console.log 2>&1
+rem the task shows the refresh's own result (2026-11-20, A-Z: it read 0 after a stopped run), and the outreach runs only after a whole one
+exit /b %BOBAI_RC%

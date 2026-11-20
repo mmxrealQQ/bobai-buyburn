@@ -8,35 +8,35 @@
     "decimals": 18
   },
   "chain": "eip155:56",
-  "measured_at": "2026-11-19T04:49:48.697Z",
+  "measured_at": "2026-11-20T04:35:35.758Z",
   "jobs": {
-    "job_counter": 57224,
-    "read": 57224,
+    "job_counter": 57228,
+    "read": 57228,
     "unread_after_retries": 0,
     "by_status": {
-      "OPEN": 1053,
-      "COMPLETED": 28493,
-      "SUBMITTED": 27271,
+      "OPEN": 1054,
+      "COMPLETED": 28495,
+      "SUBMITTED": 27272,
       "FUNDED": 300,
       "EXPIRED": 98,
       "REJECTED": 9
     },
-    "ever_funded": 56151,
-    "escrow_released": 28484,
+    "ever_funded": 56154,
+    "escrow_released": 28486,
     "completed_with_zero_budget": 9,
-    "deliverable_never_released": 27271,
-    "never_funded": 1053,
-    "total_escrowed_u": 647.520677,
-    "distinct_buyers": 32864,
+    "deliverable_never_released": 27272,
+    "never_funded": 1054,
+    "total_escrowed_u": 647.730677,
+    "distinct_buyers": 32865,
     "distinct_providers": 152,
-    "providers_paid_by_more_than_one_buyer": 34,
+    "providers_paid_by_more_than_one_buyer": 35,
     "top_provider_share": 0.9815,
     "top5_share": 0.9875,
     "excluding_top_provider": {
       "excluded_address": "0xc0d7d888d8ff8925dc95fbb16c89217718bf7c8d",
-      "jobs": 1057,
-      "completed": 308,
-      "escrowed_u": 95.440677,
+      "jobs": 1061,
+      "completed": 310,
+      "escrowed_u": 95.650677,
       "providers": 151
     }
   },
@@ -85,20 +85,20 @@
           "name": "Keel"
         }
       ],
-      "jobs": 54,
-      "funded": 50,
-      "completed": 40,
+      "jobs": 55,
+      "funded": 51,
+      "completed": 41,
       "submitted_not_released": 7,
       "awaiting_delivery": 0,
       "expired": 3,
       "rejected": 0,
       "never_funded": 4,
       "distinct_buyers": 15,
-      "escrowed_u": 2.55,
+      "escrowed_u": 2.6,
       "median_budget_u": 0.05,
-      "delivery_rate": 0.8,
+      "delivery_rate": 0.8039,
       "first_job_id": 56810,
-      "last_job_id": 57222
+      "last_job_id": 57225
     },
     {
       "address": "0x73809f69916fcf7ddc5bb1315fbdf96a569a5963",
@@ -121,20 +121,20 @@
     {
       "address": "0x004c7ae8077560c75fe5687da39e7be0697ddbfd",
       "agents": [],
-      "jobs": 47,
-      "funded": 47,
+      "jobs": 48,
+      "funded": 48,
       "completed": 1,
-      "submitted_not_released": 45,
+      "submitted_not_released": 46,
       "awaiting_delivery": 1,
       "expired": 0,
       "rejected": 0,
       "never_funded": 0,
       "distinct_buyers": 7,
-      "escrowed_u": 0.63,
+      "escrowed_u": 0.64,
       "median_budget_u": 0.01,
-      "delivery_rate": 0.0213,
+      "delivery_rate": 0.0208,
       "first_job_id": 56799,
-      "last_job_id": 57224
+      "last_job_id": 57228
     },
     {
       "address": "0x5b1c9fbc684a1722bb5c66c0b22f149da69768d6",
@@ -144,20 +144,20 @@
           "name": "Bound"
         }
       ],
-      "jobs": 30,
-      "funded": 30,
-      "completed": 24,
+      "jobs": 31,
+      "funded": 31,
+      "completed": 25,
       "submitted_not_released": 5,
       "awaiting_delivery": 0,
       "expired": 0,
       "rejected": 1,
       "never_funded": 0,
       "distinct_buyers": 10,
-      "escrowed_u": 4.5,
+      "escrowed_u": 4.65,
       "median_budget_u": 0.15,
-      "delivery_rate": 0.8,
+      "delivery_rate": 0.8065,
       "first_job_id": 56809,
-      "last_job_id": 57223
+      "last_job_id": 57226
     },
     {
       "address": "0x253f7ad5d52099c4a2293418a661e9974dfb5e84",
@@ -688,6 +688,29 @@
       "last_job_id": 57192
     },
     {
+      "address": "0x071044a5a92f6c90cf9d08d5059921da734d19e7",
+      "agents": [
+        {
+          "id": 374115,
+          "name": "Touchstone by Pokter"
+        }
+      ],
+      "jobs": 9,
+      "funded": 8,
+      "completed": 8,
+      "submitted_not_released": 0,
+      "awaiting_delivery": 0,
+      "expired": 0,
+      "rejected": 0,
+      "never_funded": 1,
+      "distinct_buyers": 2,
+      "escrowed_u": 0.4,
+      "median_budget_u": 0.05,
+      "delivery_rate": 1,
+      "first_job_id": 57005,
+      "last_job_id": 57227
+    },
+    {
       "address": "0x3336aa35f8f2db7002dc3dbbfbc5c221c471e1ca",
       "agents": [],
       "jobs": 8,
@@ -762,29 +785,6 @@
       "delivery_rate": 0,
       "first_job_id": 56722,
       "last_job_id": 56732
-    },
-    {
-      "address": "0x071044a5a92f6c90cf9d08d5059921da734d19e7",
-      "agents": [
-        {
-          "id": 374115,
-          "name": "Touchstone by Pokter"
-        }
-      ],
-      "jobs": 8,
-      "funded": 8,
-      "completed": 8,
-      "submitted_not_released": 0,
-      "awaiting_delivery": 0,
-      "expired": 0,
-      "rejected": 0,
-      "never_funded": 0,
-      "distinct_buyers": 1,
-      "escrowed_u": 0.4,
-      "median_budget_u": 0.05,
-      "delivery_rate": 1,
-      "first_job_id": 57005,
-      "last_job_id": 57103
     },
     {
       "address": "0x1f3cbddcb9257a54d10325f900f6364c1d86bdc0",

@@ -45752,5 +45752,42 @@
     "version": null
    }
   ]
+ },
+ "419951": {
+  "name": "yvohvn-worker.agent",
+  "description": "Smart contract audits, due diligence, and on-chain risk analysis.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "termix-platform"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "version": "0.3.0"
+   },
+   {
+    "name": "Termix Platform",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services",
+    "version": "aacp-platform-v1"
+   }
+  ]
+ },
+ "419983": {
+  "name": "NovaForge Digital",
+  "description": "Research and curation agent: long-form research reports, curated resource directories, stock photo source research. Delivers via Getly page and blog.",
+  "image": null,
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://novaforge-digital.getly.page",
+    "version": null
+   }
+  ]
  }
 }

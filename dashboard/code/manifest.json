@@ -10,10 +10,10 @@
    "title": "Buyback & Burn Bot",
    "tagline": "The bot that has run every ten minutes since launch.",
    "files": 3,
-   "lines": 1873,
-   "zipBytes": 27473,
-   "txtBytes": 84276,
-   "sha256": "4208375eff8b4565",
+   "lines": 1919,
+   "zipBytes": 28706,
+   "txtBytes": 88039,
+   "sha256": "56de95cf043a83f7",
    "reqs": [
     {
      "what": "A wallet with a little gas in it",
@@ -53,10 +53,10 @@
    "title": "DeFi Agent — a PancakeSwap V3 range that runs itself",
    "tagline": "A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.",
    "files": 17,
-   "lines": 7645,
-   "zipBytes": 201470,
-   "txtBytes": 626678,
-   "sha256": "b63123772cff5d51",
+   "lines": 7669,
+   "zipBytes": 202163,
+   "txtBytes": 628369,
+   "sha256": "18424b91aa49b21c",
    "reqs": [
     {
      "what": "A wallet that holds the position",
@@ -115,10 +115,10 @@
    "title": "Dev Sweep Bot",
    "tagline": "The hourly one that pays out the creator share.",
    "files": 3,
-   "lines": 463,
-   "zipBytes": 9530,
-   "txtBytes": 20162,
-   "sha256": "707a64807fe22d0d",
+   "lines": 540,
+   "zipBytes": 11381,
+   "txtBytes": 25462,
+   "sha256": "6d086b092a4a3ae5",
    "reqs": [
     {
      "what": "A wallet that receives the tax",
@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5914,
-   "zipBytes": 104497,
-   "txtBytes": 313181,
-   "sha256": "1c49c1e07d2c3972",
+   "lines": 5918,
+   "zipBytes": 105182,
+   "txtBytes": 314913,
+   "sha256": "88da685b1b070244",
    "reqs": [
     {
      "what": "A bot token",
@@ -329,10 +329,10 @@
    "title": "Pool Scanner",
    "tagline": "Reads any BNB Chain pool. No backend at all.",
    "files": 6,
-   "lines": 7986,
-   "zipBytes": 180535,
-   "txtBytes": 540186,
-   "sha256": "e1e191ce3593b9f7",
+   "lines": 7988,
+   "zipBytes": 180734,
+   "txtBytes": 540715,
+   "sha256": "6242d1f2cc7c7ae8",
    "reqs": [
     {
      "what": "A static host",
@@ -490,10 +490,10 @@
    "title": "Burn & Add Liq — Browser Game",
    "tagline": "One HTML file. Jump, burn, dodge the dumps.",
    "files": 2,
-   "lines": 1198,
-   "zipBytes": 20512,
-   "txtBytes": 70083,
-   "sha256": "db3f219ddc18e5df",
+   "lines": 1201,
+   "zipBytes": 20794,
+   "txtBytes": 70519,
+   "sha256": "fc0d7a97d24714a1",
    "reqs": [
     {
      "what": "A static host",
@@ -555,10 +555,10 @@
    "title": "Xmas Terminal — the community builds the terminal's look",
    "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
    "files": 13,
-   "lines": 1398,
-   "zipBytes": 45644,
-   "txtBytes": 110873,
-   "sha256": "43dcb3e6a2167acb",
+   "lines": 1410,
+   "zipBytes": 46004,
+   "txtBytes": 111959,
+   "sha256": "ad5adb37341426bc",
    "reqs": [
     {
      "what": "A worker and a key-value store of their own",
@@ -669,10 +669,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4396,
-   "zipBytes": 157970,
-   "txtBytes": 472317,
-   "sha256": "028efb1a3446c341",
+   "lines": 4449,
+   "zipBytes": 165913,
+   "txtBytes": 492549,
+   "sha256": "fcfba5137b73130e",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -704,10 +704,10 @@
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 75,
-   "lines": 24945,
-   "zipBytes": 639355,
-   "txtBytes": 1810763,
-   "sha256": "46af4eb7fc82d28d",
+   "lines": 24970,
+   "zipBytes": 640446,
+   "txtBytes": 1813644,
+   "sha256": "b7fbc6ca50ae2085",
    "reqs": [
     {
      "what": "A wallet to be paid into",

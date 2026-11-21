@@ -648,9 +648,11 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 /* phone: a row of its own under the buy line, the terminal gives up the same height so it still fills the first screen */
 @media (max-aspect-ratio:3/4),(max-width:559px){
   /* the token check is off on phones (operator 21.11.: "takes too much room, the terminal gets more"): the row and its 48 px go back */
-  :root{--bp-top:88px}
+  /* and the CA / price line too (operator 21.11.: "das CA und price auch wegnehmen im mobile"): the header alone, 54 px */
+  :root{--bp-top:54px}
   .bp-chk-btn{display:none}
   .bk-panel{display:none!important}
+  .bp-buyline{display:none!important}
   .bk-panel{display:block;position:static;width:auto;max-height:none;overflow:visible;margin:0;padding:7px 8px;border-radius:0;border:0;border-bottom:1px solid var(--bp-line);box-shadow:none;background:rgba(240,185,11,.03)}
   .bk-lbl{display:none}
   .bk-line input{padding:8px 10px;font-size:16px}

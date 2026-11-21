@@ -2,7 +2,7 @@
 # One HTML file. Jump, burn, dodge the dumps.
 #
 # This is the complete browser-game bundle as a single file, so it can be read in
-# one fetch. 2 files, 1198 lines.
+# one fetch. 2 files, 1201 lines.
 # Download as a zip: https://brainonbnb.com/code/browser-game.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -461,9 +461,12 @@ function renderHighscores(type, ctx) {
   }
   const cs = window.currentScore || 0;
   const isGo = ctx === 'go';
+  // A NAME IS TEXT, NEVER MARKUP (security review 2026-11-21): the names come from a table anyone can write to with the
+  // page's own publishable key, and went into innerHTML as they were — a stored script on brainonbnb.com
+  const hsEsc = (v) => String(v ?? '').slice(0, 24).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
   container.innerHTML = entries.map(e => {
     const hl = isGo && e.score === cs ? ' style="border-left:3px solid var(--gold);padding-left:7px;"' : '';
-    return `<div class="hs-entry"${hl}><span class="hs-rank">${e.rank}</span><span class="hs-name">${e.name}</span><span class="hs-score">${e.score}</span></div>`;
+    return `<div class="hs-entry"${hl}><span class="hs-rank">${Number(e.rank) || ''}</span><span class="hs-name">${hsEsc(e.name)}</span><span class="hs-score">${Number(e.score) || 0}</span></div>`;
   }).join('');
 }
 

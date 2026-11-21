@@ -2,7 +2,7 @@
 # Buy alerts, burn alerts, price, whale tracking, captcha.
 #
 # This is the complete telegram-bot bundle as a single file, so it can be read in
-# one fetch. 12 files, 5914 lines.
+# one fetch. 12 files, 5918 lines.
 # Download as a zip: https://brainonbnb.com/code/telegram-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1701,12 +1701,13 @@ async function fetchLiquidityStats() {
   const tvl = bnbSide * 2;
 
   const supply = Number(hexToBigInt(supplyHex)) / 1e18;
-  const burned = Number(hexToBigInt(burnedHex)) / 1e18;
-  const mcap = supply > 0 ? (supply - burned) * price : null;
+  // a failed read is not zero (A-Z 2026-11-21: a lost dead-balance read counted the burned tokens into the market cap)
+  const burned = burnedHex ? Number(hexToBigInt(burnedHex)) / 1e18 : null;
+  const mcap = supply > 0 && burned !== null ? (supply - burned) * price : null;
 
   const lpTotal = Number(hexToBigInt(lpTotalHex)) / 1e18;
   const lpDead = Number(hexToBigInt(lpDeadHex)) / 1e18;
-  const lpBurnedPct = lpTotal > 0 ? (lpDead / lpTotal) * 100 : null;
+  const lpBurnedPct = lpTotal > 0 && lpDeadHex ? (lpDead / lpTotal) * 100 : null;
 
   // "What does one percent cost" — the reverse of the impact bars. A buy needs no tax
   // correction (incoming BNB is untaxed); a sell does, because only 97% of the tokens
@@ -3336,7 +3337,7 @@ async function cleanupExpiredCaptchas(env) {
 
 const BOT_COMMANDS = [
   { command: 'alerts',   description: 'Buy & burn alert tiers' },
-  { command: 'bot',      description: 'What the bot does — the 3% split now & upcoming' },
+  { command: 'bot',      description: 'What the bot does — the 3% split and its history' },
   { command: 'burn',     description: 'Burned by the bot & at the dead address, BOBAI and BOB, in USD' },
   { command: 'buy',      description: 'How to buy BOBAI' },
   { command: 'ca',       description: 'Contract address' },
@@ -3345,7 +3346,7 @@ const BOT_COMMANDS = [
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
-  { command: 'pop',      description: 'Brain Pop: the boards, the season leader and the prize pool' },
+  { command: 'pop',      description: 'Brain Pop: the boards and the champion (season Nov 6 → 30)' },
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
@@ -3366,7 +3367,7 @@ const WHALE_COMMANDS = [
   { command: 'whalecleanup', description: 'Drop contract addresses from watch-set' },
 ];
 
-const COMMANDS_VERSION = 'v20-pop';
+const COMMANDS_VERSION = 'v21-1121'; // bumped 21 Nov: the menu edits since 7 Nov (giggle, pop, bot) had never been sent to Telegram
 
 // Telegram can sign every webhook call with a secret it sends back in the
 // X-Telegram-Bot-Api-Secret-Token header. Without it, anyone who knows the
@@ -3650,7 +3651,7 @@ export function formatBotCard(nowMs = Date.now()) {
   const out = [
     '⚙️ <b>What the BOBAI bot does</b>',
     '',
-    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → ${nowMs < GG_END ? 'burns, liquidity, creator, agent, pot' : 'burns, liquidity, creator'}. No hand on the switch.`,
+    `🤖 One Cloudflare Worker on wallet <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a>, every 10 minutes: trade → 3% tax collects in the token, which swaps it to BNB and sends it to that wallet → the bot splits it → ${nowMs < GG_END ? 'burns, liquidity, creator, agent, pot' : nowMs < LIQ_FOREVER_START ? 'burns, creator' : 'burns, liquidity, creator'}. No hand on the switch.`,
     '',
   ];
   if (now) {
@@ -3730,7 +3731,7 @@ async function readTaxOnchain() {
     price: pair ? pair.price : null, bnbUsd: pair ? pair.bnbUsd : await getBnbUsd() };
 }
 
-export function formatTaxCard(t, burns = [], nowMs = Date.now()) {
+export function formatTaxCard(t, burns = [], nowMs = Date.now(), liqLog = null) {
   const span = (ms) => { const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000); return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`; };
   const usd = (n) => (n > 0 ? ` (≈${formatUsd(n)})` : '');
   const out = ['💸 <b>BOBAI Tax — live</b>', ''];
@@ -3750,7 +3751,7 @@ export function formatTaxCard(t, burns = [], nowMs = Date.now()) {
   if (last) {
     const bnb = +last.totalBnb || 0, bobai = +last.bobaiBurned || 0, bob = +last.bobBurned || 0;
     out.push(`🔥 Last buyback: <b>${span(nowMs - Date.parse(last.time))} ago</b>`,
-      `${bnb.toFixed(4)} BNB${usd(bnb * (t.bnbUsd || 0))} split → ${fmtAmt(bobai)} BOBAI${bob > 0 ? ` + ${fmtAmt(bob)} BOB` : ''} burned${Date.parse(last.time) >= Date.parse('2026-12-01T00:01:00Z') ? ' + liquidity, LP burned' : ''}`);
+      `${bnb.toFixed(4)} BNB${usd(bnb * (t.bnbUsd || 0))} split → ${last.bobaiBurned != null ? `${fmtAmt(bobai)} BOBAI${usd(bobai * (t.price || 0))}` : 'no BOBAI'}${bob > 0 ? ` + ${fmtAmt(bob)} BOB` : ''} burned${(() => { /* A-Z 2026-11-21: said from the date alone; now only when the liquidity log has the add of this run (within 5 min), linked; a missing BOBAI figure is not "0" */ if (Date.parse(last.time) < Date.parse('2026-12-01T00:01:00Z') || bob > 0) return ''; const t0 = Date.parse(last.time), add = Array.isArray(liqLog) ? liqLog.find((l) => l && Math.abs(Date.parse(l.time) - t0) < 300e3) : null; return add ? ` + liquidity, LP burned (<a href="https://bscscan.com/tx/${add.addLiqTx}">add</a>)` : liqLog ? ' · no liquidity add in this run' : ''; })()}`) /* the run that STARTED at the Dec 1 00:00 tick still burned $BOB and added no liquidity, though logged after 00:01 (A-Z 2026-11-21) */;
     const day = runs.filter((e) => Date.parse(e.time) >= nowMs - 86400000), b24 = day.reduce((a, e) => a + (+e.bobaiBurned || 0), 0);
     out.push(`📊 Last 24h: <b>${day.length}</b> buyback${day.length === 1 ? '' : 's'}${day.length ? ` · ${fmtAmt(b24)} BOBAI burned${usd(b24 * (t.price || 0))}` : ''}`);
   } else {
@@ -4086,7 +4087,7 @@ async function handleCommand(msg, env) {
 💀 At the dead address: ${burn.burnedTokens === null ? '<i>the chain read failed, try again</i>' : `<b>${fmtAmt(burn.burnedTokens)} BOBAI</b>${approxUsd(burn.burnedTokens, bobaiPx)} · <b>${burn.percent}%</b> of supply`}
 
 👷 <b>$BOB</b> (Build On BNB)
-🤖 Burned by the bot: ${logOk ? `<b>${fmtAmt(ours.bob)} BOB</b>${approxUsd(ours.bob, bob.price)}${share(ours.bob, bob.burned)}` : '<i>the bot log did not answer</i>'}
+🤖 Burned by the bot: ${logOk ? `<b>${fmtAmt(ours.bob)} BOB</b>${approxUsd(ours.bob, bob.price)}${share(ours.bob, bob.burned)}${Date.now() >= LIQ_FOREVER_START ? ' <i>(ended Dec 1, 2026: that third adds liquidity now)</i>' : ''}` : '<i>the bot log did not answer</i>'}
 💀 At the dead address: <b>${bob.burned === null ? '?' : fmtAmt(bob.burned)} BOB</b>${bob.burned === null ? '' : approxUsd(bob.burned, bob.price)}
 
 ⚙️ ${logOk ? `${ours.runs.toLocaleString('en-US')} bot runs in the log · ` : ''}checks every 10 minutes from <a href="https://bscscan.com/address/${BOT_WALLET}">${BOT_WALLET.slice(0, 6)}…${BOT_WALLET.slice(-4)}</a> · /bot shows the split
@@ -4109,7 +4110,8 @@ async function handleCommand(msg, env) {
         const r = await fetch('https://logs.brainonbnb.com/logs/burns.json', { cf: { cacheTtl: 120 } });
         if (r.ok) burns = await r.json();
       } catch { /* the chain figures still show; the last run says the log did not answer */ }
-      reply = formatTaxCard(await readTaxOnchain(), burns);
+      let liqLog = null; try { const r = await fetch('https://logs.brainonbnb.com/logs/bobai-liq-log.json', { cf: { cacheTtl: 120 } }); if (r.ok) liqLog = await r.json(); } catch { /* the liquidity part is then not named */ }
+      reply = formatTaxCard(await readTaxOnchain(), burns, Date.now(), liqLog);
       break;
     }
 
@@ -4272,7 +4274,7 @@ ${lq.depth.map(d => row(d, d.impactSell, d.costSell)).join('\n')}
 Here's what I can do:
 
 🔔 /alerts — Buy & burn alert tiers
-⚙️ /bot — What the bot does: the 3% split now & upcoming
+⚙️ /bot — What the bot does: the 3% split and its history
 🔥 /burn — Burned by the bot & at the dead address, BOBAI and BOB, in USD
 🛒 /buy — How to buy BOBAI
 📋 /ca — Contract address
@@ -4280,7 +4282,7 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: donated Nov 20, every send with its tx
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
-🎮 /pop — Brain Pop: the boards and the prize pool
+🎮 /pop — Brain Pop: the boards and the champion (season Nov 6 → 30)
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links
@@ -4549,7 +4551,9 @@ export default {
         // The date each daily post last went out. A running cron says nothing
         // about them: the whale recap was silent for six days in September
         // 2026 under a heartbeat that never missed.
-        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date'), market_card: await env.KV.get('market_card_date') },
+        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date'), market_card: await env.KV.get('market_card_date'),
+          // the Brain Pop night post of yesterday's board (A-Z 2026-11-21: a lost season-over post on 1 Dec would have stayed silent)
+          pop_champ: await (async () => { const day = new Date(Date.now() - 86400e3).toISOString().slice(0, 10); return { day, in_season: day >= POP_FIRST && day <= POP_LAST, flag: await env.KV.get('pop_champ:' + day) }; })() },
         webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
         ...(await healthEvidence(env)),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

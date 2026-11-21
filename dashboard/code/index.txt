@@ -21,7 +21,7 @@ environment at runtime, and the config files name the variables only.
 Buyback & Burn Bot
 ------------------
 The bot that has run every ten minutes since launch.
-3 files, 1873 lines
+3 files, 1919 lines
 needs:
   - A wallet with a little gas in it
       ours: one BSC wallet, topped up from the tax itself
@@ -44,7 +44,7 @@ txt: https://brainonbnb.com/code/buyback-bot.txt
 DeFi Agent — a PancakeSwap V3 range that runs itself
 ----------------------------------------------------
 A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
-17 files, 7645 lines
+17 files, 7669 lines
 needs:
   - A wallet that holds the position
       ours: one BSC wallet used for nothing else
@@ -70,7 +70,7 @@ txt: https://brainonbnb.com/code/defi-agent.txt
 Dev Sweep Bot
 -------------
 The hourly one that pays out the creator share.
-3 files, 463 lines
+3 files, 540 lines
 needs:
   - A wallet that receives the tax
       ours: the same wallet the buyback bot spends from
@@ -110,7 +110,7 @@ txt: https://brainonbnb.com/code/liquidity-bot.txt
 Telegram Bot
 ------------
 Buy alerts, burn alerts, price, whale tracking, captcha.
-12 files, 5914 lines
+12 files, 5918 lines
 needs:
   - A bot token
       ours: one from @BotFather, two minutes of work
@@ -183,7 +183,7 @@ txt: https://brainonbnb.com/code/prize-pool-bot.txt
 Pool Scanner
 ------------
 Reads any BNB Chain pool. No backend at all.
-6 files, 7986 lines
+6 files, 7988 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -240,7 +240,7 @@ txt: https://brainonbnb.com/code/worldcup-tipgame.txt
 Burn & Add Liq — Browser Game
 -----------------------------
 One HTML file. Jump, burn, dodge the dumps.
-2 files, 1198 lines
+2 files, 1201 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brain-pop.txt
 Xmas Terminal — the community builds the terminal's look
 --------------------------------------------------------
 One npx command, your own AI agent, a sandboxed theme on the live terminal.
-13 files, 1398 lines
+13 files, 1410 lines
 needs:
   - A worker and a key-value store of their own
       ours: Cloudflare Workers + KV (bobai-xmas on workers.dev)
@@ -299,7 +299,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 4396 lines
+5 files, 4449 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -316,7 +316,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-75 files, 24945 lines
+75 files, 24970 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

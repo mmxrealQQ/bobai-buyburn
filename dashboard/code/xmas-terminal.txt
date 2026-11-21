@@ -2,7 +2,7 @@
 # One npx command, your own AI agent, a sandboxed theme on the live terminal.
 #
 # This is the complete xmas-terminal bundle as a single file, so it can be read in
-# one fetch. 13 files, 1398 lines.
+# one fetch. 13 files, 1410 lines.
 # Download as a zip: https://brainonbnb.com/code/xmas-terminal.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -198,7 +198,10 @@ r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'adm1n-secret' }, 
 ok('there is no approving any more', r.status === 400);
 
 // counting users
-await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' } });
+await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' }, ip: '9.9.9.9' });
+// ONE COUNT PER VISITOR, THEME AND DAY (security review 2026-11-21): the same address again adds nothing
+const again = await call('POST', '/use', { body: { slug: 'mmx_qq' } });
+ok('the same visitor again the same day is not counted twice', again.j?.counted === false);
 r = await call('POST', '/use', { body: { slug: 'spam0' } });
 ok('a theme with nothing uploaded is not counted', r.j?.counted === false);
 r = await call('GET', '/themes');
@@ -401,6 +404,15 @@ export async function handleXmas(request, env, url, path) {
     const t = await env.XMAS.get(themeKey(slug), 'json', { cacheTtl: 60 });
     if (!t || t.blocked || !t.ver) return out({ ok: false, counted: false });
     const day = new Date().toISOString().slice(0, 10), k = `xmas:use:${day}`;
+    // ONE COUNT PER VISITOR, THEME AND DAY (security review 2026-11-21): any script could add +1 again and again and push
+    // its theme to the top of the switch (sorted by today's users). A salted hash of the address stands for the visitor
+    // for one day (the key expires after it; the address itself is not kept, and the salt changes daily).
+    const ip = request.headers.get('cf-connecting-ip') || '';
+    if (ip) {
+      const h = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}|${slug}|${ip}`)))).slice(0, 12).map((x) => x.toString(16).padStart(2, '0')).join('');
+      if (await env.XMAS.get(`xmas:seen:${h}`)) return out({ ok: true, counted: false });
+      await env.XMAS.put(`xmas:seen:${h}`, '1', { expirationTtl: 2 * 86400 });
+    }
     const m = (await env.XMAS.get(k, 'json')) || {};
     m[slug] = (m[slug] || 0) + 1;
     await env.XMAS.put(k, JSON.stringify(m), { expirationTtl: 90 * 86400 });

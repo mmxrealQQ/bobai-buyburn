@@ -2,7 +2,7 @@
 # A concentrated-liquidity range and its reserve, kept by a cron: collect, re-set, grow. No human in the loop.
 #
 # This is the complete defi-agent bundle as a single file, so it can be read in
-# one fetch. 17 files, 7645 lines.
+# one fetch. 17 files, 7669 lines.
 # Download as a zip: https://brainonbnb.com/code/defi-agent.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -7669,8 +7669,19 @@ export async function settleX402Queue(env, rpcs, { expectWallet = X402_WALLET } 
   const acct = privateKeyToAccount(key.startsWith('0x') ? key : `0x${key}`);
   if (acct.address.toLowerCase() !== String(expectWallet).toLowerCase()) return { settled: 0, why: 'X402_PRIVATE_KEY does not open the x402 wallet' };
 
-  const list = await env.AGENT.list({ prefix: QUEUE_PREFIX, limit: 20 });
+  // THE WHOLE QUEUE, NOT ITS FIRST 20 KEYS (A-Z 2026-11-21): settled and failed records stay 14 days under the same
+  // prefix, so once 20 of them sorted first a new payment was never read. Every page is listed now; at most 20 open
+  // ones are worked on per firing (the next firing takes the rest).
+  const keys = [];
+  for (let cursor, i = 0; i < 50; i++) {
+    const page = await env.AGENT.list({ prefix: QUEUE_PREFIX, limit: 1000, ...(cursor ? { cursor } : {}) });
+    keys.push(...page.keys);
+    if (page.list_complete || !page.cursor) break;
+    cursor = page.cursor;
+  }
+  const list = { keys: keys.filter((k) => !/:last$/.test(k.name)) };
   if (!list.keys.length) return { settled: 0, waiting: 0 };
+  let worked = 0;
   const transport = fallback(rpcs.map((u) => http(u, { timeout: 15000 })));
   const pub = createPublicClient({ chain: bsc, transport });
   const wallet = createWalletClient({ account: acct, chain: bsc, transport });
@@ -7686,11 +7697,24 @@ export async function settleX402Queue(env, rpcs, { expectWallet = X402_WALLET } 
     const save = (patch) => env.AGENT.put(k.name, JSON.stringify({ ...rec, ...patch }), { expirationTtl: 14 * 86400 });
     const a = rec.payload && rec.payload.permit2Authorization;
     if (!a || rec.state === 'settled' || rec.state === 'failed') continue;
+    if (++worked > 20) break;
 
     // A transaction already out: only its receipt decides.
     if (rec.state === 'sent' && rec.tx) {
       const r = await pub.getTransactionReceipt({ hash: rec.tx }).catch(() => null);
-      if (!r) { out.push({ id, state: 'sent', tx: rec.tx }); continue; }
+      if (!r) {
+        // A SENT ONE THAT NEVER LANDS (A-Z 2026-11-21): a dropped transaction has no receipt ever and stayed 'sent' for
+        // good (never sent again, never failed, still counted while the authorization ran out). After 30 minutes a
+        // transaction the node no longer knows at all goes back to pending: the next step simulates it again, and a
+        // settle that did land meanwhile cannot go twice (the signed nonce is spent, the simulation refuses).
+        // only a node that ANSWERS "not found" counts (viem: TransactionNotFoundError); a node that did not answer is no news
+        const unknown = await pub.getTransaction({ hash: rec.tx }).then(() => false).catch((e) => /TransactionNotFound/.test(String(e?.name || '') + String(e?.message || '')));
+        if (unknown && Date.now() - Number(rec.sent_at || 0) > 30 * 60e3) {
+          await save({ state: 'pending', tx: null, dropped_tx: rec.tx, last_error: 'the transaction was dropped; sent again' });
+          out.push({ id, state: 'pending', dropped: rec.tx });
+        } else out.push({ id, state: 'sent', tx: rec.tx });
+        continue;
+      }
       const got = transferredIn(r.logs, a.permitted.token, a.from, a.witness.to);
       const ok = r.status === 'success' && got >= BigInt(rec.req.amount ?? rec.req.maxAmountRequired);
       await save({ state: ok ? 'settled' : 'failed', settled_at: Date.now(), ...(ok ? {} : { reason: 'the settlement landed without the payment' }) });

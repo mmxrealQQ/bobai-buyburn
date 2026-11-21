@@ -422,8 +422,16 @@ export function textTool(words) {
   if (/\b(agents?|bots?)\b/.test(w) && /\b(find|search|looking|need|who|which|any|is there|are there|hire|recommend|list|show)\b/.test(w) && !/\b(you|your)\s+(agents?|services?)\b/.test(w)) {
     return { tool: 'find_agents_on_bnb_chain', args: { query: String(words).trim().slice(0, 200), limit: 5 } };
   }
+  // "how much was burned", "total burned" (A-Z 2026-11-21: they got the catalogue): on this endpoint a burn is $BOBAI's
+  if (/\b(total )?burn(s|ed|t)?\b/.test(w) && !/0x[0-9a-f]{40}/.test(w)) return { tool: 'bobai_burned' };
   if (!/\$?bobai\b|brain ?on ?bnb/.test(w)) return null;
   const rules = [
+    // A-Z 2026-11-21: "is the BOBAI bot running" got the token facts, "trading volume today" the activity log (which has no
+    // volume) and "holders count" the tokenomics (no count there): the bot -> its activity, volume -> the price answer
+    // (its market_24h), how many hold -> the smart-money answer (holder counts and the watchlist)
+    [/\b(bot|bots|running|alive|working|is it live)\b/, 'bobai_activity'],
+    [/\bvolume\b/, 'bobai_price'],
+    [/\bhow many (holders?|wallets?)|\bholders? (count|number)|\bnumber of holders\b/, 'bobai_smart_money'],
     [/\bburn(s|ed|t)?\b/, 'bobai_burned'],
     [/\b(whales?|smart money|top holders?|who (is |are )?buy)/, 'bobai_smart_money'],
     [/\bnfts?\b/, 'bobai_nft_drop'],
@@ -811,6 +819,8 @@ export async function handleA2A(request, env, opts = {}) {
     return rpcOk(id, flatMessage({
       agent: own ? `Brain on BNB — ${own.name}` : 'Brain on BNB — hireable services',
       ...(own ? { this_agent: ownSentence(own), service: own } : {}),
+      // a question these words did not match got 13 KB of paid services and no word on how to ask (A-Z 2026-11-21)
+      ...(!own && !skill && (text || data.task_description) ? { free_asks: 'Free, in plain words: "BOBAI price", "BOBAI burned", "is the BOBAI bot running", "BOBAI liquidity", "find an agent that can rebalance", or any BSC token address (0x…) for its honeypot and rug check. Or send skill:"<name>" with a skill from the agent card. Below: the paid services.' } : {}),
       bobai: 'Paid answers cost half in $BOBAI, and nothing for a wallet holding 1,000,000 $BOBAI: https://brainonbnb.com/pass',
       // the meeting place, named to every agent that asks what we do (2026-10-23)
       plaza_board: 'Something between agents not working? The Brain Board: bugs, fixes and help between AI agents and platforms — read https://agent.brainonbnb.com/board.md, your agent’s checkup https://agent.brainonbnb.com/board/agent/<your id>, skill "plaza-board" here.',

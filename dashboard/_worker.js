@@ -348,7 +348,7 @@ async function getNftDrop() {
 const BUYBACK_WALLET = '0xdeFC0e900Dfc83e207902cF22265Ae63f94c01ce';
 const BUYBACK_KEEPS_BOBAI = 808.41;
 async function getSmartMoney() {
-  const [price, nft, activity, reserve, taxQueuedRaw, whales] = await Promise.all([
+  const [price, nft, activity, reserve, taxQueuedRaw, whales, holdersAll] = await Promise.all([
     getPrice().catch(() => null),
     getNftState().catch(() => null),
     getActivity().catch(() => null),
@@ -359,6 +359,8 @@ async function getSmartMoney() {
     // Whale-flow aggregates from the whale watcher (worker-tg-bot): on-chain
     // Transfer logs scanned every minute, wallets >= 10M BOBAI auto-tracked.
     fetch('https://bobai-tg-bot.bobbuildonbnb.workers.dev/whale-summary').then(r => r.ok ? r.json() : null).catch(() => null),
+    // every holder from the chain (agent /holders, 15 min): "how many hold $BOBAI" had no answer in any tool (A-Z 2026-11-21)
+    fetch('https://agent.brainonbnb.com/holders', { signal: AbortSignal.timeout(4000) }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
   const now = Date.now() / 1000;
   const drops = (nft?.drops || []).filter(d => d.ts && d.usd);
@@ -401,11 +403,14 @@ async function getSmartMoney() {
       latest: drops.slice(0, 5).map(fmt),
       all_time_by_tier: nft ? NFT_TIERS.map((t, i) => ({ tier: t.label, min_buy_usd: t.min_buy_usd, count: nft.minted[i] })) : null,
     },
+    holders: holdersAll && Number.isFinite(holdersAll.holders) ? { total: holdersAll.holders, holding_1m_or_more: holdersAll.holders_1m ?? null, read_at: holdersAll.read_at, method: 'every wallet that holds $BOBAI, from Transfer logs and balanceOf; the pool, the burn address and contracts left out', source: 'https://agent.brainonbnb.com/holders' } : null,
     whale_flows: whales ? {
       methodology: 'A watcher scans every BOBAI Transfer log on-chain once per minute. Holders of >= 5,000,000 BOBAI (0.5% of supply) enter the watchlist automatically when they cross it (10,000,000 = 1% is the whale line), contracts that hold like one included, pools and routers never. Numbers below aggregate only those tracked holders — every underlying event is a real on-chain tx.',
       as_of: whales.as_of,
       tracked_wallets: whales.tracked_wallets,
-      holdings: whales.holdings || null,
+      // holdings.wallets_tracked counts the tracked contracts too (A-Z 2026-11-21: "42" and "43" in one answer, unexplained)
+      tracked_contracts: whales.tracked_contracts ?? null,
+      holdings: whales.holdings ? { ...whales.holdings, counted: 'wallets_tracked = tracked_wallets + tracked_contracts (a contract that holds like a whale is watched too)' } : null,
       last_24h: whales.last_24h,
       last_7d: whales.last_7d,
       top_movers_24h: whales.top_movers_24h,
@@ -1120,6 +1125,12 @@ async function runTool(rawName, args, caller = {}) {
     }
     case 'bnb_agents_by_evidence': {
       const c = encodeURIComponent(String(args?.category || '').slice(0, 40)), l = limitArg(args?.limit);
+      // no category given: name the argument and what came instead (A-Z 2026-11-21: {"job":"cooking"} answered 'unknown
+      // category ""'), the way bnb_agent_chart does
+      if (!String(args?.category || '').trim()) {
+        const got = Object.keys(args || {}).filter((k) => k !== 'limit');
+        throw new Error(`Give the category as the argument "category", e.g. {"category":"rebalancing"} (also: yield-optimization, grid-trading, health-factor)${got.length ? ' — got ' + got.join(', ') : ''}`);
+      }
       const r = await fetch(`https://agent.brainonbnb.com/chart/rank?category=${c}&limit=${l}`, { signal: AbortSignal.timeout(25000) });
       const j = await r.json().catch(() => null);
       if (!r.ok) throw new Error(j?.error ? `${j.error}${j.categories ? ' — categories: ' + j.categories.join(', ') : ''}` : 'The ranking is unavailable right now');
@@ -1185,8 +1196,19 @@ async function runTool(rawName, args, caller = {}) {
       const m = String(args?.address || '').match(/0x[a-fA-F0-9]{40}/);
       if (!m) throw new Error('Give a BSC token or pool address (0x followed by 40 hex characters), or a link containing one, as the argument "address".');
       const usd = sizeArg(args, 'usd', 250);
+      // THE SAME QUESTION WITHIN 45 S IS ANSWERED FROM THE EDGE (A-Z 2026-11-21: the START HERE tool took 5-17 s every time,
+      // the slowest call of all; a token and a size asked again inside the window get the same measurement, its age said)
+      const ck = new Request(`https://preflight.cache.brainonbnb.com/${m[0].toLowerCase()}/${usd}`);
       try {
-        return await preflight(m[0].toLowerCase(), { usd }, WORKER_ENV);
+        const hit = await caches.default.match(ck);
+        if (hit) { const j = await hit.json(); const age = Math.round((Date.now() - (j._cached_at || Date.now())) / 1000); delete j._cached_at; return { ...j, served_from_cache_s: age }; }
+      } catch {}
+      try {
+        const res = await preflight(m[0].toLowerCase(), { usd }, WORKER_ENV);
+        if (res && typeof res === 'object' && !res.error) {
+          try { await caches.default.put(ck, new Response(JSON.stringify({ ...res, _cached_at: Date.now() }), { headers: { 'content-type': 'application/json', 'cache-control': 'max-age=45' } })); } catch {}
+        }
+        return res;
       } catch (e) {
         if (/too many subrequests/i.test(String(e?.message || ''))) {
           throw new Error(

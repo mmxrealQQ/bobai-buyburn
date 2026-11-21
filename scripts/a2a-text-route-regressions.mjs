@@ -23,6 +23,11 @@ const ask = async (text, path = '/a2a') => {
 };
 
 const CASES = [
+  // A-Z 2026-11-21: these got the token facts, the activity log without a volume, the tokenomics without a count, the catalogue
+  ['is the BOBAI bot running', 'bobai_activity'],
+  ['BOBAI trading volume today', 'bobai_price'],
+  ['how many holders does BOBAI have', 'bobai_smart_money'],
+  ['total burned', 'bobai_burned'],
   ['what is the price of BOBAI', 'bobai_price'],
   ['how do I buy $BOBAI', 'bobai_purchase_guide'],
   ['how much BOBAI has been burned', 'bobai_burned'],

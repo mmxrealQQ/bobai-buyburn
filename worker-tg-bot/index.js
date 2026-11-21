@@ -1760,7 +1760,7 @@ function describeAddr(addr, clusterTag, balTokens, priceUsd) {
   if (a === BOBAI_TOKEN.toLowerCase()) return 'BOBAI contract';
   if (a === '0xdefc0e900dfc83e207902cf22265ae63f94c01ce') return 'Buyback bot (tax collector)';
   if (a === '0x15ba17075ef5e0736292b030e3715d9100fe3d38') return 'Dev-buyback bot';
-  if (a === '0x5e4102520a71b2aa18a1208330d4848dea4bd105') return 'WC26 prize pool';
+  if (a === '0x5e4102520a71b2aa18a1208330d4848dea4bd105') return 'Brain Pop prize wallet';
   if (a === '0x5c82d2f12ee6ac09297784f94ebf9331277bdc3c') return 'Dev personal';
   const tag = clusterTag ? `🔗${clusterTag}` : 'Solo';
   if (balTokens == null) return tag;
@@ -2659,7 +2659,7 @@ const BOT_COMMANDS = [
   { command: 'help',     description: 'Show all commands' },
   { command: 'liq',      description: 'Liquidity depth, price impact & trade cost' },
   { command: 'nft',      description: 'Buy Drops NFT — tier progress & latest mints' },
-  { command: 'pop',      description: 'Brain Pop: the top 3 of today, the season leader, the prize pool, play' },
+  { command: 'pop',      description: 'Brain Pop: the boards, the season leader and the prize pool' },
   { command: 'price',    description: 'Live price, volume & market stats' },
   { command: 'security', description: 'Anti-scam reminder & official links' },
   { command: 'social',   description: 'All project links' },
@@ -2773,7 +2773,7 @@ export function renderPopNow(today, d, all, pool, priceUsd) {
     ...(over ? [] : rows.length ? rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`) : ['Nobody on today\'s board yet. The first run takes the crown.']),
     over ? '' : `${Number((d && d.players) || 0).toLocaleString('en-US')} player${(d && d.players) === 1 ? '' : 's'} today`,
     leader ? `👑 ${over ? 'Champion' : 'Season leader'}: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : '',
-    bobai != null && !over ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · goal $10 · the overall #1 on 30 Nov takes it all` : '',
+    bobai != null && !over ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · the overall #1 on 30 Nov takes it all` : '',
     '',
     over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/m/pop?from=tg',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
@@ -3594,7 +3594,7 @@ Here's what I can do:
 ☀️ /giggle — Giggle Academy pot: donated Nov 20, every send with its tx
 💧 /liq — Liquidity depth, price impact & trade cost
 🎁 /nft — Buy Drops NFT — tier progress & latest mints
-🎮 /pop — Brain Pop: today's board, the prize pool, play
+🎮 /pop — Brain Pop: the boards and the prize pool
 📊 /price — Live price, volume & market stats
 ⚠️ /security — Anti-scam reminder & official links
 🧠 /social — All project links

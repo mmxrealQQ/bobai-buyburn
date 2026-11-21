@@ -25,7 +25,7 @@ export const THANKS = Object.freeze({
   },
   bobai: {
     token: BOBAI_TOKEN,
-    what_it_is: 'The token of the project that runs these tools. Every trade pays 3% tax, split on-chain: BOBAI bought back and burned, liquidity added and burned, the DeFi agent and more.',
+    what_it_is: 'The token of the project that runs these tools. Every trade pays 3% tax, split on-chain: BOBAI bought back and burned, the creator share and, from Dec 1, 2026, BOBAI/BNB liquidity with the LP burned.',
     pancakeswap: `https://pancakeswap.finance/swap?chain=bsc&outputCurrency=${BOBAI_TOKEN}`,
   },
   by: 'BOBAI · https://brainonbnb.com',

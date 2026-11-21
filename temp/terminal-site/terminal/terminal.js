@@ -623,7 +623,9 @@ function layout() {
       // 0.55 below the core, not 0.95: labels that wrap on a 360-390 px phone kept the second row clear of the view tabs (A3, 2026-09-25)
       // a little further apart (operator, 2026-10-05: "give the six points on the phone a bit more distance"): the rows
       // gain what the names gave back by moving nearer to their lights (placeLabels, --off)
-      d.pos.set((i % 3 - 1) * viewW * 0.325, A.core.y - 0.5 - Math.floor(i / 3) * 1.1, 0);
+      // with the named row at the bottom (ORD) the rows stand closer, so the names stay above the view tabs (A-Z 2026-11-21:
+      // on 390 px BURN $BOBAI's name sat wholly behind BRAIN/MONEY/BOTS)
+      d.pos.set((i % 3 - 1) * viewW * 0.325, A.core.y - (ORD ? 0.25 : 0.5) - Math.floor(i / 3) * (ORD ? 0.75 : 1.1), 0);
     } else {
       const top = viewH / 2 - viewH * 0.16, bot = -viewH / 2 + tlH + viewH * 0.1;
       const y = top - i * (top - bot) / (n - 1);
@@ -3016,7 +3018,7 @@ const CMDS = {
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
-    say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], ` and ${bobAmt(wk.reduce((a, e) => a + bobOf(e), 0))}.`], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); },
+    say([[bobaiAmt(S.deadA || 0)], ` burned in total (${supplyPct(S.deadA || 0)}% of supply). This week the bot burned `, [bobaiAmt(wk.reduce((a, e) => a + (+e.bobaiBurned || 0), 0))], (() => { const b = wk.reduce((a, e) => a + bobOf(e), 0); return b > 0 ? ` and ${bobAmt(b)}.` : '.'; })()], [['last burn', S.burns.at(-1)?.bobaiBurnTx]], D.burnA.c); }, // no "and 0 BOB" once no run burns $BOB (from Dec 1)
   next: () => { setFocus('core'); const left = W.buyback.last ? W.buyback.last + 600e3 - Date.now() : 0;
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
@@ -3135,6 +3137,10 @@ CMDS.joke = () => { jokeTap(); }; // the joke is the bubble alone, nothing for t
 CMDS.tax = () => say([vary('ask-tax', ['The tax, as the contract has it: ', 'Every buy and every sell: ', 'Simple: ', 'Here is where the tax goes: ', 'The split: ']),
   ['3% on every trade'], ': ' + splitWords() + ' (the split in force). The token swaps it to BNB at a sell once ', [bobaiAmt(MIN_DISPATCH)], ' are collected; the bot splits it within 10 minutes. Type ', ['next'], ' for the charge.']);
 CMDS.mood = () => say([moodLine()]);
+// "brain pop" (the pink button's name) answered "I do not know" (A-Z 2026-11-21); after the season it says so
+CMDS.pop = () => Date.now() >= Date.parse('2026-12-01T00:00:00Z')
+  ? say([vary('ask-pop-over', ['The Brain Pop season ended on 30 November. The final boards stay at brainonbnb.com/pop.', 'Brain Pop is over: the season closed on 30 November. Its boards are at brainonbnb.com/pop.', 'The rot season is done, it ended 30 November. Final scores: brainonbnb.com/pop.', 'Brain Pop closed on 30 November. Who won, and every board: brainonbnb.com/pop.', 'Season over since 30 November. The Brain Pop boards are kept at brainonbnb.com/pop.'])])
+  : say([vary('ask-pop', ['Brain Pop: tap the creatures fast, never the red RUG candle. The overall #1 on 30 November takes the prize pool. Tap the pink button to play.', 'My game! 60 seconds, tap the creatures, dodge the RUG candle. Whoever leads on 30 November takes the pool. The pink button starts it.', 'Brain Pop is on until 30 November: streaks multiply your points, a RUG candle breaks them. The season #1 takes the pool. Pink button.', 'Tap, streak, never the red candle. That is Brain Pop. Boards and the prize pool at brainonbnb.com/pop, or tap the pink button.', 'Free, one minute a run, a new daily board every day until 30 November. The overall #1 takes the pool. Hit the pink button.'])]);
 CMDS.ca = () => say([vary('ask-ca', ['The one and only contract: ', 'Here it is: ', 'BOBAI on BNB Chain: ', 'Copy it from here, never from a DM: ', 'The contract address: ']), [BOBAI],
   '. Ownership renounced. Paste any other token address here and I check it for you.']);
 CMDS.nft = () => { const n = S.nft; if (!n) return say(['Still reading the NFT drops — ask again in a few seconds.']);
@@ -3212,7 +3218,8 @@ const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus o
   [/^(hi+|hey+|hello|helo|hallo|gm|yo|sup|good (morning|evening|afternoon)|morning)\b/, 'hi'],
   [/\b(brain ?board|plaza board|the board|board|join|help each other|take part)\b/, 'board'], // 2026-10-24: the Brain Board (before 'agents': "brain plaza board" is the board)
   [/\b(what can you do|commands?|help)\b/, 'help'],
-  [/\b(tax|taxes)\b/, 'tax'],
+  [/\b(tax|taxes|split|creator)\b/, 'tax'], // A-Z 2026-11-21: "creator" (a station's name) and "split" answered "I do not know"
+  [/\bbrain ?pop\b|\b(the game|play the game|rot game)\b/, 'pop'],
   [/\b(price|cost\w*|mcap|market ?cap|marketcap|worth|chart|value)\b|\bhow much (is|for|does|would)\b/, 'price'],
   [/\b(burn\w*|dead ?address|supply)\b/, 'burns'],
   [/\b(lp|liq\w*|pool|depth|locked)\b/, 'liq'],

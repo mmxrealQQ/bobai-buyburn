@@ -250,7 +250,7 @@
 <link rel="stylesheet" href="brain/brain.css?v=1795179570020">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1795163116">
+<link rel="stylesheet" href="terminal/terminal.css?v=1795163119">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -573,7 +573,7 @@
         <div class="lqm">
           <div class="lqv ld" id="lq-hard">--</div>
           <div class="lql">Hard BNB Backing</div>
-          <div class="lqs" data-nousd>The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; this half keeps its value if the price falls.</div>
+          <div class="lqs" data-nousd>The BNB side alone <span class="lqn ld" id="lq-bnb">--</span> &middot; <span class="lqn ld" id="lq-bnb-usd">--</span> &mdash; real BNB, locked for good: only trades move it, nobody can pull it.</div>
         </div>
       </div>
       <div class="lqi">
@@ -1141,7 +1141,7 @@
             <span class="lib-t">Telegram Bot</span>
             <span class="lib-s">Buy alerts, burn alerts, price, whale tracking, captcha.</span>
           </span>
-          <span class="lib-m">12 files &middot; 5,908 lines &middot; 0.1 MB</span>
+          <span class="lib-m">12 files &middot; 5,914 lines &middot; 0.1 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1328,7 +1328,7 @@
             <span class="lib-t">Xmas Terminal — the community builds the terminal's look</span>
             <span class="lib-s">One npx command, your own AI agent, a sandboxed theme on the live terminal.</span>
           </span>
-          <span class="lib-m">13 files &middot; 1,412 lines &middot; 46 KB</span>
+          <span class="lib-m">13 files &middot; 1,398 lines &middot; 45 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1571,7 +1571,7 @@
 <script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1795163116')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1795163119')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
 <script src="brain/brain.js?v=1795179570021" defer></script>
 <script src="brain/cards.js?v=1795179570021" defer></script>

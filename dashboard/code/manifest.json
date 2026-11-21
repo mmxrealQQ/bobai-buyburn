@@ -190,10 +190,10 @@
    "title": "Telegram Bot",
    "tagline": "Buy alerts, burn alerts, price, whale tracking, captcha.",
    "files": 12,
-   "lines": 5908,
-   "zipBytes": 104370,
-   "txtBytes": 312877,
-   "sha256": "5e5516f1c46c7711",
+   "lines": 5914,
+   "zipBytes": 104497,
+   "txtBytes": 313181,
+   "sha256": "1c49c1e07d2c3972",
    "reqs": [
     {
      "what": "A bot token",
@@ -555,10 +555,10 @@
    "title": "Xmas Terminal — the community builds the terminal's look",
    "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
    "files": 13,
-   "lines": 1412,
-   "zipBytes": 47068,
-   "txtBytes": 114426,
-   "sha256": "19112b9218700b6c",
+   "lines": 1398,
+   "zipBytes": 45644,
+   "txtBytes": 110873,
+   "sha256": "43dcb3e6a2167acb",
    "reqs": [
     {
      "what": "A worker and a key-value store of their own",
@@ -670,9 +670,9 @@
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
    "lines": 4396,
-   "zipBytes": 157920,
-   "txtBytes": 472182,
-   "sha256": "5d14b3024c33cb45",
+   "zipBytes": 157970,
+   "txtBytes": 472317,
+   "sha256": "028efb1a3446c341",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -705,9 +705,9 @@
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
    "files": 75,
    "lines": 24945,
-   "zipBytes": 639340,
-   "txtBytes": 1810735,
-   "sha256": "b96273133669e4fc",
+   "zipBytes": 639355,
+   "txtBytes": 1810763,
+   "sha256": "46af4eb7fc82d28d",
    "reqs": [
     {
      "what": "A wallet to be paid into",

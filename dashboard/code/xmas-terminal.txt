@@ -2,7 +2,7 @@
 # One npx command, your own AI agent, a sandboxed theme on the live terminal.
 #
 # This is the complete xmas-terminal bundle as a single file, so it can be read in
-# one fetch. 13 files, 1412 lines.
+# one fetch. 13 files, 1398 lines.
 # Download as a zip: https://brainonbnb.com/code/xmas-terminal.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -1110,379 +1110,365 @@ else say('\n  node xmas.mjs dev | check | upload | status | image | video   — 
 ==============================================================================
 
 <!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BOBAI Builds Xmas on BNB — back</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-  /* Christmas on BNB Chain: a tree of golden blocks behind BOBAI, the elves decorating it */
-  /* the night sky, and in it the picture: wide, the whole of it at the bottom, melting upward into the sky; tall (a phone), filling it */
-  #sky { position: absolute; inset: 0; background: linear-gradient(#060a1a, #0d1931); opacity: 0;
-    transition: opacity 1.8s ease, filter 6s ease; -webkit-mask-image: var(--hole, none); mask-image: var(--hole, none); }
-  #pic { position: absolute; left: 0; right: 0; bottom: 0; height: var(--picH, 66%); background: url(img/back-wide.webp) center bottom / cover no-repeat;
-    -webkit-mask-image: linear-gradient(transparent 0, #000 22%); mask-image: linear-gradient(transparent 0, #000 22%); }
-  body.tall #pic { top: 0; height: auto; background-image: url(img/back-tall.webp); -webkit-mask-image: none; mask-image: none; }
-  #sky.in { opacity: .93; }
-  body.pump #sky { filter: saturate(1.25) brightness(1.12); }
-  body.up #sky { filter: saturate(1.1) brightness(1.05); }
-  body.down #sky, body.dump #sky { filter: saturate(.9) brightness(.95); }
-  /* the snow under his feet */
-  #ground { position: absolute; left: 0; top: 0; opacity: 0; transition: opacity 1.4s ease; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .4)); }
-  #ground.in { opacity: 1; }
-  /* the stations and the Santa girl */
-  .p { position: absolute; left: 0; top: 0; height: var(--h, 90px); opacity: 0; transition: opacity 1.4s ease; will-change: transform; }
-  .p.in { opacity: 1; }
-  .p img { height: 100%; width: auto; display: block; transform-origin: 50% 90%; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .45));
-    animation: var(--anim, bob) var(--t, 5s) ease-in-out infinite; animation-delay: var(--d, 0s); }
-  .p canvas { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: none; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .45)); }
-  .p.vid img { visibility: hidden; }
-  .p.vid canvas { display: block; }
-  .p i { position: absolute; inset: -22% -28%; border-radius: 50%; background: radial-gradient(closest-side, var(--c), transparent 70%); opacity: 0; transition: opacity .5s ease; }
-  .p.hot i { opacity: .7; }
-  .p.hot img { animation: hop 1s ease; }
-  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4%) rotate(1.5deg); } }
-  @keyframes still { 0%, 100% { transform: none; } }
-  @keyframes hop { 0% { transform: scale(1); } 30% { transform: scale(1.15) translateY(-9%); } 60% { transform: scale(.96); } 100% { transform: scale(1); } }
-  /* the builder elves: the bots, flying their ring round the hologram brain with a block each */
-  .e { position: absolute; left: 0; top: 0; height: var(--eh, 40px); opacity: 0; transition: opacity 1.2s ease; filter: drop-shadow(0 0 6px rgba(255, 210, 90, .8)); will-change: transform; }
-  .e.in { opacity: 1; }
-  /* the sleigh: across the sky on a big buy, and now and then just so */
-  #sleigh { position: absolute; left: 0; top: 0; width: var(--sw, 260px); opacity: 0; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .45)); }
-  #sleigh.go { animation: fly var(--ft, 5s) cubic-bezier(.45, .05, .55, .95) forwards; }
-  @keyframes fly { 0% { opacity: 0; transform: translate(var(--x0), var(--y0)) rotate(-4deg); } 10% { opacity: 1; }
-    50% { transform: translate(calc((var(--x0) + var(--x1)) / 2), var(--ym)) rotate(3deg); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x1), var(--y1)) rotate(-3deg); } }
-  /* the tree's own lights, twinkling over the picture */
-  #tw { position: absolute; inset: 0; width: 100%; height: 100%; }
-  /* little scenes: a delivery elf, a warm word, hearts, a shooting star */
-  .fly { position: absolute; left: 0; top: 0; height: var(--eh, 42px); filter: drop-shadow(0 0 8px rgba(255, 215, 100, .9)); will-change: transform; transition: opacity .6s ease; }
-  .say { position: absolute; left: 0; top: 0; max-width: 190px; padding: 7px 12px; border-radius: 16px 16px 16px 4px; background: #fffaf0; color: #5a2a14;
-    font: 700 13px/1.25 'Trebuchet MS', 'Segoe UI', sans-serif; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); opacity: 0; transform: translateY(8px) scale(.9); transform-origin: 0 100%;
-    transition: opacity .45s ease, transform .45s cubic-bezier(.3, 1.6, .5, 1); white-space: normal; }
-  .say.in { opacity: 1; transform: none; }
-  .say.r { border-radius: 16px 16px 4px 16px; transform-origin: 100% 100%; }
-  .heart { position: absolute; left: 0; top: 0; font-size: 18px; color: #ff4f87; text-shadow: 0 0 8px rgba(255, 90, 140, .8); animation: up 2.6s ease-out forwards; }
-  @keyframes up { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx, 0px), -120px) scale(1.2); } }
-  .shoot { position: absolute; left: 0; top: 0; width: 140px; height: 2px; background: linear-gradient(90deg, rgba(255, 240, 200, 0), #fff6d8); border-radius: 2px;
-    box-shadow: 0 0 10px #fff2b0; transform-origin: 100% 50%; animation: shoot 1.3s ease-in forwards; }
-  @keyframes shoot { 0% { opacity: 0; transform: translate(var(--sx), var(--sy)) rotate(18deg) scaleX(.2); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(var(--sx) + 420px), calc(var(--sy) + 140px)) rotate(18deg) scaleX(1); } }
-  body.calm .p img, body.calm .p.hot img { animation: none; }
-  body.calm #sleigh { display: none; }
-  body.off * { animation-play-state: paused !important; }
-</style>
-</head>
-<body>
-<div id="sky"><div id="pic"></div><canvas id="tw"></canvas></div>
-<img id="ground" alt="" src="img/ground.webp">
-<img id="sleigh" alt="" src="img/sleigh.webp">
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}canvas{position:fixed;inset:0;width:100%;height:100%}</style>
+</head><body><canvas id="c"></canvas>
 <script>
-  // BOBAI builds Xmas by mmx_QQ — Christmas on BNB Chain: building and decorating, one block at a time.
-  // From 1 Dec the terminal has three stations and the trades. Each gets its own little thing; the Santa girl waves at the creator.
-  const P = {
-    burnA:   { img: 'st-burn',    c: 'rgba(255,150,50,.9)',  k: 1,    side: 'left' },  // the block stove: $BOBAI burned
-    liq:     { img: 'st-liq',     c: 'rgba(255,215,120,.9)', k: 1,    side: 'left' },  // the cocoa fountain: liquidity poured
-    creator: { img: 'st-creator', c: 'rgba(255,120,120,.85)', k: 0.95, side: 'left' }, // the gift table: the creator's share
-    santa:   { img: 'girl-santa', c: 'rgba(255,90,130,.8)',  k: 1.25, anim: 'still', vid: 'vid/santa.mp4', at: 'creator' }, // she waves, winks, blows a kiss
-    trades:  { img: 'santa-bobai', c: 'rgba(255,215,90,.9)', k: 1.55, anim: 'still', vid: 'vid/santa-bobai.mp4', side: 'up' }, // Santa BOBAI brings the blocks: he laughs, waves, winks
-  };
-  const sky = document.getElementById('sky'), ground = document.getElementById('ground'), sleigh = document.getElementById('sleigh'), D = {}, E = [];
-  let calm = false, run = true, L = null, flyAt = 0;
-  for (const [k, s] of Object.entries(P)) {
-    const d = document.createElement('div'); d.className = 'p'; d.style.setProperty('--c', s.c); if (s.anim) d.style.setProperty('--anim', s.anim);
-    d.style.setProperty('--t', (4.5 + Math.random() * 2).toFixed(2) + 's'); d.style.setProperty('--d', (-Math.random() * 5).toFixed(2) + 's');
-    d.innerHTML = '<i></i><img alt="" src="img/' + s.img + '.webp">'; document.body.appendChild(d); D[k] = d;
-  }
-  for (let i = 0; i < 5; i++) { const e = document.createElement('img'); e.className = 'e'; e.alt = ''; e.src = 'img/elf.webp'; document.body.appendChild(e); E.push({ el: e, ph: Math.random() * 6.28 }); }
+// "BOBAI Builds Xmas on BNB" — quiet edition (21 Nov 2026): no backdrop, only light and a little paint. A painted fir
+// wound with slowly turning light strings and a gold star, gifts at BOBAI's feet, a garland along the top, a ring of
+// lights at each station. The chain moves it: a buy lays one more gift and lights one tree light, a burn flares the
+// BURN ring, a liquidity add sends a wave up the tree, a big buy makes the star shine and sparks rise from it.
+// SMOOTH (operator: "it must be more fluid"): every glow is a pre-painted sprite, the fir and each gift are painted once
+// into their own small canvas and only placed per frame, every change runs on the frame's time, not the frame count.
+(() => {
+  const cv = document.getElementById('c'), cx = cv.getContext('2d');
+  let W = innerWidth, H = innerHeight, dpr = 1, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches, on = true;
+  let L = null; // the last layout
+  const GOLD = '#F0B90B', WARM = '#ffe7b0';
+  const ST_COL = { burnA: '#ff8a1f', liq: '#2ee6c8', creator: '#c9b8a8', burnB: '#ffc247', defi: '#60a5fa', giggle: '#f472b6' };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const mk = (w, h) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w)); c.height = Math.max(1, Math.ceil(h)); return c; };
 
-  // the Santa girl alive: her clip on flat green, keyed in a small canvas (the picture stays when the device asks for calm)
-  function alive(k) {
-    const s = P[k], d = D[k]; if (!s.vid || calm || d._alive) return; d._alive = true;
-    const v = document.createElement('video'); v.crossOrigin = 'anonymous'; v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'auto'; v.src = s.vid;
-    const cv = document.createElement('canvas'), g = cv.getContext('2d', { willReadFrequently: true }); d.appendChild(cv);
-    let ok = false, t0 = 0;
-    v.addEventListener('playing', () => { ok = true; d.classList.add('vid'); });
-    v.play().catch(() => {});
-    (function draw(now) {
-      requestAnimationFrame(draw);
-      if (!ok || !run || v.readyState < 2 || now - t0 < 33) return; t0 = now;
-      const h = d.clientHeight * 1.32, dpr = Math.min(devicePixelRatio || 1, 1.5), H = Math.round(h * dpr), W = Math.round(H * v.videoWidth / v.videoHeight);
-      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; cv.style.height = h + 'px'; cv.style.width = (h * v.videoWidth / v.videoHeight) + 'px'; }
-      g.drawImage(v, 0, 0, W, H);
-      const im = g.getImageData(0, 0, W, H), p = im.data;
-      for (let i = 0; i < p.length; i += 4) {
-        const r = p[i], gg = p[i + 1], b = p[i + 2], m = r > b ? r : b, dom = gg - m;
-        if (dom > 18) { const a = 255 - (dom - 18) * 7; p[i + 3] = a < 0 ? 0 : a; p[i + 1] = m + (dom > 40 ? 0 : (dom - 18) * 0.3); }
+  // ---- glow sprites: one soft round light per colour, painted once -----------------------------------------------------
+  const SPR = {};
+  function sprite(col) {
+    if (SPR[col]) return SPR[col];
+    const c = mk(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, col); gr.addColorStop(0.25, col + 'aa'); gr.addColorStop(1, col + '00');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return (SPR[col] = c);
+  }
+  function glow(x, y, r, col, a) { if (a <= 0.004) return; cx.globalAlpha = Math.min(1, a); cx.drawImage(sprite(col), x - r, y - r, r * 2, r * 2); cx.globalAlpha = 1; }
+  const DOT = {};
+  function dotSpr(col) { if (DOT[col]) return DOT[col]; const c = mk(16, 16), g = c.getContext('2d'); g.fillStyle = col; g.beginPath(); g.arc(8, 8, 7.5, 0, 6.283); g.fill(); return (DOT[col] = c); }
+  function dot(x, y, r, col, a) { cx.globalAlpha = Math.min(1, a); cx.drawImage(dotSpr(col), x - r, y - r, r * 2, r * 2); cx.globalAlpha = 1; }
+
+  // ---- the tree ------------------------------------------------------------------------------------------------------
+  const LIGHTS = [];
+  function buildLights(n) {
+    LIGHTS.length = 0;
+    for (let s = 0; s < 2; s++) for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n; // 0 top .. 1 bottom
+      const col = Math.random() < 0.14 ? ['#ff7a66', '#2ee6c8', '#ffc247'][Math.floor(Math.random() * 3)] : (Math.random() < 0.55 ? WARM : GOLD);
+      LIGHTS.push({ t, a: t * 5.2 * Math.PI * 2 + s * Math.PI, col, ph: rnd(0, 6.28), sp: rnd(0.25, 0.7), boost: 0 });
+    }
+  }
+  let tree = { x: 0, y: 0, h: 0, w: 0 }, star = 0, wave = -1, rot = 0;
+  // the painted fir: soft brush strokes in four tiers, deep green with a few strokes of gold ink, painted once per layout
+  let fir = null;
+  function paintFir() {
+    const { h, w } = tree, pad = 6, c = mk((w + pad * 2) * dpr, (h + pad * 2) * dpr), g = c.getContext('2d');
+    g.scale(dpr, dpr); g.translate(pad + w / 2, pad); g.lineCap = 'round';
+    for (let k = 0; k < 4; k++) {
+      const t0 = 0.08 + k * 0.22, t1 = t0 + 0.34, n = W < 600 ? 10 : 15;
+      for (let i = 0; i < n; i++) for (const side of [-1, 1]) {
+        const ts = t0 + rnd(0, 0.06), te = Math.min(1, t1 + rnd(-0.04, 0.04)), spread = rnd(0.55, 1.05) * (i / n * 0.6 + 0.4);
+        const y0 = h * ts, y1 = h * te, hw = (w / 2) * te * spread, gold = Math.random() < 0.1, a = rnd(0.1, 0.22);
+        g.strokeStyle = gold ? `rgba(240,185,11,${a * 0.8})` : `rgba(46,128,86,${a})`; g.lineWidth = rnd(1.4, 3.4) * (W < 600 ? 0.8 : 1);
+        g.beginPath(); g.moveTo(side * 1.5, y0); g.quadraticCurveTo(side * hw * (0.45 + rnd(-0.12, 0.12)), y0 + (y1 - y0) * 0.35, side * hw, y1); g.stroke();
       }
-      g.putImageData(im, 0, 0);
-    })(0);
+    }
+    g.strokeStyle = 'rgba(255,231,176,0.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, h * 0.08); g.lineTo(0, h); g.stroke();
+    fir = { c, pad };
+  }
+  // glass baubles on the tree, turning with it
+  const TB = [[0.3, 0.6, ['#d9343a', '#7a0d14']], [0.42, 2.9, ['#F0B90B', '#8a5a00']], [0.52, 4.6, ['#2ee6c8', '#0c5a52']], [0.63, 1.4, ['#f4f1ea', '#9a948a']], [0.72, 3.8, ['#d9343a', '#7a0d14']], [0.81, 5.6, ['#F0B90B', '#8a5a00']], [0.89, 0.2, ['#2ee6c8', '#0c5a52']], [0.95, 2.2, ['#f4f1ea', '#9a948a']]];
+  const BAUB = {};
+  function baubleSpr(c0, c1) {
+    const k = c0 + c1; if (BAUB[k]) return BAUB[k];
+    const c = mk(48, 48), g = c.getContext('2d'), gr = g.createRadialGradient(18, 18, 2, 24, 24, 22);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.18, c0); gr.addColorStop(1, c1);
+    g.fillStyle = gr; g.beginPath(); g.arc(24, 24, 22, 0, 6.283); g.fill();
+    g.strokeStyle = 'rgba(255,248,220,0.35)'; g.lineWidth = 1.2; g.stroke();
+    return (BAUB[k] = c);
   }
 
-  function place(m) {
-    L = m;
-    document.body.classList.toggle('tall', m.portrait || m.h > m.w);
-    const topMin = m.ui && m.ui.top ? m.ui.top.y + m.ui.top.h + 4 : 60;
-    const base = m.portrait ? Math.max(36, Math.min(60, m.w * 0.12)) : Math.max(60, Math.min(100, m.h * 0.105));
-    for (const [k, d] of Object.entries(D)) {
-      const s = P[k], at = s.at || k, p = at === 'trades' ? m.trades : m.stations && m.stations[at];
-      if (!p) { d.classList.remove('in'); continue; }
-      const h = base * s.k * (k === 'santa' ? 1.45 : 1), w = h * (s.vid ? 0.55 : 0.95);
-      let x, y;
-      if (k === 'santa') { x = p.x - base * 0.55 - w - 2; y = p.y - h * 0.7; }              // beside the gift table, on its left
-      else if (s.side === 'up') { x = p.x - w / 2; y = p.y - h * 1.12; }                   // Santa BOBAI just above the trades label
-      else { x = p.x - w / 2; y = p.y - h * 0.62; }                                        // on its own light, where the orb was
-      x = Math.max(4, Math.min(m.w - w - 4, x)); y = Math.max(topMin, Math.min(m.h - h - 4, y));
-      d.style.setProperty('--h', h + 'px'); d.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; d.classList.add('in');
+  // ---- the garland along the top --------------------------------------------------------------------------------------
+  let garland = [], baubles = [];
+  function buildGarland() {
+    // along the very top edge, like a garland over a door: shallow, behind the terminal's own labels
+    const spans = W < 600 ? 3 : 5, y0 = 3, sag = W < 600 ? 10 : 14;
+    garland = []; baubles = [];
+    const cols = [['#d9343a', '#7a0d14'], [GOLD, '#8a5a00'], ['#2ee6c8', '#0c5a52'], ['#f4f1ea', '#9a948a']];
+    for (let i = 0; i < spans; i++) {
+      const x1 = (i / spans) * W, x2 = ((i + 1) / spans) * W;
+      garland.push({ x1, x2, y: y0, sag });
+      // on a wide screen the top row is full of buttons: there the baubles hang on the tree
+      if (W < 600) baubles.push({ x: (x1 + x2) / 2, y: y0 + sag, len: rnd(7, 15), r: 7 * rnd(0.85, 1.15), c: cols[i % cols.length], ph: rnd(0, 6.28), amp: rnd(0.05, 0.1), kick: 0 });
     }
-    if (m.figure) { const gw = m.figure.w * (m.portrait ? 1.7 : 1.85), gh = gw * 242 / 640;
-      ground.style.width = gw + 'px'; ground.style.transform = 'translate(' + Math.round(m.figure.x + m.figure.w / 2 - gw / 2) + 'px,' + Math.round(m.figure.y + m.figure.h - gh * 0.5) + 'px)'; ground.classList.add('in'); }
-    for (const e of E) e.el.style.setProperty('--eh', (m.portrait ? 26 : 40) + 'px');
-    if (m.ring) { const r = Math.min(m.w, m.h) * (m.portrait ? 0.07 : 0.095);
-      sky.style.setProperty('--hole', 'radial-gradient(circle at ' + m.ring.x + 'px ' + m.ring.y + 'px, transparent 0, transparent ' + r + 'px, #000 ' + (r + 60) + 'px)'); }
-    sky.style.setProperty('--picH', Math.round(Math.min(m.h, m.w * 1024 / 1536)) + 'px'); // the wide picture's own height at this width
-    sleigh.style.setProperty('--sw', Math.round(m.portrait ? m.w * 0.5 : Math.min(320, m.w * 0.26)) + 'px');
-    sky.classList.add('in');
   }
-  // the elves fly their ring round the brain, as the bots do, each with a block
-  let last = performance.now();
-  (function orbit(now) {
-    requestAnimationFrame(orbit);
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!run || !L || !L.brain) return;
-    const b = L.brain, n = E.length, sp = calm ? 0.08 : 0.3;
-    E.forEach((e, i) => {
-      e.ph += dt * sp;
-      const a = e.ph + (i / n) * Math.PI * 2, h = parseFloat(e.el.style.getPropertyValue('--eh')) || 40;
-      const x = b.x + Math.cos(a) * b.r * 1.05 - h * 0.4, y = b.y + Math.sin(a) * b.r * 0.42 - h * 0.5 + Math.sin(now / 500 + i) * 3;
-      // they face the way they fly (the picture faces right: moving left is sin(a) > 0), nearer = larger, a little tilt into the turn
-      const left = Math.sin(a) > 0, depth = 0.8 + 0.3 * (Math.sin(a) + 1) / 2, tilt = Math.cos(a) * 8;
-      e.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) scale(' + (left ? -depth : depth).toFixed(3) + ',' + depth.toFixed(3) + ') rotate(' + (left ? -tilt : tilt).toFixed(1) + 'deg)';
-      e.el.style.zIndex = Math.sin(a) > 0 ? 3 : 1; e.el.classList.add('in');
-    });
-  })(last);
-  const pulse = (k, delay = 0) => setTimeout(() => { const d = D[k]; if (!d || !d.classList.contains('in')) return; d.classList.remove('hot'); void d.offsetWidth; d.classList.add('hot'); setTimeout(() => d.classList.remove('hot'), 1500); }, delay);
-  function fly() {
-    if (calm || !L || Date.now() - flyAt < 6000) return; flyAt = Date.now();
-    const w = parseFloat(getComputedStyle(sleigh).width) || 260, top = L.portrait ? L.h * 0.12 : L.h * 0.1;
-    sleigh.style.setProperty('--x0', -w + 'px'); sleigh.style.setProperty('--x1', L.w + 'px');
-    sleigh.style.setProperty('--y0', top + 40 + 'px'); sleigh.style.setProperty('--ym', top - 10 + 'px'); sleigh.style.setProperty('--y1', top + 20 + 'px');
-    sleigh.style.setProperty('--ft', (L.portrait ? 4.2 : 5.5) + 's');
-    sleigh.classList.remove('go'); void sleigh.offsetWidth; sleigh.classList.add('go');
-  }
-  (function idle() { setTimeout(() => { if (!document.hidden && run) fly(); idle(); }, 50000 + Math.random() * 50000); })();
-  // ---------------------------------------------------------------- warmth: the tree lives, little scenes, kind words
-  // THE TREE'S LIGHTS: twinkling over the golden block tree of the picture; every buy lights one more (this visit)
-  const tw = document.getElementById('tw'), tg = tw.getContext('2d'), LIGHTS = [];
-  const COLS = ['255,214,120', '255,120,110', '255,245,220', '140,230,255', '255,170,90'];
-  function treeBox() { // the tree in the picture, in page pixels: centre x, star y, base y, half width at the base
-    if (!L) return null;
-    if (document.body.classList.contains('tall')) { const s = Math.max(L.w / 1024, L.h / 1536), ox = (L.w - 1024 * s) / 2, oy = L.h - 1536 * s;
-      return { x: ox + 512 * s, top: oy + 1536 * s * 0.07, base: oy + 1536 * s * 0.72, half: 1024 * s * 0.25 }; }
-    const ph = Math.min(L.h, L.w * 1024 / 1536), oy = L.h - ph;
-    return { x: L.w / 2, top: oy + ph * 0.06, base: oy + ph * 0.86, half: L.w * 0.2 };
-  }
-  function addLight(pop) {
-    const v = Math.random(), u = (Math.random() * 2 - 1) * v * 0.92;   // inside the triangle: wider further down
-    LIGHTS.push({ u, v, c: COLS[Math.floor(Math.random() * COLS.length)], ph: Math.random() * 6.3, sp: 1.2 + Math.random() * 2.4, r: 1.6 + Math.random() * 1.8, pop: pop ? 1 : 0 });
-  }
-  for (let i = 0; i < 70; i++) addLight(false);
-  function sizeTw() { const d = Math.min(devicePixelRatio || 1, 2); tw.width = innerWidth * d; tw.height = innerHeight * d; tg.setTransform(d, 0, 0, d, 0, 0); }
-  sizeTw(); addEventListener('resize', sizeTw);
-  let twLast = 0;
-  (function twinkle(now) {
-    requestAnimationFrame(twinkle);
-    if (!run || now - twLast < 50) return; twLast = now;   // 20 fps is plenty for a twinkle
-    const b = treeBox(); tg.clearRect(0, 0, tw.width, tw.height); if (!b) return;
-    for (const l of LIGHTS) {
-      const x = b.x + l.u * b.half, y = b.top + l.v * (b.base - b.top), a = calm ? 0.7 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now / 1000 * l.sp + l.ph));
-      const r = l.r * (1 + l.pop * 2.5); if (l.pop) l.pop = Math.max(0, l.pop - 0.02);
-      const gr = tg.createRadialGradient(x, y, 0, x, y, r * 4); gr.addColorStop(0, 'rgba(' + l.c + ',' + a + ')'); gr.addColorStop(1, 'rgba(' + l.c + ',0)');
-      tg.fillStyle = gr; tg.beginPath(); tg.arc(x, y, r * 4, 0, 6.283); tg.fill();
-    }
-  })(0);
 
-  // A WARM WORD: a little bubble from Santa BOBAI or the Santa girl, now and then and on the chain's moments
-  const WORDS = {
-    trades: ['Ho ho ho!', 'Merry Xmas, builder!', 'One more block for the tree!', 'Stay a while, it is cozy here.', 'Every trade lights a candle on the tree.', 'The elves never stop building.', 'Hot cocoa is on me!', 'Made with love on BNB Chain.'],
-    santa: ['Merry Xmas! ♥', 'You came back! ♥', 'Snow, lights and you.', 'Make a wish!', 'Warm hugs from the North Pole.'],
-    buy: ['Thank you! ♥', 'A new block for the tree!', 'Ho ho ho, a buy!', 'One more light!'],
-    burn: ['The stove is warm: a burn!', 'Into the fire, for good.'],
-  };
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
-  let sayEl = null;
-  function say(who, text) {
-    const d = D[who]; if (!d || !d.classList.contains('in') || !L) return;
-    if (sayEl) sayEl.remove();
-    const s = document.createElement('div'); s.className = 'say'; s.textContent = text; document.body.appendChild(s); sayEl = s;
-    const r = d.getBoundingClientRect(), right = r.left > L.w * 0.55;
-    if (right) s.classList.add('r');
-    const w = s.offsetWidth, h = s.offsetHeight;
-    const x = right ? r.left - w + r.width * 0.3 : r.left + r.width * 0.7, y = Math.max(L.ui && L.ui.top ? L.ui.top.y + L.ui.top.h + 4 : 60, r.top - h + 6);
-    s.style.left = Math.max(4, Math.min(L.w - w - 4, x)) + 'px'; s.style.top = y + 'px';
-    requestAnimationFrame(() => s.classList.add('in'));
-    setTimeout(() => { s.classList.remove('in'); setTimeout(() => s.remove(), 500); }, 3600);
+  // ---- gifts at BOBAI's feet: a few to start, one more for every buy (the oldest of a full pile fades away) -----------
+  const GIFT_COL = [['#b3202a', '#6e0f16', '#F0B90B'], ['#F0B90B', '#9a6a00', '#b3202a'], ['#1f8a7e', '#0c4a43', '#f4f1ea'], ['#f4f1ea', '#b9b2a6', '#b3202a'], ['#3a5bd0', '#1c2f78', '#F0B90B'], ['#6b2fa0', '#38145a', '#F0B90B']];
+  let gifts = [], figBox = null;
+  function paintGift(w, s, c) { // painted once into its own canvas: box, lid, ribbon with a sheen, a bow, a fine ink line
+    const pad = 4, bwid = Math.max(5, w * 0.22), top = bwid * 0.9, cw = w + pad * 2 + 4, ch = s + top + pad * 2;
+    const cnv = mk(cw * dpr, ch * dpr), g = cnv.getContext('2d'); g.scale(dpr, dpr); g.translate(cw / 2, pad + top + s);
+    const rr = (x, y, ww, hh, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + ww, y, x + ww, y + hh, r); g.arcTo(x + ww, y + hh, x, y + hh, r); g.arcTo(x, y + hh, x, y, r); g.arcTo(x, y, x + ww, y, r); g.closePath(); };
+    const bx = -w / 2, by = -s;
+    const gr = g.createLinearGradient(bx, by, bx + w, 0); gr.addColorStop(0, c[0]); gr.addColorStop(1, c[1]);
+    g.fillStyle = gr; rr(bx, by, w, s, 2.5); g.fill(); g.strokeStyle = 'rgba(255,244,214,0.35)'; g.lineWidth = 0.9; g.stroke();
+    // a soft painted highlight down the left face
+    const hl = g.createLinearGradient(bx, 0, bx + w * 0.5, 0); hl.addColorStop(0, 'rgba(255,255,255,0.16)'); hl.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = hl; rr(bx, by, w * 0.5, s, 2.5); g.fill();
+    const lh = s * 0.22, lg = g.createLinearGradient(0, by - 1, 0, by + lh); lg.addColorStop(0, 'rgba(255,255,255,0.3)'); lg.addColorStop(1, 'rgba(255,255,255,0.04)');
+    g.fillStyle = c[0]; rr(bx - 2, by - 1.5, w + 4, lh, 2.5); g.fill(); g.fillStyle = lg; rr(bx - 2, by - 1.5, w + 4, lh, 2.5); g.fill();
+    g.strokeStyle = 'rgba(255,244,214,0.3)'; g.lineWidth = 0.8; rr(bx - 2, by - 1.5, w + 4, lh, 2.5); g.stroke();
+    const rw = Math.max(3, w * 0.13), rg = g.createLinearGradient(-rw / 2, 0, rw / 2, 0); rg.addColorStop(0, c[2]); rg.addColorStop(0.5, '#fffbe8'); rg.addColorStop(1, c[2]);
+    g.fillStyle = rg; g.fillRect(-rw / 2, by - 1.5, rw, s + 1.5);
+    g.globalAlpha = 0.9; g.fillStyle = c[2]; g.fillRect(bx - 2, by + lh * 0.3, w + 4, Math.max(2, rw * 0.6)); g.globalAlpha = 1;
+    const bh = bwid * 0.62;
+    g.fillStyle = c[2];
+    g.beginPath(); g.ellipse(-bwid * 0.62, by - bh * 0.7, bwid * 0.62, bh * 0.62, -0.35, 0, 6.283); g.fill();
+    g.beginPath(); g.ellipse(bwid * 0.62, by - bh * 0.7, bwid * 0.62, bh * 0.62, 0.35, 0, 6.283); g.fill();
+    g.fillStyle = 'rgba(0,0,0,0.22)';
+    g.beginPath(); g.ellipse(-bwid * 0.62, by - bh * 0.7, bwid * 0.27, bh * 0.24, -0.35, 0, 6.283); g.fill();
+    g.beginPath(); g.ellipse(bwid * 0.62, by - bh * 0.7, bwid * 0.27, bh * 0.24, 0.35, 0, 6.283); g.fill();
+    g.fillStyle = c[2]; g.beginPath(); g.arc(0, by - bh * 0.55, bh * 0.42, 0, 6.283); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 0.7; g.beginPath(); g.arc(0, by - bh * 0.55, bh * 0.42, 3.6, 5.2); g.stroke();
+    return { c: cnv, cw, ch, ax: cw / 2, ay: pad + top + s };
   }
-  // HEARTS: from the Santa girl
-  function hearts(n = 6) {
-    const d = D.santa; if (!d || !d.classList.contains('in') || calm) return;
-    const r = d.getBoundingClientRect();
-    for (let i = 0; i < n; i++) setTimeout(() => { const h = document.createElement('div'); h.className = 'heart'; h.textContent = '♥';
-      h.style.left = (r.left + r.width * (0.3 + Math.random() * 0.4)) + 'px'; h.style.top = (r.top + r.height * 0.25) + 'px'; h.style.setProperty('--dx', (Math.random() * 60 - 30) + 'px');
-      h.style.fontSize = (12 + Math.random() * 12) + 'px'; document.body.appendChild(h); setTimeout(() => h.remove(), 2700); }, i * 160);
+  function mkGift(i, shown) {
+    const s = (W < 600 ? 24 : 40) * rnd(0.82, 1.15), w = s * rnd(1.05, 1.4);
+    const col = GIFT_COL[(i * 3 + Math.floor(rnd(0, 6))) % GIFT_COL.length];
+    return { slot: i, s, w, spr: paintGift(w, s, col), k: shown, out: 0, tilt: rnd(-0.05, 0.05) };
   }
-  // THE DELIVERY: an elf takes a block from Santa BOBAI up to the tree; it lights up when it lands
-  function deliver() {
-    const from = D.trades, b = treeBox(); if (!from || !from.classList.contains('in') || !b || calm) return;
-    const r = from.getBoundingClientRect(), el = document.createElement('img'); el.className = 'fly'; el.alt = ''; el.src = 'img/elf.webp';
-    el.style.setProperty('--eh', (L.portrait ? 30 : 44) + 'px'); document.body.appendChild(el);
-    const x0 = r.left + r.width * 0.5, y0 = r.top + r.height * 0.2, x1 = b.x + (Math.random() * 0.6 - 0.3) * b.half, y1 = b.top + (b.base - b.top) * (0.15 + Math.random() * 0.5);
-    const t0 = performance.now(), T = 4200, flip = x1 < x0;
-    (function step(now) {
-      const k = Math.min(1, (now - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      const x = x0 + (x1 - x0) * e, y = y0 + (y1 - y0) * e - Math.sin(k * Math.PI) * 90;
-      el.style.transform = 'translate(' + x + 'px,' + y + 'px) scaleX(' + (flip ? -1 : 1) + ') rotate(' + (Math.sin(now / 160) * 6) + 'deg)';
-      if (k < 1) return requestAnimationFrame(step);
-      for (let i = 0; i < 4; i++) addLight(true); if (LIGHTS.length > 160) LIGHTS.splice(0, LIGHTS.length - 160);
-      el.style.opacity = '0'; setTimeout(() => el.remove(), 700);
-    })(t0);
+  function seedGifts() { gifts = []; for (let i = 0; i < 4; i++) gifts.push(mkGift(i, 1)); }
+  let spots = [];
+  function buildSpots() { // the places at his feet, nearest first, alternating sides; none inside the log box
+    const f = figBox || { x: W * 0.4, y: H * 0.25, w: W * 0.2, h: H * 0.55 }, log = L && L.ui && L.ui.log;
+    const cxF = f.x + f.w / 2, y = f.y + f.h * 0.94, gap = W < 600 ? 30 : 50;
+    spots = [];
+    for (let step = 0; spots.length < 12 && step < 10; step++) for (const side of [-1, 1]) {
+      const x = cxF + side * (f.w * 0.22 + step * gap), yy = y + (step % 2) * 4;
+      if (log && x > log.x - 30 && x < log.x + log.w + 30 && yy > log.y - 10 && yy < log.y + log.h) continue;
+      if (x < 24 || x > W - 24) continue;
+      if (Math.abs(x - tree.x) < tree.w * 0.6 && yy > tree.y - tree.h && yy < tree.y + 30) continue; // not into the tree
+      spots.push({ x, y: yy });
+    }
   }
-  // A SHOOTING STAR over the sky
-  function shootingStar() {
-    if (calm || !L) return; const s = document.createElement('div'); s.className = 'shoot';
-    s.style.setProperty('--sx', (Math.random() * L.w * 0.5) + 'px'); s.style.setProperty('--sy', (40 + Math.random() * L.h * 0.15) + 'px');
-    document.body.appendChild(s); setTimeout(() => s.remove(), 1400);
+  function drawGift(g) {
+    const a = Math.min(1, g.k) * (1 - g.out); if (a <= 0) return;
+    const p = spots[Math.min(g.slot, spots.length - 1)] || { x: W / 2, y: H * 0.8 };
+    const e = Math.min(1, g.k), drop = (1 - e) * (1 - e) * 22; // eases down, softly
+    cx.globalAlpha = 0.32 * a; cx.fillStyle = '#000'; cx.beginPath(); cx.ellipse(p.x, p.y + 1, g.w * 0.62, 3.6, 0, 0, 6.283); cx.fill();
+    cx.save(); cx.globalAlpha = a; cx.translate(p.x, p.y - drop); cx.rotate(g.tilt);
+    cx.drawImage(g.spr.c, -g.spr.ax, -g.spr.ay, g.spr.cw, g.spr.ch); cx.restore(); cx.globalAlpha = 1;
   }
-  // THE DIRECTOR: one small scene every 18-32 s, never two at once
-  const SCENES = [() => say('trades', pick(WORDS.trades)), () => { say('santa', pick(WORDS.santa)); hearts(5); }, deliver, deliver, shootingStar];
-  (function direct() { setTimeout(() => { if (run && !document.hidden && L && !calm) pick(SCENES)(); direct(); }, 18000 + Math.random() * 14000); })();
-  setTimeout(() => { if (!calm) say('trades', 'Ho ho ho! Welcome, builder!'); }, 4500);   // a hello when they arrive
+  function addGift() {
+    const live = gifts.filter((g) => !g.out);
+    if (live.length >= 9) live[0].out = 0.001;
+    const used = new Set(gifts.filter((g) => g.out < 1).map((g) => g.slot));
+    let slot = 0; while (used.has(slot) && slot < 12) slot++;
+    gifts.push(mkGift(slot, 0));
+  }
+
+  // ---- sparks rising from the star after a big buy ----------------------------------------------------------------------
+  let sparks = [];
+  const sparkle = (n) => { for (let i = 0; i < n; i++) sparks.push({ x: tree.x + rnd(-6, 6), y: tree.y - tree.h, vx: rnd(-10, 10), vy: rnd(-26, -12), life: 0, max: rnd(1.6, 3), r: rnd(0.8, 1.8) }); };
+
+  // ---- layout -----------------------------------------------------------------------------------------------------------
+  const ring = {}; // station k -> { flare }
+  function place() {
+    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 1.5); // soft light needs no more pixels; fewer = smoother
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // the tree stands where the fewest of the terminal's things are (stations and their names, the brain, the log, BOBAI)
+    const f = L && L.figure ? L.figure : { x: W * 0.4, y: H * 0.25, w: W * 0.2, h: H * 0.55 };
+    const ui = (L && L.ui) || {}, tl = ui.timeline, topBox = ui.top;
+    figBox = f;
+    let floor = Math.min(H - 8, tl && tl.y > H * 0.5 ? tl.y - 4 : f.y + f.h);
+    // upright (phone): the tab bar above the timeline is not in the layout: no lower than just under the lowest station's name
+    if (H > W && L && L.stations) { const low = Math.max(...Object.values(L.stations).map((p) => p.y)); floor = Math.min(floor, low + 70); }
+    const ceil = topBox ? topBox.y + topBox.h + 40 : 90;
+    const h = Math.max(110, Math.min(floor - ceil, H * (W < 600 ? 0.3 : 0.44), 380)), w = h * 0.5;
+    const pts = [];
+    if (L && L.stations) for (const k in L.stations) { const p = L.stations[k]; pts.push([p.x, p.y, 80], [p.x, p.y + 40, 70]); }
+    if (L && L.brain) pts.push([L.brain.x, L.brain.y, (L.brain.r || 90) * 1.5 + 70]);
+    if (L && L.trades) pts.push([L.trades.x, L.trades.y, 50]);
+    const boxes = [f, ui.log].filter(Boolean);
+    let best = null;
+    for (let fl = floor; fl >= ceil + h; fl -= 24) for (let x = w / 2 + 6; x <= W - w / 2 - 6; x += 12) {
+      const bx = x - w / 2, by = fl - h; let pen = 0;
+      for (const [px, py, r] of pts) { const dx = Math.max(bx - px, 0, px - (bx + w)), dy = Math.max(by - py, 0, py - fl); const d = Math.hypot(dx, dy); if (d < r) pen += (r - d) * 3; }
+      for (const b of boxes) { const ox = Math.max(0, Math.min(bx + w, b.x + b.w) - Math.max(bx, b.x)), oy = Math.max(0, Math.min(fl, b.y + b.h) - Math.max(by, b.y)); pen += ox * oy / 40; }
+      pen += Math.min(x, W - x) * 0.02 + (floor - fl) * 0.05;
+      if (!best || pen < best.pen) best = { x, fl, pen };
+    }
+    tree = { x: best ? best.x : W - w, y: best ? best.fl : floor, h, w };
+    buildLights(W < 600 ? 34 : 52); paintFir(); buildGarland(); buildSpots();
+    if (!gifts.length) seedGifts();
+  }
+
+  // ---- drawing ------------------------------------------------------------------------------------------------------------
+  function drawStar(x, y, r, t) {
+    const breathe = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 0.8);
+    glow(x, y, r * (3.4 + star * 2.6), GOLD, 0.2 + 0.08 * breathe + star * 0.35);
+    cx.save(); cx.translate(x, y); cx.rotate(reduced ? 0 : Math.sin(t * 0.35) * 0.05);
+    cx.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; cx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+    cx.closePath();
+    const g = cx.createLinearGradient(0, -r, 0, r); g.addColorStop(0, '#fff6cf'); g.addColorStop(0.5, GOLD); g.addColorStop(1, '#a86f00');
+    cx.fillStyle = g; cx.fill(); cx.strokeStyle = 'rgba(255,248,220,0.6)'; cx.lineWidth = 0.8; cx.stroke(); cx.restore();
+  }
+  function drawTree(t, dt) {
+    const { x, y, h, w } = tree, top = y - h;
+    glow(x, y, w * 0.8, GOLD, 0.12);
+    if (fir) cx.drawImage(fir.c, x - w / 2 - fir.pad, top - fir.pad, w + fir.pad * 2, h + fir.pad * 2);
+    for (const pass of [0, 1]) {
+      for (let s = 0; s < 2; s++) { // the strings, back half first
+        cx.beginPath(); let first = true;
+        for (let i = 0; i <= 110; i++) {
+          const tt = i / 110, a = tt * 5.2 * Math.PI * 2 + s * Math.PI + rot, z = Math.cos(a);
+          if ((z >= 0) !== !!pass) { first = true; continue; }
+          const px = x + Math.sin(a) * tt * w / 2, py = top + h * 0.06 + tt * h * 0.94;
+          if (first) { cx.moveTo(px, py); first = false; } else cx.lineTo(px, py);
+        }
+        cx.strokeStyle = pass ? 'rgba(255,231,176,0.28)' : 'rgba(255,231,176,0.09)'; cx.lineWidth = pass ? 1.1 : 0.8; cx.stroke();
+      }
+      for (const l of LIGHTS) {
+        const a = l.a + rot, z = Math.cos(a);
+        if ((z >= 0) !== !!pass) continue;
+        const px = x + Math.sin(a) * l.t * w / 2, py = top + h * 0.06 + l.t * h * 0.94, depth = (z + 1) / 2;
+        const tw = reduced ? 0.85 : 0.78 + 0.22 * Math.sin(t * l.sp + l.ph); // a soft glimmer, never a blink
+        const wv = wave >= 0 ? Math.max(0, 1 - Math.abs(l.t - (1 - wave)) * 6) : 0;
+        const k = (0.3 + 0.7 * depth) * (tw + l.boost + wv);
+        const r = (W < 600 ? 1.5 : 1.9) * (0.7 + 0.5 * depth) * (1 + l.boost * 0.7 + wv * 0.5);
+        glow(px, py, r * 5.5, l.col, 0.34 * k);
+        dot(px, py, r, l.col, 0.5 + 0.45 * k);
+        if (l.boost > 0) l.boost = Math.max(0, l.boost - dt * 0.6);
+      }
+      for (const [bt, ba, bc] of TB) {
+        const a = ba + rot, z = Math.cos(a);
+        if ((z >= 0) !== !!pass) continue;
+        const px = x + Math.sin(a) * bt * w / 2 * 0.92, py = top + h * 0.06 + bt * h * 0.94 + 5, r = (W < 600 ? 3.4 : 4.8) * (0.65 + 0.35 * (z + 1) / 2);
+        cx.globalAlpha = 0.45 + 0.55 * (z + 1) / 2; cx.drawImage(baubleSpr(bc[0], bc[1]), px - r, py - r, r * 2, r * 2); cx.globalAlpha = 1;
+      }
+    }
+    drawStar(x, top + h * 0.02, (W < 600 ? 9 : 13) * (1 + star * 0.25), t);
+  }
+  function drawGarland(t) {
+    for (const g of garland) {
+      cx.beginPath();
+      for (let i = 0; i <= 24; i++) { const u = i / 24, px = g.x1 + (g.x2 - g.x1) * u, py = g.y + Math.sin(u * Math.PI) * g.sag; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }
+      cx.strokeStyle = 'rgba(46,120,80,0.5)'; cx.lineWidth = W < 600 ? 3 : 4; cx.lineCap = 'round'; cx.stroke();
+      cx.strokeStyle = 'rgba(240,185,11,0.32)'; cx.lineWidth = 0.8; cx.stroke();
+      for (let i = 1; i < 8; i++) { const u = i / 8, px = g.x1 + (g.x2 - g.x1) * u, py = g.y + Math.sin(u * Math.PI) * g.sag;
+        const tw = reduced ? 0.85 : 0.75 + 0.25 * Math.sin(t * 0.6 + i * 1.7 + g.x1), col = i % 3 ? WARM : GOLD;
+        glow(px, py, 7, col, 0.32 * tw); dot(px, py, 1.4, col, 0.55 + 0.4 * tw); }
+    }
+    for (const b of baubles) {
+      const sw = reduced ? 0 : Math.sin(t * 0.9 + b.ph) * b.amp + b.kick * Math.sin(t * 5);
+      const bx = b.x + Math.sin(sw) * b.len, by = b.y + Math.cos(sw) * b.len;
+      cx.strokeStyle = 'rgba(240,185,11,0.5)'; cx.lineWidth = 0.8; cx.beginPath(); cx.moveTo(b.x, b.y); cx.lineTo(bx, by - b.r); cx.stroke();
+      cx.fillStyle = GOLD; cx.fillRect(bx - b.r * 0.28, by - b.r - 3, b.r * 0.56, 3.5);
+      cx.drawImage(baubleSpr(b.c[0], b.c[1]), bx - b.r, by - b.r, b.r * 2, b.r * 2);
+      glow(bx, by, b.r * 2.4, b.c[0], 0.1 + b.kick * 2);
+    }
+  }
+  function drawRings(t, dt) {
+    const st = L && L.stations; if (!st) return;
+    for (const k in st) {
+      const p = st[k], col = ST_COL[k] || GOLD, R = ring[k] || (ring[k] = { flare: 0 }), n = 8, rad = (W < 600 ? 26 : 34) * (1 + R.flare * 0.25);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * 6.283 + (reduced ? 0 : t * 0.2), px = p.x + Math.cos(a) * rad, py = p.y + Math.sin(a) * rad * 0.42 + rad * 0.55;
+        const tw = reduced ? 0.75 : 0.65 + 0.35 * Math.sin(t * 1.2 + i);
+        glow(px, py, 6 + R.flare * 6, col, (0.22 + R.flare * 0.6) * tw); dot(px, py, 1.3 + R.flare, col, 0.5 + 0.45 * tw);
+      }
+      if (R.flare > 0) R.flare = Math.max(0, R.flare - dt * 0.5);
+    }
+  }
+  function drawSparks(dt) {
+    for (const s of sparks) { s.life += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.99; const a = Math.max(0, 1 - s.life / s.max); glow(s.x, s.y, s.r * 5, GOLD, 0.35 * a); dot(s.x, s.y, s.r, '#fff3c4', 0.8 * a); }
+    sparks = sparks.filter((s) => s.life < s.max);
+  }
+
+  let last = 0, raf = 0, idleSpark = 0;
+  function frame(ts) {
+    raf = 0; if (!on) return;
+    const t = ts / 1000, dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
+    if (!reduced) { rot += dt * 0.1; idleSpark += dt; if (idleSpark > 4.5) { idleSpark = 0; sparkle(1); } }
+    if (wave >= 0) { wave += dt * 0.6; if (wave > 1.2) wave = -1; }
+    if (star > 0) star = Math.max(0, star - dt * 0.3);
+    for (const g of gifts) { if (g.k < 1) g.k = reduced ? 1 : Math.min(1, g.k + dt * 1.4); if (g.out > 0 && g.out < 1) g.out = Math.min(1, g.out + dt * 0.6); }
+    gifts = gifts.filter((g) => g.out < 1);
+    cx.clearRect(0, 0, W, H);
+    drawGarland(t); drawRings(t, dt); drawTree(t, dt); if (!reduced) drawSparks(dt);
+    for (const g of gifts) drawGift(g);
+    if (reduced && !star && wave < 0) return; // still: one frame is enough until something happens
+    raf = requestAnimationFrame(frame);
+  }
+  const go = () => { if (on && !raf) raf = requestAnimationFrame(frame); };
 
   addEventListener('message', (e) => {
     const m = e.data; if (!m || m.bobai !== 'xmas') return;
-    if (m.type === 'event' && !calm) {   // the chain's moments get their warm word too
-      if (m.kind === 'buy') { addLight(true); if (m.alert || Math.random() < 0.35) say('trades', pick(WORDS.buy)); if (m.alert) hearts(10); }
-      else if (m.kind === 'burn') say('trades', pick(WORDS.burn));
-    }
-    if (m.type === 'hello') { calm = !!m.reduced; document.body.classList.toggle('calm', calm); alive('santa'); alive('trades'); }
-    else if (m.type === 'layout') place(m);
-    else if (m.type === 'visible') { run = m.on; document.body.classList.toggle('off', !m.on); }
-    else if (m.type === 'mood') { document.body.classList.remove('pump', 'up', 'down', 'dump'); if (m.mood !== 'flat') document.body.classList.add(m.mood); }
+    if (m.type === 'hello') { reduced = !!m.reduced; place(); go(); }
+    else if (m.type === 'layout') { L = m; place(); go(); }
+    else if (m.type === 'visible') { on = !!m.on; if (on) { last = 0; go(); } else { cancelAnimationFrame(raf); raf = 0; } }
     else if (m.type === 'event') {
-      if (m.kind === 'burn') { pulse('burnA'); pulse('liq', 300); pulse('creator', 600); }   // the tax splits: burn, add liq, creator
-      else if (m.kind === 'liq') pulse('liq');
-      else if (m.kind === 'buy') { pulse('trades'); if (m.alert) { fly(); pulse('santa', 200); } }   // every buy: Santa BOBAI glows
-      else if (m.kind === 'sell') pulse('trades');
-    }
-    else if (m.type === 'moment' && m.kind === 'buy') { fly(); pulse('santa'); }
+      if (m.kind === 'buy') { addGift(); const dark = LIGHTS.filter((l) => !l.boost); const l = dark[Math.floor(Math.random() * dark.length)]; if (l) l.boost = Math.min(1.3, 0.5 + (m.usd || 0) / 200); if (m.alert) { star = 1; sparkle(8); baubles.forEach((b) => (b.kick = 0.1)); } }
+      else if (m.kind === 'burn') { (ring.burnA || (ring.burnA = { flare: 0 })).flare = 1; }
+      else if (m.kind === 'liq') { (ring.liq || (ring.liq = { flare: 0 })).flare = 1; wave = 0; }
+      go();
+    } else if (m.type === 'moment') { star = 1; sparkle(8); baubles.forEach((b) => (b.kick = 0.1)); go(); }
   });
+  addEventListener('resize', () => { place(); go(); });
+  document.addEventListener('visibilitychange', () => { on = !document.hidden; if (on) { last = 0; go(); } else { cancelAnimationFrame(raf); raf = 0; } });
+  place(); go();
+})();
 </script>
-</body>
-</html>
+</body></html>
 
 ==============================================================================
 === FILE: xmas-themes/bobai-xmas-mmx_qq/theme/front.html
 ==============================================================================
 
 <!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BOBAI Builds Xmas on BNB — front</title>
-<style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-</style>
-</head>
-<body>
-<canvas id="c"></canvas>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}canvas{position:fixed;inset:0;width:100%;height:100%}</style>
+</head><body><canvas id="c"></canvas>
 <script>
-  // BOBAI builds Xmas by mmx_QQ — soft snow in front of BOBAI; golden blocks, hearts and sparkle on the chain's moments.
-  const cv = document.getElementById('c'), g = cv.getContext('2d');
-  let W = 0, H = 0, D = 1, run = true, calm = false, mood = 'flat', L = null, last = performance.now();
-  const flakes = [], sparks = [];
-  const rand = (a, b) => a + Math.random() * (b - a);
+// quiet snow: few soft flakes, slow, lighter around BOBAI's face; a little more when the market pumps
+(() => {
+  const cv = document.getElementById('c'), cx = cv.getContext('2d');
+  let W = 0, H = 0, dpr = 1, reduced = matchMedia('(prefers-reduced-motion: reduce)').matches, on = true, fig = null, want = 1;
+  const F = [];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const flake = (top) => ({ x: rnd(0, W), y: top ? rnd(-H, 0) : rnd(0, H), r: rnd(0.8, 2.4), vy: rnd(10, 26), ph: rnd(0, 6.28), sw: rnd(6, 18), a: rnd(0.35, 0.8) });
   function size() {
-    D = Math.min(devicePixelRatio || 1, 2); W = innerWidth; H = innerHeight;
-    cv.width = Math.round(W * D); cv.height = Math.round(H * D); g.setTransform(D, 0, 0, D, 0, 0);
-    const want = Math.round((W * H) / (calm ? 22000 : 9000));
-    while (flakes.length < Math.min(want, 170)) flakes.push(flake(true));
-    flakes.length = Math.min(flakes.length, Math.min(want, 170));
+    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 1.5);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round((W < 600 ? 34 : 70) * want);
+    while (F.length < n) F.push(flake(false)); F.length = n;
   }
-  function flake(anywhere) {
-    const z = Math.random();                                  // depth: far flakes small and slow
-    return { x: rand(0, W), y: anywhere ? rand(0, H) : rand(-30, -5), r: 0.8 + z * 2.6, v: 12 + z * 30, ph: rand(0, 6.3), sw: rand(8, 26), a: 0.35 + z * 0.55, gold: false };
-  }
-  const COL = { cash: [255, 200, 70], bubble: [255, 236, 170], heart: [255, 70, 130], gold: [255, 214, 120], pink: [255, 160, 210], mint: [140, 255, 220], ember: [255, 150, 60], ice: [200, 235, 255] };
-  function burst(x, y, n, kind, spread = 1, from = 0, to = Math.PI * 2) {   // from/to: the directions they fly (radians)
-    if (calm || !run) return;
-    for (let i = 0; i < n; i++) {
-      const a = rand(from, to), sp = rand(30, 120) * spread, c = kind === 'party' ? ['gold', 'pink', 'mint', 'ice'][i % 4] : kind;
-      sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'ember' ? 60 : kind === 'bubble' ? 90 : 30), life: 0, max: rand(1.3, 2.6), r: rand(1.8, 4), c: COL[c], star: kind === 'party' && i % 3 === 0, heart: kind === 'heart', cash: kind === 'cash', rot: rand(0, 6.3), spin: rand(-6, 6) });
+  let last = 0, raf = 0;
+  function frame(ts) {
+    if (!on) return;
+    const t = ts / 1000, dt = last ? Math.min(0.05, t - last) : 0.016; last = t;
+    cx.clearRect(0, 0, W, H);
+    for (const f of F) {
+      if (!reduced) { f.y += f.vy * dt; if (f.y > H + 4) Object.assign(f, flake(true), { y: -4 }); }
+      const x = f.x + (reduced ? 0 : Math.sin(t * 0.6 + f.ph) * f.sw);
+      let a = f.a;
+      if (fig && x > fig.x && x < fig.x + fig.w && f.y > fig.y && f.y < fig.y + fig.h * 0.45) a *= 0.25; // clear of the face
+      cx.globalAlpha = a; cx.fillStyle = '#fff';
+      cx.beginPath(); cx.arc(x, f.y, f.r, 0, 6.283); cx.fill();
+      if (f.r > 1.8) { cx.globalAlpha = a * 0.25; cx.beginPath(); cx.arc(x, f.y, f.r * 2.4, 0, 6.283); cx.fill(); }
     }
-    if (sparks.length > 500) sparks.splice(0, sparks.length - 500);
+    cx.globalAlpha = 1;
+    if (reduced) { raf = 0; return; }
+    raf = requestAnimationFrame(frame);
   }
-  function star(x, y, r) {
-    g.beginPath();
-    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? r * 0.38 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
-    g.closePath(); g.fill();
-  }
-  function heart(x, y, r) {
-    g.beginPath(); g.moveTo(x, y + r * 0.9);
-    g.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.6, y - r * 1.4, x, y - r * 0.45);
-    g.bezierCurveTo(x + r * 0.6, y - r * 1.4, x + r * 1.6, y - r * 0.2, x, y + r * 0.9); g.fill();
-  }
-  function kiss() {   // the Santa girl at the creator blows a kiss: hearts float up from her
-    const p = L && L.stations && L.stations.creator; if (!p) return;
-    burst(p.x - 20, p.y - 40, 18, 'heart', 0.7, -Math.PI * 0.85, -Math.PI * 0.15);
-  }
-  function frame(now) {
-    requestAnimationFrame(frame);
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (!run || document.hidden) return;
-    g.clearRect(0, 0, W, H);
-    const speed = (calm ? 0.45 : 1) * (mood === 'pump' ? 1.25 : 1);
-    for (const f of flakes) {
-      f.y += f.v * dt * speed; f.ph += dt * 0.9;
-      const x = f.x + Math.sin(f.ph) * f.sw;
-      if (f.y > H + 6) Object.assign(f, flake(false), { gold: mood === 'pump' && Math.random() < 0.25 });
-      g.fillStyle = f.gold ? 'rgba(255,220,140,' + f.a + ')' : 'rgba(255,255,255,' + f.a + ')';
-      g.beginPath(); g.arc(x, f.y, f.r, 0, 6.283); g.fill();
-    }
-    g.globalCompositeOperation = 'lighter';                   // sparks glow where they cross
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i]; s.life += dt; if (s.life > s.max) { sparks.splice(i, 1); continue; }
-      s.vy += 40 * dt; s.vx *= 0.985; s.x += s.vx * dt; s.y += s.vy * dt;
-      const k = 1 - s.life / s.max, [r, gg, b] = s.c;
-      g.fillStyle = 'rgba(' + r + ',' + gg + ',' + b + ',' + (k * 0.95).toFixed(3) + ')';
-      if (s.cash) { s.rot += s.spin * dt; g.save(); g.translate(s.x, s.y); g.rotate(s.rot); g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 3.2); g.fillStyle = 'rgba(255,245,200,' + (k * 0.7).toFixed(3) + ')'; g.fillRect(-s.r * 1.6, -s.r * 1.6, s.r * 3.2, s.r * 0.9);   /* a golden block, its lit top */ g.restore(); }
-      else if (s.heart) heart(s.x, s.y, s.r * 3.2 * (0.7 + k * 0.3)); else if (s.star) star(s.x, s.y, s.r * 3.4 * (0.6 + k * 0.4)); else { g.beginPath(); g.arc(s.x, s.y, s.r * (0.5 + k * 0.5), 0, 6.283); g.fill(); }
-    }
-    g.globalCompositeOperation = 'source-over';
-  }
-  // a big buy: a ring of stars around BOBAI, never on his face (from the sides of his figure)
-  function party() {
-    const f = L && L.figure; if (!f) return burst(W / 2, H / 2, 40, 'party', 1.4);
-    const A = Math.PI;                                       // away from him: left, right and down, never across his face
-    burst(f.x + f.w * 0.02, f.y + f.h * 0.5, 40, 'party', 1.5, A * 0.6, A * 1.4); burst(f.x + f.w * 0.98, f.y + f.h * 0.5, 40, 'party', 1.5, -A * 0.4, A * 0.4);
-    burst(f.x + f.w * 0.5, f.y + f.h * 0.98, 28, 'party', 1.3, A * 0.15, A * 0.85);
-  }
-  addEventListener('resize', size);
+  const go = () => { if (on && !raf) raf = requestAnimationFrame(frame); };
   addEventListener('message', (e) => {
     const m = e.data; if (!m || m.bobai !== 'xmas') return;
-    if (m.type === 'hello') { calm = !!m.reduced; size(); }
-    else if (m.type === 'layout') L = m;
-    else if (m.type === 'visible') run = m.on;
-    else if (m.type === 'mood') mood = m.mood;
-    else if (m.type === 'event' && L) {
-      if (m.kind === 'buy' && m.alert) { party(); kiss(); }
-      else if (m.kind === 'buy' && L.trades) burst(L.trades.x, L.trades.y - 60, 6 + Math.min(16, Math.round((m.usd || 0) / 12)), 'cash', 0.8, -Math.PI * 0.85, -Math.PI * 0.15);   // golden blocks fly off the sled
-      else if (m.kind === 'burn' && L.stations.burnA) { burst(L.stations.burnA.x, L.stations.burnA.y, 40, 'ember', 0.9); if (L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 14, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1); }
-      else if (m.kind === 'liq' && L.stations.liq) burst(L.stations.liq.x - 60, L.stations.liq.y - 20, 26, 'bubble', 0.5, -Math.PI * 0.9, -Math.PI * 0.1);   // champagne
-    }
-    else if (m.type === 'moment' && m.kind === 'buy') { party(); kiss(); }
+    if (m.type === 'hello') { reduced = !!m.reduced; size(); go(); }
+    else if (m.type === 'layout') { fig = m.figure || null; size(); go(); }
+    else if (m.type === 'mood') { want = m.mood === 'pump' ? 1.5 : m.mood === 'up' ? 1.2 : 1; size(); go(); }
+    else if (m.type === 'visible') { on = !!m.on; if (on) { last = 0; go(); } else { cancelAnimationFrame(raf); raf = 0; } }
   });
-  size(); requestAnimationFrame(frame);
+  addEventListener('resize', () => { size(); go(); });
+  document.addEventListener('visibilitychange', () => { on = !document.hidden; if (on) { last = 0; go(); } else { cancelAnimationFrame(raf); raf = 0; } });
+  size(); go();
+})();
 </script>
-</body>
-</html>
+</body></html>

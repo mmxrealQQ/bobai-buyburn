@@ -33,9 +33,9 @@
 |---|---|
 | 📊 **[Live dashboard](https://brainonbnb.com/)** | Price, burns, liquidity, buyback reserve — computed on-chain, every number verifiable |
 | 🔍 **[Pool Scanner](https://brainonbnb.com/scanner)** | Paste any BNB Chain token or pool and read it the way a trader meets it: price impact and real cost per trade size, the transfer tax measured from executed trades, and whether the LP is burned, locked or withdrawable |
-| 💧 **[DeFi agent](https://brainonbnb.com/defi)** | One PancakeSwap V3 position that runs itself: sweeps income, collects fees, keeps a wide ±20% range centred on the price (re-set with one swap once the price has stayed outside), and buys $BOBAI with half of every fee. Daily run at 04:23 UTC, hourly range check, every step a transaction |
+| 💧 **[DeFi agent](https://brainonbnb.com/defi)** | One PancakeSwap V3 position that runs itself: sweeps income, collects fees, keeps a wide ±20% range centred on the price (re-set with one swap once the price has stayed outside), and splits every fee in thirds: capital, $BOBAI it holds, the operator. Daily run at 04:23 UTC, hourly range check, every step a transaction |
 | 🏛 **[Brain Plaza](https://brainonbnb.com/registry)** | ERC-8004 agent census and ERC-8183 hiring on BNB Chain — search agents that actually answer, see who has been paid |
-| 💵 **[Paid answers](https://brainonbnb.com/services)** | Six answers sold over x402 for 0.10 USD1 (or the same in $BOBAI). Agents pay without a page |
+| 💵 **[Paid answers](https://brainonbnb.com/services)** | Six answers sold over x402 for 0.10 USD1 (half that in $BOBAI, free with the 1,000,000 $BOBAI holder pass). Agents pay without a page |
 | 📚 **[The Library](https://brainonbnb.com/library)** · **[Source mirror](https://brainonbnb.com/source)** | Every subsystem as a readable bundle, plus `git clone https://brainonbnb.com/source.git` — a second copy on infrastructure we run ourselves |
 | 🤖 **AI-agent rails** | Remote MCP server in the [official MCP registry](https://registry.modelcontextprotocol.io) (as far as we can tell, the first memecoin there), read-only on-chain tools, plain-REST mirror, [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) on-chain identity `#49467` — details below |
 | 🖼️ **[NFT buy-drop](https://brainonbnb.com/nft/)** | Buy ≥ $100 of $BOBAI → a collectible NFT auto-mints to your wallet. 1925 supply, tiered rarity, [renounced contract](https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d) |
@@ -43,7 +43,7 @@
 | 🧠 **[brainScreener](https://brainonbnb.com/brainscreener/)** | 13 free self-tests (IQ, ADHD screening & more) — runs in your browser, no signup |
 | 🎮 **[Browser game](https://brainonbnb.com/game/)** | BOBAI arcade game with global highscores |
 | ⚽ **[WC26 tip game](https://brainonbnb.com/worldcup/)** | The World Cup 2026 prediction game, finished — $BOBAI prize pools paid out on-chain, results and payouts still public |
-| 📄 **[Whitepaper](https://brainonbnb.com/whitepaper)** | v2.2 — the whole design in one document |
+| 📄 **[Whitepaper](https://brainonbnb.com/whitepaper)** | v3.0 — the whole design in one document |
 
 Nothing above is a roadmap — it is all live, or finished and still public.
 
@@ -151,7 +151,7 @@ No clone at hand? [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) bridg
 | `bobai_circulating_supply` | Total supply minus burned |
 | `bobai_activity` | Proof the flywheel runs: last burn tx, 7/30-day burns, total bot runs — every entry verifiable on BscScan |
 | `bobai_smart_money` | Smart-money signals: tax reserve charging the next buyback, whale flows & holdings trends (1d/7d/30d), immutable ledger of recent $100+ buys, burn momentum |
-| `bobai_dex_info` | PancakeSwap V2 router/pair/paths + the critical fee-on-transfer params (3% tax, ≥15% slippage, `SupportingFeeOnTransferTokens`) — the old name `bobai_trade_info` still answers |
+| `bobai_dex_info` | PancakeSwap V2 router/pair/paths + the critical fee-on-transfer params (3% tax, 6% slippage, `SupportingFeeOnTransferTokens`) — the old name `bobai_trade_info` still answers |
 | `bobai_purchase_guide` | Ready-to-run viem code to buy $BOBAI 0-shot — the old name `bobai_how_to_buy` still answers |
 | `bobai_tokenomics` | Neutral, verifiable value-accrual mechanics (tax → buyback → burn) |
 | `bobai_wallet_balance` | BNB + $BOBAI balance of any BSC address |

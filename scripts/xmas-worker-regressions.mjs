@@ -81,7 +81,10 @@ r = await call('POST', '/admin', { headers: { 'x-xmas-admin': 'adm1n-secret' }, 
 ok('there is no approving any more', r.status === 400);
 
 // counting users
-await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' } });
+await call('POST', '/use', { body: { slug: 'mmx_qq' } }); await call('POST', '/use', { body: { slug: 'mmx_qq' }, ip: '9.9.9.9' });
+// ONE COUNT PER VISITOR, THEME AND DAY (security review 2026-11-21): the same address again adds nothing
+const again = await call('POST', '/use', { body: { slug: 'mmx_qq' } });
+ok('the same visitor again the same day is not counted twice', again.j?.counted === false);
 r = await call('POST', '/use', { body: { slug: 'spam0' } });
 ok('a theme with nothing uploaded is not counted', r.j?.counted === false);
 r = await call('GET', '/themes');

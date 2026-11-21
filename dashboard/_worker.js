@@ -2110,7 +2110,14 @@ const SITE = {
         const r = await fetch('https://agent.brainonbnb.com/builder/decide', { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-hit-secret': env.HIT_SECRET || '' }, body: request.method === 'POST' ? await request.text() : undefined });
         return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'private, no-store' } });
       }
-      const res = await env.ASSETS.fetch(request), out = new Response(res.body, res);
+      // NOT A PUBLIC FOLDER ANY MORE (security review 2026-11-21): the files lay under /builder/ as static assets and only the
+      // literal /builder* path reached this gate — "//builder/", "/%62uilder/" and "/builder%2f" were served by the asset
+      // server without a password. The deploy now puts them under a folder whose name is known only to the build
+      // (scripts/deploy-dashboard.mjs writes it into this file there; the repo and the source mirror carry the placeholder),
+      // and only this signed-in route reads them from it.
+      if (BUILDER_DIR.startsWith('__')) return new Response('Builder sheet: not deployed with this build.', { status: 503, headers: { 'Cache-Control': 'no-store' } });
+      const inner = new URL(request.url); inner.pathname = '/' + BUILDER_DIR + url.pathname.slice('/builder'.length);
+      const res = await env.ASSETS.fetch(new Request(inner, request)), out = new Response(res.body, res);
       out.headers.set('Cache-Control', 'private, no-store'); out.headers.set('X-Robots-Tag', 'noindex, nofollow');
       return out;
     }
@@ -2647,7 +2654,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       /* where the link was posted (11.11.): ?from=tg / share-x … passes on to the game's count; without one a run link is a 'share', the game link a 'link' */
       const from = String(url.searchParams.get('from') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16);
       const run = url.pathname.slice(7).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12), to = '/?pop=' + (run || 'play') + '&from=' + (from || (run ? 'share' : 'link'));
-      let found = false, title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 on 30 Nov wins the whole $BOBAI prize pool.';
+      let found = false, title = 'BRAIN POP 6.9 · can you out-rot me? 🧠', desc = '60 seconds. Tap the brainrot, build streaks, the 7 stations fire super powers. Daily top 10 · the overall #1 of the season (Nov 6 → Nov 30, 2026) takes the whole $BOBAI prize pool.';
       if (run) { try { const r = await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/run/' + run, { cf: { cacheTtl: 300 } }); if (r.ok) { const j = await r.json();
         /* the name the player plays as now, from the day's board, as the run's card shows it (7.11.: the title kept the name of the run's time) */
         try { const t = await (await fetch('https://' + (url.hostname.endsWith('brainonbnb.com') ? 'bobai-pop' : 'bobai-pop2') + '.bobbuildonbnb.workers.dev/api/pop/top?scope=day&d=' + j.day, { cf: { cacheTtl: 120 } })).json(); const row = (t.rows || []).find((x) => x.run === j.run); if (row && row.name) j.name = row.name; } catch {}
@@ -3028,6 +3035,9 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
     } });
   return rw.transform(res);
 }
+// the builder sheet's folder in the build (see the /builder route); the deploy writes the real name here, never the repo
+const BUILDER_DIR = '__BUILDER_DIR__';
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);

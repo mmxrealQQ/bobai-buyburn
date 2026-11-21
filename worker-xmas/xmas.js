@@ -148,6 +148,15 @@ export async function handleXmas(request, env, url, path) {
     const t = await env.XMAS.get(themeKey(slug), 'json', { cacheTtl: 60 });
     if (!t || t.blocked || !t.ver) return out({ ok: false, counted: false });
     const day = new Date().toISOString().slice(0, 10), k = `xmas:use:${day}`;
+    // ONE COUNT PER VISITOR, THEME AND DAY (security review 2026-11-21): any script could add +1 again and again and push
+    // its theme to the top of the switch (sorted by today's users). A salted hash of the address stands for the visitor
+    // for one day (the key expires after it; the address itself is not kept, and the salt changes daily).
+    const ip = request.headers.get('cf-connecting-ip') || '';
+    if (ip) {
+      const h = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}|${slug}|${ip}`)))).slice(0, 12).map((x) => x.toString(16).padStart(2, '0')).join('');
+      if (await env.XMAS.get(`xmas:seen:${h}`)) return out({ ok: true, counted: false });
+      await env.XMAS.put(`xmas:seen:${h}`, '1', { expirationTtl: 2 * 86400 });
+    }
     const m = (await env.XMAS.get(k, 'json')) || {};
     m[slug] = (m[slug] || 0) + 1;
     await env.XMAS.put(k, JSON.stringify(m), { expirationTtl: 90 * 86400 });

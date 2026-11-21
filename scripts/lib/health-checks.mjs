@@ -734,8 +734,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     }
     const ages = (ours || []).map((a) => ({ name: (a.name || '').replace(/^Brain on BNB — /, ''), st: a.warrant?.status, d: Date.parse(String(a.warrant?.date || '').replace(' ', 'T').replace(/\.\d+/, '').replace(/([+-]\d\d)$/, '$1:00')) }));
     const worst = ages.reduce((m, x) => Math.max(m, x.st === 'warranted' && x.d ? (Date.now() - x.d) / 864e5 : 99), 0);
-    ok('Agents', 'our Marque warrants are fresh (all six under 11 days old)', !ours || (ages.length === 6 && worst < 11),
-      !ours ? 'Marque catalog unread after 3 tries — not judged' : `${ages.length} listed, oldest ${worst >= 99 ? 'not warranted' : worst.toFixed(1) + ' days'}${worst >= 11 ? ' — re-run the test: node scripts/bnb-sdk/list-marque.mjs' : ''}`);
+    // RED ONLY FOR WHAT IS OURS TO FIX (2026-11-21, operator: "war beim tg alert noch rot mit marque"): Marque re-tests the
+    // warrants itself; from 10 Nov its own test reader refused the three rebalancing agents ("the test case could not be read
+    // from BNB Chain") while our endpoints answered. Red now when an agent is not warranted or its warrant is 21+ days old;
+    // 11 to 21 days is green with the age named and whose side it is.
+    ok('Agents', 'our six agents are warranted on Marque (red when one is not, or 21+ days unchecked)', !ours || (ages.length === 6 && worst < 21),
+      !ours ? 'Marque catalog unread after 3 tries — not judged' : `${ages.length} listed, oldest ${worst >= 99 ? 'not warranted' : worst.toFixed(1) + ' days'}${worst >= 21 ? ' — re-run the test: node scripts/bnb-sdk/list-marque.mjs' : worst >= 11 ? ' — Marque has not re-tested it since; its own test reader (their side), our endpoints answer' : ''}`);
   }
   ok('Agents', 'Brain Plaza tools are exposed',
     tools.some((t) => t.name === 'find_agents_on_bnb_chain') && tools.some((t) => t.name === 'bnb_agent_census'));

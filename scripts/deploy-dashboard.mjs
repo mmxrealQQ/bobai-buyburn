@@ -265,6 +265,27 @@ async function main() {
   const count = (d) => fs.readdirSync(d, { withFileTypes: true }).reduce((s, e) => s + (e.isDirectory() ? count(path.join(d, e.name)) : 1), 0);
   if (count(SRC) !== count(OUT)) problems.push(`the build holds ${count(OUT)} files, dashboard/ ${count(SRC)}`);
   for (const must of ['_worker.js', '_routes.json', '_headers', '_redirects', 'index.html']) if (!fs.existsSync(path.join(OUT, must))) problems.push(`${must} is missing from the build`);
+  // THE BUILDER SHEET UNDER A FOLDER ONLY THE BUILD KNOWS (security review 2026-11-21): as static /builder/ it was served
+  // without the password through "//builder/" and encoded spellings. Its name lives in dashboard/builder/.dir (gitignored
+  // like the whole folder; made once, at random), the folder is renamed in the build and the name written into the built
+  // _worker.js — the repo and the source mirror keep the placeholder; Pages never serves _worker.js.
+  {
+    const bsrc = path.join(SRC, 'builder'), bout = path.join(OUT, 'builder');
+    if (fs.existsSync(bout)) {
+      const dirFile = path.join(bsrc, '.dir');
+      if (!fs.existsSync(dirFile)) fs.writeFileSync(dirFile, 'b' + crypto.randomBytes(16).toString('hex'));
+      const dir = fs.readFileSync(dirFile, 'utf8').trim();
+      if (!/^b[0-9a-f]{32}$/.test(dir)) problems.push('dashboard/builder/.dir does not hold a folder name like b + 32 hex');
+      else {
+        fs.rmSync(path.join(OUT, dir), { recursive: true, force: true });
+        fs.renameSync(bout, path.join(OUT, dir));
+        fs.rmSync(path.join(OUT, dir, '.dir'), { force: true });
+        const wf = path.join(OUT, '_worker.js'), w = fs.readFileSync(wf, 'utf8');
+        if (!w.includes("const BUILDER_DIR = '__BUILDER_DIR__';")) problems.push('_worker.js lost the BUILDER_DIR placeholder');
+        else { fs.unlinkSync(wf); fs.writeFileSync(wf, w.replace("const BUILDER_DIR = '__BUILDER_DIR__';", `const BUILDER_DIR = '${dir}';`)); }
+      }
+    }
+  }
   // THE CODE LIVES (2026-10-12, card 07 "More"): when this build went out, and the commit and date of the public source
   // mirror it carries (dashboard/source.git) — written into the build only, after the count above, never into dashboard/
   {

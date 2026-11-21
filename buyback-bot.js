@@ -1,12 +1,10 @@
 // BOBAI Tax Distribution Bot
 // Created autonomously by Claude Opus 4.6
 //
-// Runs via GitHub Actions every 10 minutes:
-// 1. Checks buyback wallet for BNB from BOBAI 3% tax
-// 2. Splits BNB three ways:
-//    - 34% (1.0%) -> Creator wallet (revenue)
-//    - 33% (1.0%) -> Buy $BOB + burn to dead address
-//    - 33% (1.0%) -> Buy $BOBAI + burn to dead address (deflationary)
+// The local twin of worker/index.js (the live bot is the Cloudflare Worker, every 10 minutes; this file runs by hand only):
+// 1. Checks the buyback wallet for BNB from the BOBAI 3% tax
+// 2. Splits it per the phase table (the same as the worker's): from Dec 1, 2026 for good 1% creator / 1% $BOBAI bought
+//    and burned / 1% BOBAI/BNB liquidity with the LP burned — no $BOB burn any more (it ran until Dec 1)
 //
 // 100% automatic, 100% transparent, 100% on-chain verifiable
 

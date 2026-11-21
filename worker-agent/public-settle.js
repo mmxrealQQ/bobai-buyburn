@@ -144,9 +144,19 @@ export async function readJobs(ids, env) {
 }
 
 // The daily run. opts.rpcUrl: one node (a fork); opts.now: the time (tests).
-export async function runPublicSettle(env, { rpcUrl = null, now = new Date() } = {}) {
-  const day = now.toISOString().slice(0, 10);
+// ONE RUN AT A TIME (A-Z 2026-11-21): the 21:15 and the 21:22 firing are both due, and the day key is written only at the
+// end — a run longer than 7 minutes had a second one beside it, two senders on the provider wallet (nonce clashes, gas
+// spent twice, the candidates and totals written over each other). A lock is set at the start and taken away at the end,
+// also when the run throws; a run that is cut off leaves it for at most 20 minutes.
+export async function runPublicSettle(env, opts = {}) {
+  const day = (opts.now || new Date()).toISOString().slice(0, 10), LOCK = 'settle:running:' + day;
   if (await env.AGENT.get(DAY_KEY(day))) return { skipped: 'ran today' };
+  if (await env.AGENT.get(LOCK)) return { skipped: 'running' };
+  await env.AGENT.put(LOCK, new Date().toISOString(), { expirationTtl: 1200 });
+  try { return await runPublicSettleOnce(env, opts); } finally { await env.AGENT.delete(LOCK).catch(() => {}); }
+}
+async function runPublicSettleOnce(env, { rpcUrl = null, now = new Date() } = {}) {
+  const day = now.toISOString().slice(0, 10);
   const account = providerAccount(env);
   if (!account) return { ok: false, error: 'no provider key' };
   const cand = JSON.parse((await env.AGENT.get(CANDIDATES_KEY)) || '{}');

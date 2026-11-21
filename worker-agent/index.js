@@ -4146,7 +4146,7 @@ ${pageTail}`;
     // Brain Pop's closed day written on BNB Chain, from 00:15 UTC (pop-chain.js, 10.11.); the agent wallet's only other
     // sends are the settle (21:15) and the hires (05:30), so no two runs share its nonce
     if (event.cron === '*/15 * * * *' && popChainDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPopChain(env).catch(() => {}));
-    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => {}).then(() => runPublicRefund(env)).catch(() => {}));
+    if (publicSettleDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runPublicSettle(env).catch(() => null).then((r) => (r && r.skipped === 'running' ? null : runPublicRefund(env))).catch(() => {})); // refunds only after the run of this firing, never beside another (A-Z 2026-11-21)
     // and the board of who gets hired on BNB Chain, read after it (job-board.js, 2026-10-22)
     if (jobBoardDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runJobBoard(env).catch(() => {}));
     // Counts an isolate has added up but not yet written (see bump).

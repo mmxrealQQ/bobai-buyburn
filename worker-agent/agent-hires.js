@@ -352,6 +352,11 @@ export async function refundUndelivered(env, { now = Date.now(), dry = false } =
     const h = HIRES.find((x) => x.by === r.by);
     const self = h ? await accountForAgent(env, h.slug) : { account: null };
     if (!self.account || self.account.address.toLowerCase() !== String(job.client).toLowerCase()) { out.push({ job: r.job, step, error: 'the client wallet\'s key is not here' }); continue; }
+    // NOT BESIDE THE DAY'S HIRES (A-Z 2026-11-21): the 05:30 quarter runs this refund and the hires from the same wallet —
+    // the hire counts its own nonces, this send asked the node for one, and one of the two failed. The refund waits for
+    // the next quarter while the hires may still be sending (05:28 to 05:50 UTC); an expired job loses nothing by 15 minutes.
+    const at = new Date(now), mins = at.getUTCHours() * 60 + at.getUTCMinutes();
+    if (mins >= 5 * 60 + 28 && mins < 5 * 60 + 50) { out.push({ job: r.job, step, waits: 'the hires are sending from this wallet; next quarter' }); continue; }
     const transport = fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
     const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account: self.account, chain: bsc, transport });
     try {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // BOBAI returns the budgets of jobs nobody delivered — on a fork first (2026-10-23, operator: "ja, bauen").
 // worker-agent/public-refund.js sends claimRefund(jobId) for strangers' expired jobs from the provider wallet. Before
-// it does that on BNB Chain it runs here: anvil forks the chain at the current block, a throwaway key stands in for the
+// it does that on BNB Chain it runs here: anvil forks the chain at a fixed block of 23 Oct (see FORK_BLOCK), a throwaway key stands in for the
 // provider (the real key is never read), and the jobs are the kernel's real ones around the head (read on the fork).
 //
 // Held against:
@@ -74,7 +74,11 @@ if (process.argv.includes('--offline') || process.argv.includes('--self-test')) 
 
 if (!FORK_URL) { ok('an archive node for the fork', false); process.exit(1); }
 console.log('\nthe run (fork)');
-const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--port', String(PORT), '--chain-id', '56', '--silent', '--no-rate-limit', '--gas-price', '100000000', '--block-base-fee-per-gas', '0'], { stdio: 'ignore' });
+// A FIXED BLOCK (2026-11-21): the test read the expired, still funded jobs around the kernel's head of the day; since the
+// public refund went live they are returned within a day, so today's head has none and the test failed for doing its
+// job. The fork is taken on 23 Oct 08:00 UTC (block 129,286,137), the day it was written, when they stood there.
+const FORK_BLOCK = process.env.REFUND_FORK_BLOCK || '129286137';
+const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--fork-block-number', FORK_BLOCK, '--port', String(PORT), '--chain-id', '56', '--silent', '--no-rate-limit', '--gas-price', '100000000', '--block-base-fee-per-gas', '0'], { stdio: 'ignore' });
 const stop = () => { try { anvil.kill(); } catch { /* gone */ } };
 process.on('exit', stop);
 const chain = { ...bsc, rpcUrls: { default: { http: [LOCAL] } } };

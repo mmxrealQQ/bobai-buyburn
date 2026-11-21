@@ -19,7 +19,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { bsc } from 'viem/chains';
 import { permit2Mismatch, settleCalldata, permit2Id, PERMIT2_PROXY, QUEUE_PREFIX } from '../shared/x402-permit2.js';
 import { settleX402Queue } from '../worker-lp/x402-settle.js';
-import { INCOME_SOURCES, planSweep, executeSweep, readBnbUsd, ADDR } from '../shared/lp-agent.js';
+import { INCOME_SOURCES, planSweep, executeSweep, readBnbUsd, ADDR, OPERATOR_WALLET, OPERATOR_SHARE_BPS } from '../shared/lp-agent.js';
 
 const FORK_URL = process.env.BSC_RPC_KEYED_URL_2;
 const ANVIL = process.env.ANVIL || path.join(os.homedir(), '.foundry', 'bin', process.platform === 'win32' ? 'anvil.exe' : 'anvil');
@@ -115,11 +115,15 @@ console.log('\nTHE DAILY SWEEP TAKES THE USDC TOO — sold for BNB, straight to 
   const held = await usdcOf(PAYTO);
   const plan = await planSweep(pub, src, await readBnbUsd(pub));
   ok('the planner takes it: a dollar on the route, above the floor', plan.no == null, plan.no || `${plan.summary.sweeping} USDC -> ${plan.summary.bnb_equivalent} BNB`);
-  const lpBefore = await pub.getBalance({ address: ADDR.LP_WALLET });
+  // THE FLOW OF TODAY (2026-11-21): since 14.10. the sweep sends half to the operator and buys $BOBAI with the other half,
+  // held in this wallet — the check still asked for the BNB of the old flow at the DeFi wallet and failed on code that was right
+  const ERC = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] }];
+  const opBefore = await usdcOf(OPERATOR_WALLET), bobaiBefore = await pub.readContract({ address: ADDR.BOBAI, abi: ERC, functionName: 'balanceOf', args: [PAYTO] });
   const wx = createWalletClient({ account: PAYTO, chain, transport: http(LOCAL) });
   const done = await executeSweep(pub, wx, { address: PAYTO }, plan, () => {}, { txs: [] });
-  const lpAfter = await pub.getBalance({ address: ADDR.LP_WALLET });
-  ok('the USDC left the x402 wallet and the BNB arrived at the DeFi wallet', held - (await usdcOf(PAYTO)) === plan.amount && lpAfter - lpBefore > 0n && Number(done.received_bnb) >= Number(plan.summary.bnb_equivalent) * 0.97, `${done.sold} USDC -> ${done.received_bnb} BNB`);
+  const opAfter = await usdcOf(OPERATOR_WALLET), bobaiAfter = await pub.readContract({ address: ADDR.BOBAI, abi: ERC, functionName: 'balanceOf', args: [PAYTO] });
+  const opShare = (plan.amount * OPERATOR_SHARE_BPS) / 10000n;
+  ok('the USDC left the x402 wallet: half to the operator, the other half bought $BOBAI that stays in this wallet', held - (await usdcOf(PAYTO)) === plan.amount && opAfter - opBefore === opShare && bobaiAfter > bobaiBefore && Number(done.bobai_bought) > 0, `${done.sold} USDC -> ${done.bobai_bought} BOBAI held, ${done.to_operator} USDC to the operator`);
   ok('… with nothing left approved to the router', (await pub.readContract({ address: USDC, abi: erc20Abi, functionName: 'allowance', args: [PAYTO, ADDR.V2_ROUTER] })) === 0n);
   await test.stopImpersonatingAccount({ address: PAYTO });
   // The checks below count what settles from here on, the sweep having moved the rest.

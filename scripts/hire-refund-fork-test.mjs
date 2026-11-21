@@ -55,7 +55,11 @@ console.log('the rule (offline)');
 
 if (!offline) {
   console.log('\nthe kernel (fork)');
-  const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--port', String(PORT), '--chain-id', '56', '--silent'], { stdio: 'ignore' });
+  // A FIXED BLOCK (2026-11-21): 57047 was really refunded on 30 Oct (block 130,639,409), so a fork of today's block read it
+  // EXPIRED and the test failed on a job that had done what it tests. The fork is taken six hours before its expiry
+  // (block 130,590,065, 30 Oct 03:05 UTC), where it is FUNDED and the claim still too early — the archive node keeps it.
+  const FORK_BLOCK = '130590065';
+  const anvil = spawn(ANVIL, ['--fork-url', FORK_URL, '--fork-block-number', FORK_BLOCK, '--port', String(PORT), '--chain-id', '56', '--silent'], { stdio: 'ignore' });
   try {
     const pub = createPublicClient({ chain: bsc, transport: http(LOCAL) });
     for (let i = 0; i < 60; i++) { try { await pub.getBlockNumber(); break; } catch { await sleep(1000); } }
@@ -66,7 +70,7 @@ if (!offline) {
     const client = before.client;
     const uBal = async () => (await pub.readContract({ address: ERC8183.paymentToken, abi: parseAbi(['function balanceOf(address) view returns (uint256)']), functionName: 'balanceOf', args: [client] }));
     const data = '0x5b7baf64' + BigInt(JOB).toString(16).padStart(64, '0');
-    ok(`job ${JOB} is FUNDED today, client ${client.slice(0, 10)}…`, before.status === 'FUNDED', before.status);
+    ok(`job ${JOB} is FUNDED at the fork block (before its expiry), client ${client.slice(0, 10)}…`, before.status === 'FUNDED', before.status);
     let early = 'no revert'; try { await pub.call({ account: client, to: ERC8183.commerce, data }); } catch (e) { early = 'reverts'; }
     ok('claimRefund before the expiry reverts', early === 'reverts', early);
     await test.setNextBlockTimestamp({ timestamp: BigInt(before.expired_at + 120) }); await test.mine({ blocks: 1 });

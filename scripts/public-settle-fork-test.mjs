@@ -136,6 +136,10 @@ const before = Object.fromEntries(await Promise.all(provs.map(async (p) => [p, a
   const PROXY = `http://127.0.0.1:${PORT + 1}`;
   const attempt = async (mod) => {
     const snap = await test.snapshot();
+    // only what THIS run completes counts (2026-11-21: one candidate had been settled on the real chain since the test was
+    // written, so it read COMPLETED before the run and the totals of the run looked one short)
+    const doneBefore = new Set();
+    for (const id of Object.keys(cand)) { const j = await readJob(id); if (j?.status === 'COMPLETED') doneBefore.add(id); }
     // eight days on: the dispute windows of the submitted jobs pass, several are due, and the refusal falls between two
     await test.increaseTime({ seconds: 8 * 86400 }); await test.mine({ blocks: 1 });
     balances = 0;
@@ -144,7 +148,7 @@ const before = Object.fromEntries(await Promise.all(provs.map(async (p) => [p, a
     let out = null, err = null; try { out = await mod.runPublicSettle(env2, { rpcUrl: PROXY, now: new Date(Date.now() + 8 * 86400e3) }); } catch (e) { err = e; }
     const left = JSON.parse(kv2.get(S.CANDIDATES_KEY));
     const onChain = [];
-    for (const id of Object.keys(cand)) { const j = await readJob(id); if (j?.status === 'COMPLETED') onChain.push(id); }
+    for (const id of Object.keys(cand)) { if (doneBefore.has(id)) continue; const j = await readJob(id); if (j?.status === 'COMPLETED') onChain.push(id); }
     const totals = JSON.parse(kv2.get('settle:public:totals') || 'null');
     await test.revert({ id: snap });
     return { out, err, onChain, stillListed: onChain.filter((id) => left[id]), totals, marked: [...kv2.keys()].some((k) => k.startsWith('settle:public:day:')) };

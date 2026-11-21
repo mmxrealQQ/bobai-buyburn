@@ -1566,6 +1566,7 @@
 #bt .xm-sw .hw-oo{color:#d9f1ff;margin-left:4px;overflow:hidden;text-overflow:ellipsis;letter-spacing:.06em;text-transform:none}
 #bt .xm-sw[aria-pressed=false]{--hf:transparent;--hs:#d9f1ff;--he:#d9f1ff;border-color:#d9f1ff}
 #bt .xm-sw:hover{border-color:#fff}
+#bt .xm-sw::before{display:none} /* no brown pulsing ring around the Xmas switch (operator 21.11.) */
 #bt .xm-sw .hw-t{border-color:rgba(159,216,255,.6)}
 #bt .xm-menu{position:absolute;z-index:9;width:min(260px,calc(100% - 16px));max-height:min(60%,420px);overflow:auto;padding:8px;border-radius:14px;border:1px solid rgba(159,216,255,.45);
   background:rgba(8,10,16,.96);box-shadow:0 10px 30px rgba(0,0,0,.5);pointer-events:auto;display:flex;flex-direction:column;gap:4px}
@@ -1576,6 +1577,9 @@
 #bt .xm-menu button small{font:.66rem var(--mono);color:#9fb3c4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #bt .xm-menu button:hover,#bt .xm-menu button:focus-visible{background:rgba(159,216,255,.1)}
 #bt .xm-menu button.on{border-color:rgba(159,216,255,.6);background:rgba(159,216,255,.08)}
+#bt .xm-menu .xm-r{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+#bt .xm-menu .xm-r b{min-width:0}
+#bt .xm-cnt{display:inline-flex;align-items:center;gap:4px;flex:none;font:700 .64rem var(--mono);font-style:normal;color:#ffd34d;background:rgba(240,185,11,.12);border:1px solid rgba(240,185,11,.45);border-radius:999px;padding:2px 7px;white-space:nowrap;letter-spacing:.02em}
 #bt .xm-menu .xm-make{font:700 .66rem var(--mono);color:#F0B90B;text-decoration:none;padding:8px 10px 4px}
 #bt .xm-menu .xm-note{margin:4px 10px 2px;font:.62rem var(--mono);color:#ffb469}
 /* A STATION WHOSE SHARE ENDED, ON THE BRAINROT STAGE (2026-11-19, operator: "keep the pictures for the game, just take the

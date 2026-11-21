@@ -8474,6 +8474,9 @@ window.__btXmSeason = xmSeason;
   // the switch: a snowflake at the LIVE pill, its menu names every builder
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'hw-sw xm-sw'; sw.id = 'bt-xm'; sw.setAttribute('aria-haspopup', 'true');
   sw.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6M9.6 3.9 12 6.3l2.4-2.4M9.6 20.1 12 17.7l2.4 2.4M3.1 10.4l3.3.9-.9 3.2M20.9 13.6l-3.3-.9.9-3.2M5.5 9.5l.9-3.3 3.2.9M18.5 14.5l-.9 3.3-3.2-.9" fill="none" stroke="var(--hs)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path class="hw-x" d="M3.5 21.5L20.5 3.5" fill="none" stroke="#9fd8ff" stroke-width="2.2" stroke-linecap="round"/></svg><b class="hw-oo"></b><span class="hw-t"></span>';
+  // HOW MANY USE IT (operator 21.11.: "better visible ... with gifts", then "only when you click, the pill is too big"):
+  // a small gold gift with the count, in the menu only
+  const GIFT = '<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><rect x="2" y="7" width="12" height="7.5" rx="1.2" fill="#F0B90B"/><rect x="1.2" y="4.6" width="13.6" height="3" rx="1" fill="#ffd34d"/><rect x="7.1" y="4.6" width="1.8" height="9.9" fill="#d9343a"/><path d="M8 4.6C6.4 1.6 3.6 2.4 4.6 4.6M8 4.6c1.6-3 4.4-2.2 3.4 0" fill="none" stroke="#d9343a" stroke-width="1.3" stroke-linecap="round"/></svg>';
   const menu = document.createElement('div'); menu.className = 'xm-menu'; menu.hidden = true; menu.setAttribute('role', 'menu');
   const livePill = $('live'); livePill.after(sw); win.appendChild(menu);
   let flowW = -1, flowOk = false, flowAt = 0;
@@ -8498,12 +8501,12 @@ window.__btXmSeason = xmSeason;
   { const ro = new ResizeObserver(() => swPlace()); ro.observe(win); ro.observe(sw.parentElement); ro.observe(livePill); addEventListener('resize', swPlace); }
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   function paintMenu() {
-    const row = (slug, t, sub, on) => '<button type="button" role="menuitemradio" aria-checked="' + on + '" data-s="' + esc(slug) + '"' + (on ? ' class="on"' : '') + '><b>' + esc(t) + '</b><small>' + esc(sub) + '</small></button>';
+    const row = (slug, t, sub, on, n) => '<button type="button" role="menuitemradio" aria-checked="' + on + '" data-s="' + esc(slug) + '"' + (on ? ' class="on"' : '') + '><span class="xm-r"><b>' + esc(t) + '</b>' + (n != null ? '<i class="xm-cnt">' + GIFT + nf(n) + ' using today</i>' : '') + '</span><small>' + esc(sub) + '</small></button>';
     menu.innerHTML = '<div class="xm-h">Xmas terminals</div>'
       // MOST USED FIRST, THE TOP FOUR, THE REST BEHIND A CLICK (operator, 17.11.): ordered by users today, then in all
       + (() => { const L = THEMES.slice().sort((a, b) => (b.users_today || 0) - (a.users_today || 0) || (b.users_total || 0) - (a.users_total || 0)), top = showAll ? L : L.slice(0, 4);
         if (cur && !top.includes(cur)) top.push(cur);
-        return top.map(t => row(t.slug, t.builder, t.title + (t.users_today != null ? ' · ' + nf(t.users_today) + ' using it today' : t.preview ? ' · preview' : ''), cur?.slug === t.slug)).join('')
+        return top.map(t => row(t.slug, t.builder, t.title + (t.users_today == null && t.preview ? ' · preview' : ''), cur?.slug === t.slug, t.users_today != null ? t.users_today : null)).join('')
           + (L.length > 4 ? '<button type="button" class="xm-more" data-more="1"><b>' + (showAll ? 'Show the top 4' : 'Show all ' + L.length + ' Xmas terminals') + '</b></button>' : ''); })()
       + row('', 'Standard terminal', 'the terminal as always', !cur)
       + '<a class="xm-make" href="' + SITE_URL + '/xmas" target="_blank" rel="noopener">Build your own →</a>' + (note ? '<p class="xm-note">' + esc(note) + '</p>' : '');
@@ -8519,8 +8522,7 @@ window.__btXmSeason = xmSeason;
     cur = THEMES.find(t => t.slug === slug) || null;
     win.classList.toggle('xm-on', !!cur);
     sw.setAttribute('aria-pressed', cur ? 'true' : 'false');
-    sw.querySelector('.hw-oo').textContent = cur ? cur.builder.slice(0, 14) : 'off';
-    sw.title = cur ? cur.title + ' by ' + cur.builder + ' — click for the other Xmas terminals or the standard' : 'The standard terminal — click for the Xmas terminals';
+    sw.querySelector('.hw-oo').textContent = cur ? cur.builder.slice(0, 14) : 'off';    sw.title = cur ? cur.title + ' by ' + cur.builder + ' — click for the other Xmas terminals or the standard' : 'The standard terminal — click for the Xmas terminals';
     sw.setAttribute('aria-label', sw.title); sw.querySelector('.hw-t').dataset.t = cur ? cur.title : 'Xmas terminals';
     if (byHand) { try { localStorage.setItem('bt-xmas', cur ? cur.slug : '0'); } catch {} }
     if (cur) {

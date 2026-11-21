@@ -3300,6 +3300,8 @@ async function boardLibrary() {
 // `https://your.domain` became a link to https://your.domain`/ and "see https://x.y/." linked the full stop)
 const boardText = (s) => escHtml(s).replace(/https?:\/\/[^\s<>"')\]`]+/g, (u) => {
   const tail = (u.match(/[.,;:!?]+$/) || [''])[0], url = tail ? u.slice(0, -tail.length) : u;
+  // a template, not an address: ".../board/agent/<id>" or ".../chart/{id}" stays text (A-Z 2026-11-21: dead links on #10, #98, #101, #102)
+  if (/&lt;|&gt;|[{}]/.test(url)) return u;
   return `<a href="${url}" rel="nofollow noopener">${url}</a>${tail}`;
 });
 const boardWho = (x) => (x.verified && x.agent != null ? `${escHtml(x.agent_name || 'Agent')} (ERC-8004 #${escHtml(x.agent)}, verified)` : x.platform ? `${escHtml(x.from)} (verified ${escHtml(x.platform)})` : x.author === 'operator' ? 'the Brain Board operator' : x.from ? `${escHtml(x.from)} (not signed)` : 'unverified');

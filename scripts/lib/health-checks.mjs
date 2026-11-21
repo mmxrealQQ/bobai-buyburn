@@ -570,6 +570,9 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     ok('Bots', 'DeFi card went out (channel, 05:00 UTC)', dailyOnTime(d.lp_card, 8), `last sent ${d.lp_card || 'never'}`);
     // 2026-10-09: the public 24 h market card (16:00-18:59 UTC); an older bot that does not name it is not asked
     if ('market_card' in d) ok('Bots', 'market card went out (channel, 16:00 UTC)', dailyOnTime(d.market_card, 19, new Date(), '2026-10-09'), `last sent ${d.market_card || 'never'}`);
+    // the Brain Pop night post (00:15-01:00 UTC) for yesterday's board, while the season's days are posted (to the 30 Nov
+    // board on 1 Dec, the season-over post); 'nobody' = nobody played, nothing owed (A-Z 2026-11-21)
+    if (d.pop_champ && d.pop_champ.in_season) ok('Bots', 'Brain Pop night post went out (channel, after 00:15 UTC)', d.pop_champ.flag === 'sent' || d.pop_champ.flag === 'nobody', `day ${d.pop_champ.day}: ${d.pop_champ.flag || 'not sent'}`);
     for (const v of tgEvidenceVerdicts(j)) ok('Bots', v.name, v.good, v.detail);
     // ONE NFT PER BUY (2026-10-25, operator: "es gab wieder zwei NFT"): the drop log of the minter, the last 36 h (wider
     // than the day between two reports); two drops for one buy transaction is the double mint MintGate stops (23.10.)

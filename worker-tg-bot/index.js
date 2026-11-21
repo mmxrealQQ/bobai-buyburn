@@ -3863,7 +3863,9 @@ export default {
         // The date each daily post last went out. A running cron says nothing
         // about them: the whale recap was silent for six days in September
         // 2026 under a heartbeat that never missed.
-        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date'), market_card: await env.KV.get('market_card_date') },
+        daily: { whale_recap: await env.KV.get('last_daily_summary'), lp_card: await env.KV.get('lp_report_date'), market_card: await env.KV.get('market_card_date'),
+          // the Brain Pop night post of yesterday's board (A-Z 2026-11-21: a lost season-over post on 1 Dec would have stayed silent)
+          pop_champ: await (async () => { const day = new Date(Date.now() - 86400e3).toISOString().slice(0, 10); return { day, in_season: day >= POP_FIRST && day <= POP_LAST, flag: await env.KV.get('pop_champ:' + day) }; })() },
         webhook_secured: Boolean(env.TG_WEBHOOK_SECRET) && Boolean(await env.KV.get('webhook_secret_version')),
         ...(await healthEvidence(env)),
       }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

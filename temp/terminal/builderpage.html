@@ -97,6 +97,32 @@ table.ov { border-collapse: collapse; width: 100%; font-size: 13px; }
 .ill figcaption code { font: 11px var(--mono); color: var(--mut); }
 .ill .miss { aspect-ratio: 3 / 2; display: grid; place-items: center; color: var(--held); border: 1px dashed var(--held); border-radius: 5px; font: 700 12px var(--mono); }
 .foot { margin-top: 36px; color: var(--mut); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; max-width: 90ch; }
+/* the overview (2026-11-21): a card per theme, a picture on top */
+header.top { padding: 18px 0 16px; background: radial-gradient(120% 140% at 0% 0%, rgba(240,185,11,.10), transparent 60%); border-radius: 0 0 16px 16px; }
+.cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); margin-top: 18px; }
+.card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-rows: auto 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--gold); box-shadow: 0 12px 30px rgba(0,0,0,.45); }
+.card .cm { display: block; aspect-ratio: 16 / 10; background: #15121b; overflow: hidden; }
+.card .cm img, .card .cm video { width: 100%; height: 100%; object-fit: cover; display: block; aspect-ratio: auto; border-radius: 0; }
+.card .ct { display: grid; gap: 6px; padding: 14px 16px 16px; }
+.card .ct b { font: 700 17px/1.2 var(--mono); color: var(--fg); }
+.card .ct span { color: var(--mut); font-size: 13.5px; line-height: 1.45; }
+.card .ct i { font: 700 11px/1 var(--mono); font-style: normal; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+.gi a { display: block; cursor: zoom-in; } .gi { transition: border-color .15s ease; } .gi:hover { border-color: #3d3648; }
+.lb { position: fixed; inset: 0; z-index: 50; background: rgba(8,6,12,.92); display: grid; place-items: center; padding: 20px; cursor: zoom-out; }
+.lb[hidden] { display: none; }
+.lb figure { margin: 0; display: grid; gap: 10px; max-width: min(1200px, 100%); max-height: 100%; }
+.lb img { max-width: 100%; max-height: calc(100vh - 140px); object-fit: contain; border-radius: 8px; margin: 0 auto; display: block; }
+.lb figcaption { display: grid; gap: 2px; text-align: center; color: var(--mut); font-size: 13px; } .lb figcaption b { color: var(--fg); }
+.tabs button.pop[aria-selected="true"] { background: #ff3fd8; border-color: #ff3fd8; color: #1a0416; }
+.tabs button.xm[aria-selected="true"] { background: #9fd8ff; border-color: #9fd8ff; color: #0a1a2a; }
+.gal { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); align-items: start; }
+.gi { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; min-width: 0; }
+.gi img { display: block; width: 100%; height: auto; max-height: 340px; object-fit: contain; background: #15121b; border-radius: 5px; }
+.gi video { aspect-ratio: auto; max-height: 340px; object-fit: contain; }
+.gi figcaption { display: grid; gap: 2px; font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.gi figcaption span { color: var(--mut); } .gi figcaption .born { font-size: 11.5px; color: var(--fg); font-variant-numeric: tabular-nums; }
+.gi code { font: 11px var(--mono); color: var(--gold); opacity: .85; }
 @media (max-width: 560px) { .tabs { flex-wrap: nowrap; overflow-x: auto; } .tabs button { padding: 9px 12px; font-size: 12px; white-space: nowrap; } .tabs .n { display: none; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
@@ -105,11 +131,15 @@ table.ov { border-collapse: collapse; width: 100%; font-size: 13px; }
   <header class="top">
     <div class="kick">$BOBAI · for the builders</div>
     <h1>BOBAI Builder Sheet</h1>
-    <p class="lede">Every animation, picture and illustration we made, one tab per theme. A code like <b class="code">C4</b> names one take for good: the letter is the move, the number the take. Tell us the code and what to change.</p>
+    <p class="lede">Every animation, picture, meme and illustration of $BOBAI, one tab per theme: the terminal's takes, Brain Pop, Xmas, the posts, the archives. A code like <b class="code">C4</b> names one take for good (letter = move, number = take); a picture opens large with a click.</p>
   </header>
   <nav class="tabs" role="tablist" aria-label="Themes">
+    <button role="tab" id="t-start" data-tab="start">Overview</button>
     <button role="tab" id="t-terminal" data-tab="terminal">BOBAI Terminal <span class="n" id="n-terminal"></span></button>
     <button role="tab" id="t-halloween" data-tab="halloween" class="hw">Halloween <span class="n">until Nov 1</span></button>
+    <button role="tab" id="t-pop" data-tab="pop" class="pop">Brain Pop <span class="n" id="n-pop"></span></button>
+    <button role="tab" id="t-xmas" data-tab="xmas" class="xm">Xmas <span class="n" id="n-xmas"></span></button>
+    <button role="tab" id="t-memes" data-tab="memes">Memes &amp; posts <span class="n" id="n-memes"></span></button>
     <button role="tab" id="t-wc26" data-tab="wc26">Worldcup '26 <span class="n" id="n-wc"></span></button>
   </nav>
   <main id="panel"></main>
@@ -224,11 +254,53 @@ function wc26() {
   panel.innerHTML = h;
 }
 
-const TABS = { terminal, halloween, wc26 };
+// THE NEWER TABS (2026-11-21): one gallery each — sections of pictures and clips, every one with its name, what it is,
+// its file and the day it was made
+function gallery(key) {
+  const G = (D.gal || {})[key]; if (!G) { panel.innerHTML = '<p class="when">Nothing here yet.</p>'; return; }
+  const S = G.sections.filter(s => s.items.length);
+  let h = `<div class="sub">${esc(G.sub)}</div><div class="jump">${S.map((s, i) => `<a href="#${s.id}"><b>${String(i + 1).padStart(2, '0')}</b> ${esc(s.title.toLowerCase())}</a>`).join('')}</div>`;
+  S.forEach((s, i) => {
+    h += `<section id="${s.id}"><h2><span class="c">${String(i + 1).padStart(2, '0')}</span> ${esc(s.title)} <small>${esc(s.small)} · ${s.items.length}</small></h2><div class="gal">${s.items.map(it =>
+      `<figure class="gi">${it.v ? `<video src="${it.v}#t=0.3" muted loop playsinline preload="metadata" controls></video>` : `<a href="${it.img}" target="_blank" rel="noopener"><img src="${it.img}" alt="${esc(it.name)}" loading="lazy"></a>`}
+      <figcaption><b>${esc(it.name)}</b>${it.note ? `<span>${esc(it.note)}</span>` : ''}<code>${esc(it.file)}</code><span class="born">${esc(it.born)}</span></figcaption></figure>`).join('')}</div></section>`;
+  });
+  panel.innerHTML = h;
+}
+const pop = () => gallery('pop'), xmas = () => gallery('xmas'), memes = () => gallery('memes');
+// THE OVERVIEW (2026-11-21, operator: "make the builder page beautiful, clear and sensible"): one card per theme with a
+// picture, what it is, how many pieces, and what waits for a decision — a click opens the theme
+function start() {
+  const g = k => (D.gal || {})[k], cnt = k => (g(k)?.sections || []).reduce((a, s) => a + s.items.length, 0), first = (k, i = 0) => g(k)?.sections?.[i]?.items?.find(x => x.img)?.img || '';
+  const takes = D.moves.flatMap(m => m.takes), live = takes.filter(t => t.st === 'live');
+  const open = D.moves.flatMap(m => m.takes.filter(t => t.decide)).length, fresh = takes.filter(t => t.made && t.st === 'live').length;
+  const keyed = live.filter(t => /.pack.mp4$/.test(t.file || '')), hero = keyed.find(t => /hub-cheer|hub-dance|hub-wave/.test(t.clip)) || keyed[0] || live[0]; // a take cut out of its green screen
+  const CARDS = [
+    ['terminal', 'BOBAI Terminal', `${live.length} live takes of ${takes.length} · every move BOBAI makes on brainonbnb.com`, D.hero ? `<img src="${D.hero.img}" alt="" style="object-fit:contain;background:radial-gradient(circle at 50% 60%,#2a2233,#15121b)">` : '', open || fresh ? `${open ? open + ' to decide' : ''}${open && fresh ? ' · ' : ''}${fresh ? fresh + ' new' : ''}` : 'nothing open'],
+    ['pop', 'Brain Pop', `${cnt('pop')} pieces · the brainrot game: creatures, stations, cards, memes`, `<img src="${first('pop', 1)}" alt="">`, 'season Nov 6 – 30'],
+    ['xmas', 'Xmas', `${cnt('xmas')} pieces · our theme for the community Xmas terminal, live Dec 1`, `<img src="${first('xmas')}" alt="">`, 'from Dec 1'],
+    ['memes', 'Memes & posts', `${cnt('memes')} pieces · every X picture and clip, Giggle, NFT cards`, `<img src="${first('memes', 2) || first('memes')}" alt="">`, 'all posted'],
+    ['halloween', 'Halloween', `${D.pics.length} pictures, 4 scenes · the look of Oct 5 – Nov 1`, `<img src="hw/pumpkin.webp" alt="" style="object-fit:contain">`, 'archive'],
+    ['wc26', "Worldcup '26", `${D.avatars.length + D.illus.length} pictures · team avatars and illustrations`, `<img src="${D.illus.find(i => i.img)?.img || ''}" alt="">`, 'archive']];
+  panel.innerHTML = `<div class="sub">Pick a theme. In every tab: a code or file name names one piece for good — tell Claude the code and what to change.</div>
+    <div class="cards">${CARDS.map(([k, t, d, m, s]) => `<button type="button" class="card" data-go="${k}"><span class="cm">${m}</span><span class="ct"><b>${esc(t)}</b><span>${esc(d)}</span><i>${esc(s)}</i></span></button>`).join('')}</div>`;
+  panel.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { show(b.dataset.go); history.replaceState(null, '', '#' + b.dataset.go); }));
+}
+// a picture opens large over the page; Esc, a click or the back of the box closes it
+const lb = document.createElement('div'); lb.className = 'lb'; lb.hidden = true; lb.innerHTML = '<figure><img alt=""><figcaption></figcaption></figure>'; document.body.appendChild(lb);
+document.addEventListener('click', e => {
+  const a = e.target.closest('.gi a, .pic img, .ill img, .av img'); if (!a) return;
+  e.preventDefault(); const img = a.tagName === 'IMG' ? a : a.querySelector('img'), fig = a.closest('figure');
+  lb.querySelector('img').src = img.getAttribute('src'); lb.querySelector('figcaption').innerHTML = fig?.querySelector('figcaption')?.innerHTML || ''; lb.hidden = false;
+});
+lb.addEventListener('click', () => { lb.hidden = true; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') lb.hidden = true; });
+const TABS = { start, terminal, halloween, pop, xmas, memes, wc26 };
+for (const k of ['pop', 'xmas', 'memes']) { const n = ((D.gal || {})[k]?.sections || []).reduce((a, s) => a + s.items.length, 0); const el = document.getElementById('n-' + k); if (el) el.textContent = n + ' pieces'; }
 document.getElementById('n-terminal').textContent = D.moves.reduce((a, m) => a + m.takes.length, 0) + ' takes';
 document.getElementById('n-wc').textContent = D.avatars.length + D.illus.length + ' pictures';
 function show(tab, keepHash) {
-  if (!TABS[tab]) tab = 'terminal';
+  if (!TABS[tab]) tab = 'start';
   document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab ? 'true' : 'false'));
   TABS[tab](); try { localStorage.setItem('bb-tab', tab); } catch {}
   // a video plays while the pointer rests on it, and stops when it leaves
@@ -238,9 +310,9 @@ function show(tab, keepHash) {
 }
 document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => { show(b.dataset.tab); history.replaceState(null, '', '#' + b.dataset.tab); }));
 // a deep link: #halloween / #wc26 opens that tab; a take's code (#C4) opens the terminal tab at it
-const h0 = location.hash.slice(1); let start = 'terminal';
-try { start = localStorage.getItem('bb-tab') || start; } catch {}
-if (TABS[h0]) start = h0; else if (/^[A-Z]{1,2}\d+$/.test(h0)) start = 'terminal';
-show(start, true);
+// a visit without a link opens the overview (2026-11-21)
+const h0 = location.hash.slice(1); let tab0 = 'start';
+if (TABS[h0]) tab0 = h0; else if (/^[A-Z]{1,2}\d+$/.test(h0)) tab0 = 'terminal';
+show(tab0, true);
 if (h0 && !TABS[h0]) document.getElementById(h0)?.scrollIntoView();
 </script>

@@ -63,5 +63,7 @@ kv.clear(); sent.length = 0; board.day = '2026-11-30'; board.no = 25;
 await mod.postPopChampion(env, new Date('2026-12-01T00:20:00Z'));
 const cap3 = sent[0]?.body?.caption || sent[0]?.body?.text || '';
 ok('9 1 Dec 00:20: the season-over post goes out (day 30 Nov)', sent.length === 1 && cap3.includes('Season over') && kv.get('pop_champ:2026-11-30') === 'sent', cap3.split('\n')[0]);
+// A-Z 2026-11-21: the line was anchored on "▶️ Play today:", which the season-over post does not have
+ok('10 the season-over post carries its transaction too', cap3.includes('⛓ On BNB Chain: https://bscscan.com/tx/' + TX), cap3.split('\n').slice(-3).join(' | '));
 console.log(`\ntg pop-chain test: ${n - failed}/${n}`);
 process.exit(failed ? 1 : 0);

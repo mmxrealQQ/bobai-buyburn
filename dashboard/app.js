@@ -1062,7 +1062,10 @@ fetch('/giggle-donation.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{if(
     // (2026-09-12: "0.9/0.1/0.9 + 0.3" left 0.8% unexplained).
     const st=document.getElementById('step-split');
     // every part by name (2026-09-27): "0.8%/0.3%/0.8% + 0.5% …" left a reader to guess which number was which
-    if(st)st.textContent=active?[[active.bobaiPct,'$BOBAI burn'],[active.bobPct,'$BOB burn'],[active.liqPct,active.liqLabel||'liquidity'],[active.lpPct,'DeFi agent'],[active.gigglePct,'Giggle pot'],[active.creatorPct,'creator']].filter(p=>p[0]).map(p=>p[0]+' '+p[1]).join(' · '):'~1/1/1';
+    if(st)st.textContent=active?[[active.bobaiPct,'$BOBAI burn'],[active.bobPct,'$BOB burn'],[active.liqPct,active.liqLabel||'liquidity'],[active.lpPct,'DeFi agent'],[active.gigglePct,'Giggle pot'],[active.creatorPct,'creator']].filter(p=>p[0]&&p[0]!=='0%').map(p=>p[0]+' '+p[1]).join(' · '):'~1/1/1';
+    // From Dec 1, 2026 nothing burns $BOB any more: step 4 names what the bot sends to dead from then on (A-Z 2026-11-21)
+    const sb=document.getElementById('step-burn');
+    if(sb&&active&&active.bobPct==='0%'&&!sb.dataset.lfg){sb.dataset.lfg='1';sb.textContent='$BOBAI and the LP of every liquidity add sent to dead address.'}
   }
   apply();setInterval(apply,60000);
 }();

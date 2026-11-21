@@ -612,8 +612,13 @@ function layout() {
   // EVENLY OVER THE STATIONS IN FORCE (operator, 17.11.: "burn, add liq and creator should be evenly spaced"): from 1 Dec
   // three have a share; the hidden ones keep their old place, the live ones share the column (the phone's row) between them
   const LIVE = DEST.filter(shown), n = LIVE.length > 1 ? LIVE.length : DEST.length; LAID = DEST.map(shown).join();
+  // BRAINROT ON A STACKED SCREEN (2026-11-20, operator on his iPad: "in rot the lower 3 symbols are not well visible"): all six
+  // creatures stand in two rows, but only the stations that are paid carry a name — and the names of the top row sat on the
+  // heads of the bottom row's creatures, reading as their names. The three without a name go to the top row, the three
+  // named ones to the bottom row, where nothing stands under their names.
+  const paid = DEST.filter(d => d.pct > 0), ORD = portrait && LIVE.length === 6 && paid.length === 3 ? [...DEST.filter(d => !(d.pct > 0)), ...paid] : null;
   DEST.forEach((d, i0) => {
-    const i = LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
+    const i = ORD ? ORD.indexOf(d) : LIVE.length > 1 && LIVE.includes(d) ? LIVE.indexOf(d) : i0;
     if (portrait) {
       // 0.55 below the core, not 0.95: labels that wrap on a 360-390 px phone kept the second row clear of the view tabs (A3, 2026-09-25)
       // a little further apart (operator, 2026-10-05: "give the six points on the phone a bit more distance"): the rows
@@ -697,8 +702,9 @@ function info(k) {
       note: pctOf('burnB') + ' of every trade buys $BOB (Build On BNB) and burns it — BOBAI feeding the chain it was born on.',
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
-      [boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)],
-      ['All bot adds', nf(S.liq.length)], ['Pool LP burned', lpText()]],
+      ...(boost.key === 'lfg' && !boost.n && pageNow() < LFG_START && !XM_SANDBOX_DEC ? [[boost.name, 'starts Dec 1, 00:01 UTC']]
+        : [[boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)]]),
+      ['All bot adds', nf(S.liq.length)], ['Dev wallet adds (by hand)', nf((S.man || []).length)], ['Pool LP burned', lpText()]],
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [
@@ -708,11 +714,13 @@ function info(k) {
       note: 'Gets ' + pctOf('defi') + ' of every trade, provides liquidity on PancakeSwap V3, and a third of what it earns buys BOBAI it keeps.',
       links: [['agent wallet', bsc('0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A')], ['full record', SITE + '/liquidity']] };
     case 'giggle': return { t: 'The Giggle Academy pot', c: D.giggle.c, rows: [
-      ['In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
-      ['Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
+      [GG_DONE ? 'Donated' : 'In the pot', bnb4R(ggBnb())], ['Worth', '$' + nf(ggBnb() * S.bnbP, 2)],
+      [GG_DONE ? 'Sends' : 'Sends so far', nf(S.burns.filter(e => e.giggleTx).length)], ['Donated on', 'Nov 20, 2026 · World Children’s Day']],
       note: GIGGLE_OPEN() ? pctOf('giggle') + ' of every trade collects here. On Nov 20 collecting ends, and the pot goes to Giggle Academy in one donation.'
+        : GG_DONE ? 'Collecting ended on Nov 20, World Children’s Day, and the same day every wei of the pot (' + (+GG_DONE.bnb).toFixed(4) + ' BNB) went to Giggle Academy in one donation. Tap the donation to see it on BscScan.'
         : 'Collecting ended on Nov 20, World Children’s Day. The pot goes to Giggle Academy in one donation; tap the pot wallet to see on BscScan when it left.',
-      links: [['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
+      // the receipt (2026-11-20): once giggle-donation.json carries the tx, the window links it
+      links: [...(GG_DONE ? [['the donation', 'https://bscscan.com/tx/' + GG_DONE.tx]] : []), ['pot wallet', bsc('0x5E4102520A71B2AA18a1208330d4848dea4BD105')]] };
     // each figure carries its own time: next to "dev bot runs · last <today>" an untimed payout read as today's (operator, 2026-10-11)
     case 'creator': case 'dev': { const dv = S.dev[S.dev.length - 1], oldSp = !!dv && !(dv.builder5Bnb && dv.builder6Bnb); return { t: 'Creator share → d38', c: D.creator.c, rows: [
       ['Share of each trade', pctOf('creator')], ['Last in from 1ce', lastRun ? bnbF(lastRun.creatorBnb) + ' · ' + agoL(lastRun.time) : '…'], ['Last payout from d38', dv ? bnbF(dv.availableBnb) + ' · ' + agoL(dv.time) + (oldSp ? ' · old split 80% · 6 builders' : '') : '…'],
@@ -891,6 +899,9 @@ function circleLine(k) {
       `My DeFi agent has ${v} in CAKE/BNB. ${r ? 'Out of range for now; if it stays out, it re-sets around the price.' : 'Fees coming in.'}`]); },
     giggle: () => { const p = bnb4(ggBnb()); return GIGGLE_OPEN() ? vary('v10', [`The Giggle pot holds ${p} for Giggle Academy. Every trade adds to it until November 20.`, `${p} in the Giggle pot so far. It goes to Giggle Academy on November 20.`,
       `Every trade adds a coin for Giggle Academy. The pot: ${p}.`, `The Giggle pot: ${p}, growing with every trade until November 20.`, `For the kids of Giggle Academy: ${p} in the pot, and counting.`])
+      // donated (2026-11-20): once giggle-donation.json carries the tx, he says it went, not that it is waiting
+      : GG_DONE ? vary('v31', [`Donated: ${p} went to Giggle Academy on World Children's Day.`, `Every wei of the Giggle pot, ${p}, is with Giggle Academy now.`,
+        `${p} from every trade, given to the kids of Giggle Academy on November 20.`, `The Giggle pot did its job: ${p} donated to Giggle Academy.`, `For the kids: ${p} donated to Giggle Academy, one transaction, all on chain.`])
       : vary('v11', [`Collecting is over: ${p} for Giggle Academy, from every trade.`, `${p} from every trade, for Giggle Academy.`, `The Giggle pot is closed: ${p} for Giggle Academy.`, `Giggle Academy's pot: ${p}, one donation from every trade.`, `${p} for Giggle Academy, made by every trade.`]); },
     creator: () => { if (!dv) return null; const b = bnbF(+dv.availableBnb || 0), t = hAgo(Date.parse(dv.time)), sp = dv.builder5Bnb && dv.builder6Bnb ? '80% creator, 20% to 6 builders' : '82% creator, 18% to 5 builders, the old split; from the next payout 80% creator, 20% to 6 builders'; return vary('v12', [
       `My creator share paid out ${b} ${t}: ${sp}.`, `Creator share, last payout ${b}, ${t}. Split: ${sp}.`, `${b} paid out ${t} from the creator share: ${sp}.`,
@@ -3010,7 +3021,14 @@ const CMDS = {
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
   liq: () => { setFocus('liq'); const b = boost3();
-    say([b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
+    // A-Z 2026-11-21: from Nov 20 to Dec 1 it said "Liquidity for good: 0 adds" (the program had not started) and never named
+    // the dev wallet's own adds (liq-runs.json, from BOBAI or from fresh BNB) — the biggest liquidity of most weeks
+    const pre = pageNow() < LFG_START && !XM_SANDBOX_DEC, days = Math.max(1, Math.ceil((LFG_START - pageNow()) / 86400e3));
+    const m = S.man || [], last = m.at(-1);
+    const head = pre && b.key !== 'bb3' && !b.n ? ['Liquidity for good starts Dec 1 (', [days + ' day' + (days === 1 ? '' : 's')], ' to go): 1% of every trade into the pool, its LP burned. ']
+      : [b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `];
+    const dev = last ? ['The dev wallet added by hand ', [m.length + ' times'], `, last ${bnb4(last.bnb)} + ${bobaiAmt(last.bobai)} (${String(last.time).slice(8, 10).replace(/^0/, '')} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+String(last.time).slice(5, 7) - 1]}). `] : [];
+    say([...head, ...dev, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [['last dev add', last?.addLiqTx]], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
     // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
@@ -3748,7 +3766,7 @@ const liqProg = () => (pageNow() >= GIGGLE_DAY || XM_SANDBOX_DEC) ? { key: 'lfg'
 function boost3() {
   const p = liqProg(), w = NUMS()[p.key] || p.fb, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
   const b = NUMS()[p.key];
-  return { name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
+  return { key: p.key, name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
 }
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;
@@ -7723,7 +7741,7 @@ window.__btBrSeason = brSeason;
   const F13 = () => new Date().toISOString().slice(0, 10) === '2026-11-13';
   const f13Html = () => F13() ? '<p class="br-pp-f13"><b>FRIDAY THE 13TH</b> <span>Today’s daily #1 wins <b>$13 USDT</b> (BEP-20) from the dev. Details on X: @BrainOnBNB</span></p>' : '';
   const poolHtml = () => f13Html() + '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov (23:59 UTC) gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
-    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.</p></div>';
+    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB that was in this wallet, the Giggle Academy pot from the trade tax, was donated to Giggle Academy on Nov 20; any other token sent here is not part of the prize.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;
     try { const j = await api('pool'); if (!pp.contains(box) || j.bobai == null) return; const usd = j.bobai * (S.price || 0);
@@ -8178,9 +8196,13 @@ window.__btBrSeason = brSeason;
     // the bob is part of the one transform written here (a CSS bob on top of it was a second moving layer on each of twelve
     // costumes: 19 fps instead of 41 at 1024, brainrot.mjs rule 7); whole pixels, so an unchanged frame writes nothing
     const now = performance.now() / 1000;
-    for (const s of ST) { if (!s.pos) continue; const q0 = toScreen(s.pos), q = { x: q0.x + shove(q0), y: q0.y }, ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - sz / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
-      s._x = q.x - sz / 2; s._y = q.y - sz * 0.78;
-      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== sz) { s.e.style.width = (s._w = sz) + 'px'; } }
+    // A TALL PICTURE STAYS AS TALL AS THE OTHERS (2026-11-20, A-Z: the $BOB builder's brick stack stood ~1.85x as tall as the
+    // other creatures and reached into the one below it): a creature taller than 1.25x its width is drawn narrower to match
+    for (const s of ST) { if (!s.pos) continue; if (s.r == null) { const im = s.e.querySelector('img'); if (im && im.naturalWidth) s.r = im.naturalHeight / im.naturalWidth; }
+      const w = s.r > 1.25 ? Math.round(sz * 1.25 / s.r) : sz;
+      const q0 = toScreen(s.pos), q = { x: q0.x + shove(q0), y: q0.y }, ph = s.ph ??= Math.random() * 6.28, b = Math.sin(now * 2.6 + ph), tf = 'translate(' + Math.round(q.x - w / 2) + 'px,' + Math.round(q.y - sz * 0.78 - (b + 1) * sz * 0.07) + 'px) rotate(' + Math.round(b * 6) + 'deg)';
+      s._x = q.x - w / 2; s._y = q.y - sz * 0.78;
+      if (s._tf !== tf) { s.e.style.transform = s._tf = tf; s.e.style.visibility = ''; } if (s._w !== w) { s.e.style.width = (s._w = w) + 'px'; } }
     for (const b of BOTS) { const q = toScreen(b.w.pos), tf = 'translate(' + Math.round(q.x - bz / 2) + 'px,' + Math.round(q.y - bz * 0.7) + 'px)', op = b.w.pos.z > A.head.z ? '1' : '.4';
       if (b._tf !== tf) { b.e.style.transform = b._tf = tf; b.e.style.visibility = ''; } if (b._w !== bz) { b.e.style.width = (b._w = bz) + 'px'; } if (b._op !== op) { b.e.style.opacity = b._op = op; }
       // a bot that really ran: its brain spins (the flare jumps to 1.4 at every beat)

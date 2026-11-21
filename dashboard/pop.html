@@ -54,7 +54,7 @@
         <p class="pp-small">Only $BOBAI counts for the prize; the BNB that was in the same wallet, the Giggle Academy pot from the trade tax, was donated to Giggle Academy on Nov 20. Holders of 100,000+ $BOBAI can show a 🧠 next to their name.</p></div>
     </div>
     <div class="pp-grid">
-      <div class="pp-card fi"><h2>Today's top 10</h2><ol class="pp-top" id="pp-day-top"><li class="pp-wait">loading…</li></ol></div>
+      <div class="pp-card fi"><h2 id="pp-day-h">Today's top 10</h2><ol class="pp-top" id="pp-day-top"><li class="pp-wait">loading…</li></ol></div>
       <div class="pp-card fi"><h2>Season leaders</h2><ol class="pp-top" id="pp-all-top"><li class="pp-wait">loading…</li></ol></div>
     </div>
     <p class="fi" style="text-align:center;margin-top:20px"><a class="pp-go pp-go2" href="/?pop=play">▶ Beat them</a></p>
@@ -76,13 +76,16 @@
     document.getElementById('pp-day').textContent = 'The season ended on 30 November. The boards stay as they finished.';
     document.getElementById('pp-rule').innerHTML = 'The <b>overall #1 on 30 November</b> took all of it. The daily winners got nothing but the glory.';
     document.querySelectorAll('.pp-go').forEach((a) => a.remove());
+    // the pool line and the daily board after the season (A-Z 2026-11-21: it stayed at "… $BOBAI" and "Today's top 10")
+    document.getElementById('pp-pool').textContent = 'Season over';
+    document.getElementById('pp-day-h').textContent = 'Final day (30 Nov), top 10';
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const sc = (v) => Number(v).toLocaleString('en-US', { minimumFractionDigits: 7, maximumFractionDigits: 7 });
   const B = { holder: ' 🧠', pass: ' 💎' };
   const fill = (id, j) => { const el = document.getElementById(id); if (!el) return;
     el.innerHTML = !j ? '<li class="pp-wait">The board is not reachable right now. Try again in a minute.</li>' : j.rows && j.rows.length ? j.rows.map((r) => '<li><span translate="no">' + esc(r.name) + (B[r.badge] || '') + '</span><b>' + sc(r.score) + '</b></li>').join('') : '<li class="pp-wait">Nobody yet. The first run takes the crown.</li>';
-    if (j && j.players != null) el.insertAdjacentHTML('afterend', '<p class="pp-small">' + Number(j.players).toLocaleString('en-US') + ' player' + (j.players === 1 ? '' : 's') + (id === 'pp-day-top' ? ' today' : ' this season') + '</p>'); };
+    if (j && j.players != null) el.insertAdjacentHTML('afterend', '<p class="pp-small">' + Number(j.players).toLocaleString('en-US') + ' player' + (j.players === 1 ? '' : 's') + (id === 'pp-day-top' ? (Date.now() >= SEASON_END ? ' on the final day' : ' today') : ' this season') + '</p>'); };
   Promise.all([J('/api/pop/top?scope=day'), J('/api/pop/top?scope=all'), J('/api/pop/pool'), J('/api/price')]).then(([d, a, p, px]) => {
     fill('pp-day-top', d); fill('pp-all-top', a);
     // AFTER THE SEASON (2026-11-09): from Dec 1 the game takes no new runs (start answers 410), the boards stay as they finished

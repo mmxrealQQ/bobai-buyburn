@@ -2773,7 +2773,7 @@ export function renderPopNow(today, d, all, pool, priceUsd) {
     ...(over ? [] : rows.length ? rows.slice(0, 3).map((r, i) => `${medal[i]} <b>${esc(r.name)}</b> · ${p7(r.score)} ROT`) : ['Nobody on today\'s board yet. The first run takes the crown.']),
     over ? '' : `${Number((d && d.players) || 0).toLocaleString('en-US')} player${(d && d.players) === 1 ? '' : 's'} today`,
     leader ? `👑 ${over ? 'Champion' : 'Season leader'}: <b>${esc(leader.name)}</b> · ${p7(leader.score)} ROT` : '',
-    bobai != null ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · goal $10 · the overall #1 on 30 Nov takes it all` : '',
+    bobai != null && !over ? `🏆 Prize pool: ${bobai.toLocaleString('en-US', { maximumFractionDigits: 2 })} $BOBAI${usd != null ? ' ≈ $' + usd.toFixed(2) : ''} · goal $10 · the overall #1 on 30 Nov takes it all` : '',
     '',
     over ? 'Thanks for rotting with us 🪩' : '▶️ Play (free, 60 s): https://brainonbnb.com/m/pop?from=tg',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
@@ -2799,6 +2799,12 @@ export function renderPopChampion(day, no, rows, players, leader, allPlayers, po
     last ? 'Thanks for rotting with us 🪩' : '▶️ Play today: https://brainonbnb.com/m/pop?from=tg',
   ].filter((l, i, a) => l !== '' || (a[i - 1] !== '' && i > 0)).join('\n').trim();
 }
+// THE CHAIN LINE ON EVERY NIGHT POST (A-Z 2026-11-21): it was put in front of "▶️ Play today:", which the season-over post
+// (30 Nov) does not have, so that post would have gone out without its transaction. Now in front of the last line, whatever it is.
+export function withChainLine(text, chainTx) {
+  const line = `⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}`, i = text.lastIndexOf('\n\n');
+  return i > 0 ? text.slice(0, i) + '\n' + line + text.slice(i) : text + '\n' + line;
+}
 async function popChampionText(day) {
   const get = (q) => fetch('https://brainonbnb.com/api/pop/top?' + q, { signal: AbortSignal.timeout(10000) }).then((r) => (r.ok ? r.json() : null));
   const [d, all] = await Promise.all([get('scope=day&d=' + day), get('scope=all')]);
@@ -2818,7 +2824,7 @@ export async function postPopChampion(env, tick) {
   const chainTx = await popChainTx(day);
   if (!chainTx && tick.getUTCMinutes() < 45) return;
   let text = await popChampionText(day);
-  if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`);
+  if (text && chainTx) text = withChainLine(text, chainTx);
   if (text === undefined) return;
   if (!text) { await env.KV.put(flag, 'nobody', { expirationTtl: 3 * 86400 }); return; } // once, also when nobody played
   // MARKED ONLY WHEN SENT (15.11., the A-Z pass): the day was marked before Telegram answered, so one refused send lost the
@@ -4125,7 +4131,7 @@ export default {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return new Response('d=YYYY-MM-DD', { status: 400 });
       const chainTx = await popChainTx(d), champ = await popChampionRun(d);
       let text = await popChampionText(d);
-      if (text && chainTx) text = text.replace('\n\n▶️ Play today:', `\n⛓ On BNB Chain: https://bscscan.com/tx/${chainTx}\n\n▶️ Play today:`); /* the line the night post carries (10.11.) */
+      if (text && chainTx) text = withChainLine(text, chainTx); /* the line the night post carries (10.11.) */
       /* the post as it would go out (7.11.): the champion's card as the photo, the text as its caption with the challenge line */
       return new Response(JSON.stringify({ day: d, text: text === undefined ? 'board did not answer' : text, photo: champ ? 'https://brainonbnb.com/og/pop/' + champ + '.png?d=' + d : null, caption: champ && text ? text.replace('▶️ Play today: https://brainonbnb.com/m/pop?from=tg', '⚔️ Beat the champion: https://brainonbnb.com/m/pop/' + champ + '?from=tg') : null }), { headers: { 'content-type': 'application/json' } });
     }

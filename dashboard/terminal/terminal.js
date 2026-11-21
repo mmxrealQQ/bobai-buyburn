@@ -702,8 +702,9 @@ function info(k) {
       note: pctOf('burnB') + ' of every trade buys $BOB (Build On BNB) and burns it — BOBAI feeding the chain it was born on.',
       links: [['last burn tx', lastRun && TX + lastRun.bobBurnTx]] };
     case 'liq': return { t: 'BOBAI adds liquidity', c: D.liq.c, rows: [
-      [boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)],
-      ['All bot adds', nf(S.liq.length)], ['Pool LP burned', lpText()]],
+      ...(boost.key === 'lfg' && !boost.n && pageNow() < LFG_START && !XM_SANDBOX_DEC ? [[boost.name, 'starts Dec 1, 00:01 UTC']]
+        : [[boost.name + ' adds', nf(boost.n)], ['BNB added', bnb4(boost.bnb)], ['LP burned (' + boost.name + ')', nf(boost.lp, 2)]]),
+      ['All bot adds', nf(S.liq.length)], ['Dev wallet adds (by hand)', nf((S.man || []).length)], ['Pool LP burned', lpText()]],
       note: pctOf('liq') + ' of every trade is added to the BOBAI/BNB pool and the LP tokens are burned. Nobody can pull it.',
       links: [['last add tx', S.liq.length && TX + S.liq[S.liq.length - 1].addLiqTx], ['pool', bsc(P)]] };
     case 'defi': case 'lp': return { t: "BOBAI's DeFi agent", c: D.defi.c, rows: [
@@ -3020,7 +3021,14 @@ const CMDS = {
     const sb = splitBnb(); void left;
     say([['$' + nf(S.queued * S.price + sb * S.bnbP, 2)], ` is queued for the next buyback (${bobaiAmt(S.queued)} of tax${sb > 0 ? ` + ${bnbF(sb)} ready to split` : ''}). The token swaps its tax to BNB at `, [bobaiAmt(MIN_DISPATCH)], ` (${Math.round(clamp(S.queued / MIN_DISPATCH, 0, 1) * 100)}% there), inside a trade; the bot splits it within 10 min.${nextEta()}`]); },
   liq: () => { setFocus('liq'); const b = boost3();
-    say([b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [], D.liq.c); },
+    // A-Z 2026-11-21: from Nov 20 to Dec 1 it said "Liquidity for good: 0 adds" (the program had not started) and never named
+    // the dev wallet's own adds (liq-runs.json, from BOBAI or from fresh BNB) — the biggest liquidity of most weeks
+    const pre = pageNow() < LFG_START && !XM_SANDBOX_DEC, days = Math.max(1, Math.ceil((LFG_START - pageNow()) / 86400e3));
+    const m = S.man || [], last = m.at(-1);
+    const head = pre && b.key !== 'bb3' && !b.n ? ['Liquidity for good starts Dec 1 (', [days + ' day' + (days === 1 ? '' : 's')], ' to go): 1% of every trade into the pool, its LP burned. ']
+      : [b.name + ': ', [b.n + ' adds'], `, ${bnb4(b.bnb)} in, ${nf(b.lp, 2)} LP burned. `];
+    const dev = last ? ['The dev wallet added by hand ', [m.length + ' times'], `, last ${bnb4(last.bnb)} + ${bobaiAmt(last.bobai)} (${String(last.time).slice(8, 10).replace(/^0/, '')} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+String(last.time).slice(5, 7) - 1]}). `] : [];
+    say([...head, ...dev, [lpText()], ' of the pool LP sits at the dead address — nobody can pull it.'], [['last dev add', last?.addLiqTx]], D.liq.c); },
   defi: () => { setFocus('defi'); const rb = S.lp?.last?.steps?.rebalance, inr = lpNow().inR;
     if (!S.lp) { say(['Still reading the DeFi agent. Ask me again in a few seconds.'], [], D.defi.c); return false; } /* before its record loaded it said "0.000 BNB, in range" (2026-10-07) */
     // 'bought with half of them' was the split until 2026-10-14; a third since — said as /defi says it (2026-10-15)
@@ -3758,7 +3766,7 @@ const liqProg = () => (pageNow() >= GIGGLE_DAY || XM_SANDBOX_DEC) ? { key: 'lfg'
 function boost3() {
   const p = liqProg(), w = NUMS()[p.key] || p.fb, list = S.liq.filter(l => { const t = Date.parse(l.time); return t >= w.start && t < w.end; });
   const b = NUMS()[p.key];
-  return { name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
+  return { key: p.key, name: p.name, short: p.short, since: p.since, total: p.total, list, n: b ? b.count : list.length, bnb: b ? b.bnb : list.reduce((a, l) => a + (parseFloat(l.bnb) || 0), 0), lp: b ? b.lp : list.reduce((a, l) => a + (parseFloat(l.lpBurned) || 0), 0) };
 }
 const ggBnb = () => NUMS().gg ? NUMS().gg.bnb : S.burns.filter(e => e.giggleTx).reduce((a, e) => a + (parseFloat(e.giggleBnb) || 0), 0);
 const ggEnd = () => NUMS().gg?.end || GIGGLE_DAY;
@@ -7733,7 +7741,7 @@ window.__btBrSeason = brSeason;
   const F13 = () => new Date().toISOString().slice(0, 10) === '2026-11-13';
   const f13Html = () => F13() ? '<p class="br-pp-f13"><b>FRIDAY THE 13TH</b> <span>Today’s daily #1 wins <b>$13 USDT</b> (BEP-20) from the dev. Details on X: @BrainOnBNB</span></p>' : '';
   const poolHtml = () => f13Html() + '<div class="br-pp-pool"><p><b>PRIZE POOL</b> <span class="amt">…</span> <small class="usd"></small><br>The <b>overall #1</b> on 30 Nov (23:59 UTC) gets <b>ALL</b> of it.</p><div class="bar"><i></i><span>goal $' + GOAL + '</span></div>'
-    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB in this wallet is the Giggle Academy pot from the trade tax; any other token sent here is not part of the prize.</p></div>';
+    + '<p class="don">Grow it: send <b>only $BOBAI</b> to <code>0x5E41…D105</code> <button type="button" class="br-pp-copy">copy address</button></p><p class="warn">⚠ Only <b>$BOBAI</b> counts for the prize. The BNB that was in this wallet, the Giggle Academy pot from the trade tax, was donated to Giggle Academy on Nov 20; any other token sent here is not part of the prize.</p></div>';
   async function fillPool() {
     const box = pp.querySelector('.br-pp-pool'); if (!box) return;
     try { const j = await api('pool'); if (!pp.contains(box) || j.bobai == null) return; const usd = j.bobai * (S.price || 0);

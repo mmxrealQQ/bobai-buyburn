@@ -76,7 +76,7 @@
       <div class="fs fi"><div class="fn">1</div><div class="fs-wrap"><img class="fs-art" src="steps/trade.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Trade</h4><p>Buy or sell on PancakeSwap with 6% slippage: the 3% tax counts against it.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">2</div><div class="fs-wrap"><img class="fs-art" src="steps/collect.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Collect</h4><p>Tax collects in the token contract, then goes out as BNB.</p><span class="fa">&#x2192;</span></div>
       <div class="fs fi"><div class="fn">3</div><div class="fs-wrap"><img class="fs-art" src="steps/split.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Split</h4><p>Bot runs every 10 min. Splits <span id="step-split">~1/1/1</span>.</p><span class="fa">&#x2192;</span></div>
-      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p>$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
+      <div class="fs fi"><div class="fn">4</div><div class="fs-wrap"><img class="fs-art" src="steps/burn.webp?v=3" alt="" loading="lazy" decoding="async"></div><h4>Burn</h4><p id="step-burn">$BOB <span class="bob-sub">(Build On BNB)</span> + $BOBAI sent to dead address.</p></div>
     </div>
     <div class="tax fi">
       <h3>3% Tax Split</h3>
@@ -368,7 +368,8 @@
     // A SLICE THAT NO LONGER EXISTS IS NOT "none in this run" (2026-11-20): from Nov 20, 00:01 UTC the DeFi agent and the Giggle
     // pot get nothing for good, and the liquidity slice is away until it comes back as liquidity for good on Dec 1
     const rt = Date.parse(r.time), over = rt >= Date.parse('2026-11-20T00:01:00Z'), noLiq = over && rt < Date.parse('2026-12-01T00:01:00Z');
-    const gone = { 'DeFi agent': over, 'Giggle Academy pot': over, '$BOBAI liquidity added, LP burned': noLiq };
+    // and from Dec 1, 00:01 UTC no run burns $BOB: the log has no bobBurned then ("NaN $BOB · $NaN" otherwise, A-Z 2026-11-21)
+    const gone = { 'DeFi agent': over, 'Giggle Academy pot': over, '$BOBAI liquidity added, LP burned': noLiq, '$BOB bought and burned': rt >= Date.parse('2026-12-01T00:01:00Z') };
     for (let i = rows.length - 1; i >= 0; i--) if (!rows[i][1] && gone[rows[i][0]]) rows.splice(i, 1);
     box.innerHTML = rows.map(([k, bnb, v, t]) => '<div class="hx-row"><span class="k">' + k + (bnb ? ' <i>' + share(+bnb) + '</i>' : '') + '</span><span class="v">' + v + '</span><span class="t">' + t + '</span></div>').join('');
     const all = tot, sum = [r.creatorBnb, r.bobBurnBnb, r.bobaiBurnBnb, r.lpAgentBnb, r.giggleBnb, liq && liq.bnb].reduce((a, x) => a + (+x || 0), 0);
@@ -376,6 +377,6 @@
   }).catch(() => { when.innerHTML = 'The log could not be read just now &mdash; <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">open it yourself</a>'; });
 })();
 </script>
-<script src="app.js?v=144" defer></script>
+<script src="app.js?v=145" defer></script>
 </body>
 </html>

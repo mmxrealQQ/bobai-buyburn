@@ -172,7 +172,10 @@ export function buybackRunsVerdict(runs, liqLog, now = Date.now(), W = BUYBACK_W
     if (inW(t, W.giggle) && !r.giggleTx) miss.push('Giggle pot');
     // a small run's liquidity slice is under the bot's MIN_LIQ (0.0003 BNB) and skipped on purpose (5 Oct, 0.0012 BNB):
     // asked only from the line the bot acts from
-    if ((inW(t, W.bobaiLiqBoost3) || t >= W.bobaiLiqPhase) && +r.totalBnb >= BUYBACK_ACTS_ABOVE_BNB && !liqAt.some((x) => x >= t - 5000 && x <= t + 300e3)) miss.push('BOBAI liquidity');
+    // the run that STARTED at the 00:00 tick of Dec 1 still splits the old way (the bot picks the split at its start) but is
+    // logged at its end, up to minutes later: with its $BOB burn in place it is that run, not a missing liquidity step (A-Z 2026-11-21)
+    const edgeRun = t >= W.bobaiLiqPhase && t < W.bobaiLiqPhase + 300e3 && r.bobSwapTx && r.bobBurnTx;
+    if (!edgeRun && (inW(t, W.bobaiLiqBoost3) || t >= W.bobaiLiqPhase) && +r.totalBnb >= BUYBACK_ACTS_ABOVE_BNB && !liqAt.some((x) => x >= t - 5000 && x <= t + 300e3)) miss.push('BOBAI liquidity');
     if (miss.length) short.push(`${r.time.slice(5, 16).replace('T', ' ')} without ${miss.join(', ')}`);
   }
   return short.length
@@ -192,6 +195,9 @@ export const buybackRunsHolds = () => {
     && buybackRunsVerdict([{ time: at2(1), totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3' }], [{ time: new Date(D2 - 3600e3 + 900).toISOString() }], D2).good === true
     && buybackRunsVerdict([{ time: at2(1), totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3' }], [], D2).good === false
     && buybackRunsVerdict([{ ...full(3), totalBnb: '0.0012' }], [], T).good === true /* a small run skips its liquidity on purpose */
+    /* the Dec 1 00:00 run, logged at 00:01:10 with the old split ($BOB burn, no liquidity), is that run, not a failure; at 00:12 it is one */
+    && buybackRunsVerdict([{ time: '2026-12-01T00:01:10Z', totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3', bobSwapTx: '0x4', bobBurnTx: '0x5' }], [], Date.parse('2026-12-01T09:10:00Z')).good === true
+    && buybackRunsVerdict([{ time: '2026-12-01T00:12:00Z', totalBnb: '0.05', creatorTx: '0x1', bobaiSwapTx: '0x2', bobaiBurnTx: '0x3', bobSwapTx: '0x4', bobBurnTx: '0x5' }], [], Date.parse('2026-12-01T09:10:00Z')).good === false
     && buybackRunsVerdict(null, [], T).good === false;
 };
 // When to look again: 90 seconds after the bot's next ten-minute mark, so a whole run lies between the looks.

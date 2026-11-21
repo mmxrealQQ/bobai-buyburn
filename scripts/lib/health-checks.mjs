@@ -1231,7 +1231,8 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const refs = await fetch(SITE + '/source.git/info/refs?service=git-upload-pack').then((r) => (r.ok ? r.text() : null)).catch(() => null);
   ok('Site', 'the source mirror can still be cloned', /^[0-9a-f]{40}\s+refs\/heads\/main/m.test(refs || ''), refs ? refs.trim().split('\n')[0].slice(0, 60) : 'info/refs did not answer');
   ok('Health', 'the stale-date rule passes its own pins (a passed "until" is named, "ended" and "for good" are not)', staleHolds());
-  for (const [name, path] of [['llms.txt', '/llms.txt'], ['skill.md', '/skill.md'], ['the whitepaper', '/whitepaper']]) {
+  // the FAQ and /pop too (A-Z 2026-11-21: the Brain Pop answers said "until 30 November 2026" in the present tense)
+  for (const [name, path] of [['llms.txt', '/llms.txt'], ['skill.md', '/skill.md'], ['the whitepaper', '/whitepaper'], ['the FAQ', '/faq'], ['the Brain Pop page', '/pop']]) {
     const body = await fetch(SITE + path).then((r) => (r.ok ? r.text() : null)).catch(() => null);
     const st = body ? staleAhead(body) : null;
     ok('Site', `${name} speaks of no passed date as ahead`, !!st && st.length === 0, !body ? 'did not answer' : st.length ? st.slice(0, 3).join(' | ') : 'none');

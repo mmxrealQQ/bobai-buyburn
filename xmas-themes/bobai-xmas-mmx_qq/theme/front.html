@@ -11,7 +11,7 @@
   const rnd = (a, b) => a + Math.random() * (b - a);
   const flake = (top) => ({ x: rnd(0, W), y: top ? rnd(-H, 0) : rnd(0, H), r: rnd(0.8, 2.4), vy: rnd(10, 26), ph: rnd(0, 6.28), sw: rnd(6, 18), a: rnd(0.35, 0.8) });
   function size() {
-    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, W < 600 ? 1.5 : 2);
+    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 1.5);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const n = Math.round((W < 600 ? 34 : 70) * want);
     while (F.length < n) F.push(flake(false)); F.length = n;

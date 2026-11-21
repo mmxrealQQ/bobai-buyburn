@@ -1,0 +1,7 @@
+{
+ "{0} BNB in the pool now — real BNB, but sells take it out: the less the price, the less of it": "{0} BNB في المجمع الآن — BNB حقيقي، لكن البيع يسحبه: كلما انخفض السعر قلّ",
+ "how much of the valuation the pool holds in BNB right now (not a floor)": "كم من القيمة السوقية يحتفظ بها المجمع بـ BNB الآن (ليست أرضية)",
+ "That is the zero address, not a token.": "هذا هو العنوان الصفري، وليس توكنًا.",
+ "That is the burn address, not a token.": "هذا هو عنوان الحرق، وليس توكنًا.",
+ "Paste the address of a BSC token or pool.": "الصق عنوان توكن أو مجمع على BSC."
+}

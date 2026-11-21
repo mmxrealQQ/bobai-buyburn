@@ -160,7 +160,7 @@ function routeCard(token){
   const form=el('div','rt-form');
   const lab=el('label','rt-lab','Size in USD');
   const inp=document.createElement('input');
-  inp.type='number';inp.min='1';inp.max='1000000';inp.step='1';inp.value='250';inp.className='rt-inp';inp.inputMode='decimal';
+  inp.type='number';inp.min='1';inp.max='1000000';inp.step='1';inp.value='500';inp.className='rt-inp'; /* the short answer's size (round 2: the two cards quoted $500 and $250) */inp.inputMode='decimal';
   inp.setAttribute('aria-label','Trade size in US dollars');
   const btn=el('button','sc-tierbtn','Quote the routes');
   btn.type='button';
@@ -1043,10 +1043,10 @@ function render(d){
     {v:usd(hard),l:'Hard '+quoteSym+' backing',
       s:nf(d.q,d.q<100?3:2)+' '+quoteSym+(v3
         ?' in the pool right now — not a fixed floor: as the price falls, positions convert toward the token side'
-        :' — keeps its value if the price falls')},
+        :' in the pool now — real BNB, but sells take it out: the less the price, the less of it')},
     {v:mcap?pc(hard/mcap*100,1):'—',l:'Hard backing / Mcap',
       s:v3?'how much of the valuation is currently backed by '+quoteSym+' in range'
-          :'the floor under the market cap'},
+          :'how much of the valuation the pool holds in '+quoteSym+' right now (not a floor)'},
     // "More than X" is an answer; a dash is not. On a concentrated-liquidity
     // pool the sweep can run out of range before the price gives way — USDC/USDT
     // does not move one percent for any size the quoter will price — and
@@ -1865,6 +1865,8 @@ function submit(){
   const a=parseInput($('sc-in').value);
   if(!a)return fail('That is not a contract address.',
     'Paste a BSC token address, a pool address, or a BscScan / DexScreener link that contains one.');
+  // the zero and the burn address are not tokens (round 2: 0x000…000 was scanned as native BNB with a share link)
+  if(a==='0x0000000000000000000000000000000000000000'||a==='0x000000000000000000000000000000000000dead')return fail('That is the '+(a.endsWith('dead')?'burn':'zero')+' address, not a token.','Paste the address of a BSC token or pool.');
   scan(a);
 }
 $('sc-go').addEventListener('click',submit);

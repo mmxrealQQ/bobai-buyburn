@@ -383,9 +383,33 @@ function liqMins(tokenAmount, bnbAmount, reserveToken, reserveBnb) {
   return { tokenUsed: used.token, bnbUsed: used.bnb, tokenMin: (used.token * 95n) / 100n, bnbMin: (used.bnb * 95n) / 100n };
 }
 
+// THE BUY TAKES ONLY WHAT THE ADD LEAVES ROOM FOR (A-Z 2026-11-21): half of the BNB bought the token, but the bought token
+// arrives ~3.2% short (the token's 3% tax, the pool's 0.25%), so ~1.6% of every liquidity slice stayed on this wallet and
+// the next run split it a third each (from Dec 1: ~1% of the liquidity slice leaking to the creator and the burn). The buy
+// is now the share the pair's reserves say, with 0.5% of room for a price that moves (the rule of
+// add-liquidity-safe-bnb.js); half, as before, when the reserves cannot be read or the answer looks wrong.
+async function buyShareFor(publicClient, bnbAmount, tokenAddress, pairAddress) {
+  try {
+    const [reserves, token0] = await Promise.all([
+      publicClient.readContract({ address: pairAddress, abi: PAIR_ABI, functionName: 'getReserves' }),
+      publicClient.readContract({ address: pairAddress, abi: PAIR_ABI, functionName: 'token0' }),
+    ]);
+    const t0 = token0.toLowerCase() === tokenAddress.toLowerCase(), rT = t0 ? reserves[0] : reserves[1], rB = t0 ? reserves[1] : reserves[0];
+    if (rT <= 0n || rB <= 0n) return bnbAmount / 2n;
+    const taxed = tokenAddress.toLowerCase() === BOBAI_TOKEN.toLowerCase() ? 97n : 100n;
+    const out = (s) => (s * 9975n * rT) / (rB * 10000n + s * 9975n);
+    const fits = (s) => { const o = out(s), got = (o * taxed) / 100n, need = (got * (rB + s)) / (rT - o); return s + (need * 10050n) / 10000n <= bnbAmount; };
+    let lo = 0n, hi = bnbAmount;
+    for (let i = 0; i < 128 && hi - lo > 1n; i++) { const mid = (lo + hi) / 2n; if (fits(mid)) lo = mid; else hi = mid; }
+    return lo > bnbAmount / 3n && lo < (bnbAmount * 2n) / 3n ? lo : bnbAmount / 2n;
+  } catch {
+    return bnbAmount / 2n;
+  }
+}
+
 async function addLiquidityAndBurn(walletClient, publicClient, account, bnbAmount, tokenAddress, pairAddress, tokenName) {
   const SWAP_CHUNKS = 3;
-  const halfBnb = bnbAmount / 2n;
+  const halfBnb = await buyShareFor(publicClient, bnbAmount, tokenAddress, pairAddress); // the share the add leaves room for (above)
   const liqBnb = bnbAmount - halfBnb;
 
   // Step 1: Buy token with half the BNB — chunked for MEV protection

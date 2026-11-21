@@ -11,6 +11,7 @@ const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
 
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
+const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
 const WBNB_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
   'function withdraw(uint256 wad)',
@@ -110,6 +111,17 @@ async function main() {
     }
   }
 
+  // the owed shares (see the split below), kept in dev-owed.json beside the log (the worker keeps them in KV)
+  const loadOwed = async () => { try { return fs.existsSync('dev-owed.json') ? JSON.parse(fs.readFileSync('dev-owed.json', 'utf8')) : {}; } catch { return {}; } };
+  const saveOwed = async (o) => { try { if (Object.keys(o).length) fs.writeFileSync('dev-owed.json', JSON.stringify(o, null, 2)); else if (fs.existsSync('dev-owed.json')) fs.unlinkSync('dev-owed.json'); } catch (e) { console.log(`owed shares not saved (${e.message}): ${JSON.stringify(o)}`); } };
+
+  // A liquidity run on this wallet is not swept away (the worker waits up to 6 h; by hand: --force sweeps anyway)
+  const bobaiHere = await publicClient.readContract({ address: BOBAI_TOKEN, abi: WBNB_ABI, functionName: 'balanceOf', args: [account.address] }).catch(() => null);
+  if (bobaiHere !== null && bobaiHere > parseEther('809.41') && !process.argv.includes('--force')) {
+    console.log(`${formatEther(bobaiHere)} BOBAI on the wallet: a liquidity run is waiting or under way — not swept (--force to sweep anyway).`);
+    return;
+  }
+
   // Step 1: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
@@ -122,33 +134,45 @@ async function main() {
   const available = balance - GAS_RESERVE;
   console.log(`Available after gas reserve: ${formatEther(available)} BNB\n`);
 
-  // Split: 80% personal, 4% each builder #1-#4, 2% builder #5 + #6
-  const builder1Amount = (available * 4n) / 100n;
-  const builder2Amount = (available * 4n) / 100n;
-  const builder3Amount = (available * 4n) / 100n;
-  const builder4Amount = (available * 4n) / 100n;
-  const builder5Amount = (available * 2n) / 100n;
-  const builder6Amount = (available * 2n) / 100n;
-  const personalAmount = available - builder1Amount - builder2Amount - builder3Amount - builder4Amount - builder5Amount - builder6Amount;
+  // WHAT A BUILDER IS STILL OWED IS PAID FIRST (A-Z 2026-11-21). A builder's transfer that failed left its share on the
+  // wallet, and the next run split that BNB again: 80% of the builder's money went to the first wallet. Now a failed share
+  // is written down by address, the next run pays it on top of the builder's new share, and only the rest is split.
+  const owed = await loadOwed();
+  const owedTotal = Object.values(owed).reduce((a, v) => a + BigInt(v), 0n);
+  if (owedTotal > 0n) console.log(`Owed from earlier runs: ${formatEther(owedTotal)} BNB`);
+  if (owedTotal >= available) {
+    console.log('Not enough to pay what is still owed — waiting for more BNB.');
+    return;
+  }
+  const base = available - owedTotal;
+  const due = (addr) => BigInt(owed[addr.toLowerCase()] || '0');
+
+  // Split: 80% personal, 4% each builder #1-#4, 2% builder #5 + #6 — of what is not owed
+  const builder1Amount = (base * 4n) / 100n;
+  const builder2Amount = (base * 4n) / 100n;
+  const builder3Amount = (base * 4n) / 100n;
+  const builder4Amount = (base * 4n) / 100n;
+  const builder5Amount = (base * 2n) / 100n;
+  const builder6Amount = (base * 2n) / 100n;
+  const personalAmount = base - builder1Amount - builder2Amount - builder3Amount - builder4Amount - builder5Amount - builder6Amount;
 
   const sends = [
     { label: 'Binance Wallet (80%)', to: PERSONAL_WALLET, value: personalAmount },
-    { label: 'Builder #1 (4%)', to: BUILDER_1, value: builder1Amount },
-    { label: 'Builder #2 (4%)', to: BUILDER_2, value: builder2Amount },
-    { label: 'Builder #3 (4%)', to: BUILDER_3, value: builder3Amount },
-    { label: 'Builder #4 (4%)', to: BUILDER_4, value: builder4Amount },
-    { label: 'Builder #5 (2%)', to: BUILDER_5, value: builder5Amount },
-    { label: 'Builder #6 (2%)', to: BUILDER_6, value: builder6Amount },
+    { label: 'Builder #1 (4%)', to: BUILDER_1, value: builder1Amount + due(BUILDER_1) },
+    { label: 'Builder #2 (4%)', to: BUILDER_2, value: builder2Amount + due(BUILDER_2) },
+    { label: 'Builder #3 (4%)', to: BUILDER_3, value: builder3Amount + due(BUILDER_3) },
+    { label: 'Builder #4 (4%)', to: BUILDER_4, value: builder4Amount + due(BUILDER_4) },
+    { label: 'Builder #5 (2%)', to: BUILDER_5, value: builder5Amount + due(BUILDER_5) },
+    { label: 'Builder #6 (2%)', to: BUILDER_6, value: builder6Amount + due(BUILDER_6) },
   ];
 
   // ONE BUILDER'S FAILED TRANSFER IS NOT EVERY BUILDER'S (2026-09-18). The loop
-  // returned on the first failure. The 82% goes first: if THAT fails nothing
-  // has been sent, everything stays and the next run splits it correctly — so
-  // it still returns. But a builder's transfer failing after the 82% had gone
-  // left the other builders unpaid too, and the next run gave 82% of their
-  // money to the first recipient again: 3.2% of the batch for the builders
-  // instead of 18%. Now the others are paid, only the failed share waits, and
-  // every transfer's hash goes into the log (it carried the first one only).
+  // returned on the first failure. The first wallet goes first: if THAT fails
+  // nothing has been sent, everything stays and the next run splits it — so it
+  // still returns. A builder's transfer failing no longer stops the others, and
+  // since 2026-11-21 its share is owed to it (paid first next run), not split.
+  // A first-wallet transfer sent but never seen mined (it may still land) writes
+  // every builder's share down as owed before it returns.
   let personalTxHash;
   const txs = {}, failed = [];
   for (const s of sends) {
@@ -160,12 +184,21 @@ async function main() {
       console.log('  Payment sent!');
       txs[s.label] = hash;
       if (s.to === PERSONAL_WALLET) personalTxHash = hash;
+      else delete owed[s.to.toLowerCase()];
     } catch (e) {
       console.log(`  Payment failed: ${say(e)}`);
-      if (s.to === PERSONAL_WALLET) return;
+      if (s.to === PERSONAL_WALLET) {
+        if (/no receipt/.test(String((e && e.message) || ''))) {
+          for (const b of sends.slice(1)) owed[b.to.toLowerCase()] = String(b.value);
+          await saveOwed(owed);
+        }
+        return;
+      }
+      owed[s.to.toLowerCase()] = String(s.value);
       failed.push(s.label);
     }
   }
+  await saveOwed(owed);
 
   // Step 3: Log
   try {

@@ -316,6 +316,10 @@ console.log('\nthe liquidity add (dormant path, called by name)');
     const dep = addRc.logs.find((l) => l.topics[0] === DEPOSIT);
     const usedBnb = dep ? BigInt(dep.data) : 0n;
     ok(`${name}: the add went out with minimums — 95% of the tokens and 95% of the BNB the router then used`, a[2] === (a[1] * 95n) / 100n && a[2] > 0n && a[3] === (usedBnb * 95n) / 100n && a[3] > 0n && usedBnb <= addTx.value, `${formatEther(a[3])} of ${formatEther(usedBnb)} BNB used, ${formatEther(addTx.value - usedBnb)} came back`);
+    // A-Z 2026-11-21: the buy is the share the reserves leave room for — of the 0.04 BNB slice, what the router does not take
+    // (it stays on the wallet and was split a third each next run) is now under 1%, not the ~1.6% of the half-and-half buy
+    const unused = addTx.value - usedBnb;
+    ok(`${name}: the BNB the add did not use is under 1% of the slice (the buy was the share the reserves say)`, unused >= 0n && unused * 100n < parseEther('0.04'), `${formatEther(unused)} BNB unused of 0.04`);
     const allowance = await pub.readContract({ address: token, abi: ALLOW, functionName: 'allowance', args: [acct.address, ROUTER_ADDR] });
     // $BOBAI: the wallet keeps its 808.41 (operator, 2026-10-08); $BOB keeps nothing
     const kept = await tok(token, acct.address), keep = token.toLowerCase() === BOBAI.toLowerCase() ? parseEther('808.41') : 0n;
@@ -442,14 +446,15 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 20
   const devCopy = path.join(ROOT, 'temp', 'dev-worker-fork.mjs');
   fs.writeFileSync(devCopy, devSrc);
   const dev = (await import(pathToFileURL(devCopy).href)).default;
-  const runDev = async () => {
-    const k = generatePrivateKey(), w = privateKeyToAccount(k).address, store = new Map();
-    await test.setBalance({ address: w, value: parseEther('0.103') });
+  // opts (2026-11-21): the same wallet and store again, a balance to set — for what a builder is owed across runs
+  const runDev = async (opts = {}) => {
+    const k = opts.k || generatePrivateKey(), w = privateKeyToAccount(k).address, store = opts.store || new Map();
+    await test.setBalance({ address: w, value: opts.value ?? parseEther('0.103') });
     const b0 = await Promise.all(who.map(bal));
     const keep = console.log; console.log = () => {};
     try { await dev.scheduled({}, { PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, LOGS: { get: async (x) => (store.has(x) ? store.get(x) : null), put: async (x, v) => { store.set(x, v); }, delete: async (x) => { store.delete(x); }, list: async ({ prefix }) => ({ keys: [...store.keys()].filter((x) => x.startsWith(prefix)).map((name) => ({ name })) }) } }, {}); } finally { console.log = keep; }
     const b1 = await Promise.all(who.map(bal));
-    return { got: b1.map((v, i) => v - b0[i]), log: JSON.parse(store.get('dev-buyback-log.json') || '[]'), left: await bal(w), store };
+    return { got: b1.map((v, i) => v - b0[i]), log: JSON.parse(store.get('dev-buyback-log.json') || '[]'), left: await bal(w), store, k, w };
   };
   const A = parseEther('0.1');
   const clean = await runDev();
@@ -463,6 +468,24 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 20
   ok('one builder\'s transfer reverting leaves the other five paid in full (they were not, before)', hurt.got[3] === 0n && [1, 2, 4, 5, 6].every((i) => hurt.got[i] === (A * pct[i]) / 100n) && hurt.got[0] === clean.got[0], hurt.got.map((v) => formatEther(v)).join(' / '));
   ok('only the failed share waits on the wallet, and the log names it', hurt.left > parseEther('0.0065') && hurt.left < parseEther('0.0071') && hurt.log.length === 1 && hurt.log[0].failed.length === 1 && /#3/.test(hurt.log[0].failed[0]) && Object.keys(hurt.log[0].txs).length === 6, `${formatEther(hurt.left)} BNB left, failed: ${(hurt.log[0] || {}).failed}`);
   ok('the heartbeat is written and the lock released', !!hurt.store.get('heartbeat-dev') && !hurt.store.has('lock-dev'));
+  // WHAT A BUILDER IS OWED IS PAID FIRST (2026-11-21): the next run split the failed share again (80% of it to the first wallet)
+  const owedNow = JSON.parse(hurt.store.get('dev-owed') || '{}'), share3 = (A * pct[3]) / 100n;
+  ok('the failed share is written down as owed to that builder', owedNow[who[3].toLowerCase()] === String(share3), JSON.stringify(owedNow));
+  await test.setCode({ address: who[3], bytecode: '0x' });
+  const B = parseEther('0.05'), again = await runDev({ k: hurt.k, store: hurt.store, value: parseEther('0.003') + share3 + B });
+  const shares = [1, 2, 3, 4, 5, 6].map((i) => (B * pct[i]) / 100n);
+  ok('the next run pays builder #3 what it was owed on top of its new share, and splits only the new BNB', again.got[3] === share3 + shares[2] && [1, 2, 4, 5, 6].every((i) => again.got[i] === shares[i - 1]) && again.got[0] === B - shares.reduce((x, y) => x + y, 0n), again.got.map((v) => formatEther(v)).join(' / '));
+  ok('and nothing is owed any more', !again.store.has('dev-owed'));
+  // A LIQUIDITY RUN IS NOT SWEPT AWAY (2026-11-21): more than 808.41 $BOBAI on the wallet = a run waiting or under way
+  const hk = generatePrivateKey(), hw = privateKeyToAccount(hk).address, hstore = new Map();
+  await test.impersonateAccount({ address: DEAD }); await test.setBalance({ address: DEAD, value: parseEther('1') });
+  await createWalletClient({ chain, transport: http(LOCAL), account: DEAD }).writeContract({ address: BOBAI, abi: parseAbi(['function transfer(address,uint256) returns (bool)']), functionName: 'transfer', args: [hw, parseEther('50000')] });
+  await test.stopImpersonatingAccount({ address: DEAD });
+  const held = await runDev({ k: hk, store: hstore });
+  ok('with BOBAI for a liquidity run on the wallet the sweep sends nothing and notes since when it waits', held.got.every((v) => v === 0n) && !!hstore.get('dev-hold-since') && held.log.length === 0, held.got.map((v) => formatEther(v)).join(' / '));
+  hstore.set('dev-hold-since', String(Date.now() - 7 * 3600e3));
+  const late = await runDev({ k: hk, store: hstore, value: held.left });
+  ok('after 6 hours it sweeps anyway (BOBAI left lying does not stop the creator share for good)', late.got[0] > 0n && late.log.length === 1);
 }
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

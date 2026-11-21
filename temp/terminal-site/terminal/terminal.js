@@ -1078,7 +1078,10 @@ function placeLabels() {
   for (const w of WORKERS) {
     // kept inside the window: on its orbit the left one ran past the edge ("…CK BOT · 1ce", layout.mjs 2026-09-29)
     const p = toScreen(w.pos), ww = labW.get(w.el) || 0, Wd = win.clientWidth;
-    w.el.style.left = (ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x) + 'px'; w.el.style.top = p.y - 16 + 'px';
+    // kept inside the window at the top too (A-Z 2026-11-21: a phone held across cut BUYBACK BOT's name off at the top edge);
+    // the label (two lines, ~24 px) is centred on its point (translate -50%): its centre stays 16 px down at least — a fixed
+    // figure, no layout read in the frame loop
+    w.el.style.left = (ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x) + 'px'; w.el.style.top = Math.max(p.y - 16, 16) + 'px';
     w.el.style.zIndex = w.pos.z > A.head.z ? 3 : 1; w.el.style.opacity = labs.querySelector('.show') ? (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 1 : 0.45) : 0;
     w.el.lastChild.textContent = w.last ? 'beat ' + ago(w.last) : w.every;
   }

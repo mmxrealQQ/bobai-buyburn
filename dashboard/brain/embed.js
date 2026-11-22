@@ -9,6 +9,8 @@
   const home = location.pathname.split('/')[1];
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[href]'); if (!a || e.defaultPrevented) return;
+    // a download (the Brainbook's BRAIN button hands over an SVG as a blob link) is the browser's, never the window's (2026-11-22)
+    if (a.hasAttribute('download') || /^(blob|data):/i.test(a.getAttribute('href') || '')) return;
     if (a.target === '_blank' && !a.href.startsWith(location.origin)) return;
     const u = new URL(a.getAttribute('href'), location.href);
     if (u.origin !== location.origin) { if (!a.target) a.target = '_blank'; return; } // another site: never inside the window

@@ -2809,7 +2809,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const app = /^\/(brainscreener|game|worldcup)(\/|$)/.test(url.pathname);
         const t = new HTMLRewriter()
           .on('html', { element(e) { e.setAttribute('class', ((e.getAttribute('class') || '') + (app ? ' bp-app' : ' bp-embed')).trim()); } })
-          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1122">') + '<script src="/brain/embed.js?v=1122" defer></script>', { html: true }); } })
+          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1123">') + '<script src="/brain/embed.js?v=1123" defer></script>', { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }

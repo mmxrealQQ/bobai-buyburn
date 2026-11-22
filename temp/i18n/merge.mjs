@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 const DIR = 'D:/ai/fourmeme/temp/i18n/', OUT = 'D:/ai/fourmeme/dashboard/i18n/ar.json';
 // Latin that may stay in the Arabic: names, tickers, units, brands (the glossary)
-const KEEP = /\b(BOBAI|BOB|BNB|BSC|LP|NFT|NFTs|DeFi|UTC|CAKE|USDT|USD|AI|API|MCP|A2A|ERC|PancakeSwap|Pancake|Four\.Meme|Giggle|Academy|Brain|Plaza|Board|Pop|Terminal|Screener|Brainmap|Classic|Telegram|X|GitHub|Cloudflare|Workers|Liq|Liquidity|Boost|I|II|III|Build|On|Venus|Mandate|Binance|Web3|WC|tx|TX|json|burns|ROT|SUPER|MEGA|GOD|BURN|HAMMER|LIQ|DEFI|GIGGLE|CREATOR|TRADES|RUG|EN|CZ|x402|Base|ETH|OK|ID|KYC|URL|HTTP|JSON|SDK|CLI|npm|llms|txt|md|skill|Claude|Cursor|VS|Code|Glama|Smithery|Brainrot|BOBAIs?|Agent|Studio|Era|Hackathon|Set|Earn|Keel|Marque|Pokter|Mandate|Whale|Watcher|Rug|Watch|Range|v\d|Copy)\b/g;
+const KEEP = /\b(BOBAI|BOB|BNB|BSC|LP|NFT|NFTs|DeFi|UTC|CAKE|USDT|USD|AI|API|MCP|A2A|ERC|PancakeSwap|Pancake|Four\.Meme|Giggle|Academy|Brainbook|Brain|Plaza|Board|Pop|Terminal|Screener|Brainmap|Classic|Telegram|X|GitHub|Cloudflare|Workers|Liq|Liquidity|Boost|I|II|III|Build|On|Venus|Mandate|Binance|Web3|WC|tx|TX|json|burns|ROT|SUPER|MEGA|GOD|BURN|HAMMER|LIQ|DEFI|GIGGLE|CREATOR|TRADES|RUG|EN|CZ|x402|Base|ETH|OK|ID|KYC|URL|HTTP|JSON|SDK|CLI|npm|llms|txt|md|skill|Claude|Cursor|VS|Code|Glama|Smithery|Brainrot|BOBAIs?|Agent|Studio|Era|Hackathon|Set|Earn|Keel|Marque|Pokter|Mandate|Whale|Watcher|Rug|Watch|Range|v\d|Copy)\b/g;
 const dict = JSON.parse(fs.readFileSync(OUT, 'utf8'));
 let added = 0, bad = 0;
 for (const f of fs.readdirSync(DIR).filter((x) => /^ar-.*\.json$/.test(x)).sort()) {

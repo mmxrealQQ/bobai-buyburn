@@ -323,7 +323,9 @@
     // the apps only: the three "for every agent" cards under them (2026-10-21) are services of BOBAI's, not apps
     // an app with a season (Brain Pop, data-until) leaves the card and the window when its time is over
     $$('#w04 .ec[data-until]').forEach((c) => { if (Date.now() >= Date.parse(c.dataset.until)) c.remove(); });
-    const cards = $$('#w04 .ec').filter((c) => !c.closest('.ec-every')); if (!cards.length) return;
+    // Brain Pop out of the window's icons (operator, 2026-11-22: "take Brain Pop out — eight stay on 04"), the Brainbook in;
+    // its card stays on the page below
+    const cards = $$('#w04 .ec').filter((c) => !c.closest('.ec-every') && !c.hasAttribute('data-pop')); if (!cards.length) return;
     // with their names (2026-09-28): eight bare 26 px icons left the biggest card half empty and said nothing
     const SHORT = { 'NFT Buy Drops': 'NFT Drops', 'Pool Scanner': 'Scanner', 'Agent Services': 'Services', 'Burn & Add Liq': 'Burn & Liq', "Worldcup '26": 'Worldcup' };
     const nm = (c) => { const t = (c.querySelector('h3')?.textContent || '').trim(); const d = document.createElement('i'); d.textContent = SHORT[t] || t; return d.innerHTML; };

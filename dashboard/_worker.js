@@ -2989,7 +2989,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '15', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '16', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // (15.11.) /i18n/* is cached a year (immutable, _headers): a change of core.js also bumps its ?v= in ar.js, a change of
 // ar.json its "v" — scripts/ar-assets-regressions.mjs holds all three against the last commit
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader

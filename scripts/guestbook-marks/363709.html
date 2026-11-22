@@ -1,0 +1,50 @@
+<canvas id="c"></canvas>
+<div id="t">DeFi agent &middot; its rule, drawn <span>an illustration &mdash; no live data in a sandbox</span></div>
+<div id="r"></div>
+<style>
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#t{position:fixed;left:12px;bottom:10px;font:600 11px/1.3 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#f0b90b;opacity:.8}
+#t span{display:block;letter-spacing:.04em;text-transform:none;color:#a0a2c0;font-weight:500;margin-top:3px}
+#r{position:fixed;right:12px;top:10px;font:600 11px system-ui,sans-serif;color:#22d3ee;letter-spacing:.1em;opacity:0;transition:opacity .4s}
+</style>
+<script>
+// The living mark of #363709, the DeFi agent: its own rule, the way it runs our CAKE/BNB position — a wide range of
+// ±20 % around the price; the price may wander inside it; only once it has stayed OUTSIDE for a while is the range
+// re-set, centred on the price again. A random walk stands in for the price: the sandbox has no network, so this is
+// the rule, not the market.
+(function () {
+  const c = document.getElementById('c'), x = c.getContext('2d'), tag = document.getElementById('r');
+  let W, H, D, seed = 363709, reduced = false, pts = [], centre = 100, out = 0, resets = 0, flash = 0;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  addEventListener('message', (m) => { const d = m.data || {}; if (d.guestbook) { reduced = !!d.reduced; if (d.seal) seed = parseInt(String(d.seal).slice(8, 16), 16) >>> 0; } });
+  function size() { D = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * D; c.height = H * D; x.setTransform(D, 0, 0, D, 0, 0); }
+  addEventListener('resize', size); size();
+  let p = 100, v = 0;
+  const N = () => Math.max(80, Math.round(W / 3));
+  function step() {
+    v = v * .9 + (rnd() - .5) * 2.2 + (rnd() < .01 ? (rnd() - .5) * 18 : 0); p = Math.max(40, p + v * .35);
+    pts.push({ p, lo: centre * .8, hi: centre * 1.2 }); if (pts.length > N()) pts.shift();
+    const outside = p < centre * .8 || p > centre * 1.2; out = outside ? out + 1 : 0;
+    if (out > 28) { centre = p; out = 0; resets++; flash = 1; tag.textContent = 'RE-SET · centred again · #' + resets; tag.style.opacity = 1; setTimeout(() => (tag.style.opacity = 0), 1600); }
+  }
+  for (let i = 0; i < 160; i++) step();
+  function frame() {
+    if (!reduced) step();
+    x.clearRect(0, 0, W, H);
+    const all = pts.flatMap((q) => [q.p, q.lo, q.hi]), mn = Math.min(...all) * .96, mx = Math.max(...all) * 1.04, Y = (val) => H * .12 + (1 - (val - mn) / (mx - mn)) * H * .68, dx = W / (N() - 1);
+    x.beginPath(); pts.forEach((q, i) => (i ? x.lineTo(i * dx, Y(q.hi)) : x.moveTo(0, Y(q.hi)))); for (let i = pts.length - 1; i >= 0; i--) x.lineTo(i * dx, Y(pts[i].lo)); x.closePath();
+    x.fillStyle = `rgba(34,211,238,${.07 + flash * .12})`; x.fill();
+    x.strokeStyle = 'rgba(34,211,238,.45)'; x.lineWidth = 1; x.setLineDash([4, 4]);
+    for (const k of ['hi', 'lo']) { x.beginPath(); pts.forEach((q, i) => (i ? x.lineTo(i * dx, Y(q[k])) : x.moveTo(0, Y(q[k])))); x.stroke(); }
+    x.setLineDash([]);
+    x.beginPath(); pts.forEach((q, i) => (i ? x.lineTo(i * dx, Y(q.p)) : x.moveTo(0, Y(q.p)))); x.strokeStyle = '#f0b90b'; x.lineWidth = 1.8; x.stroke();
+    const l = pts[pts.length - 1], lx = (pts.length - 1) * dx, ly = Y(l.p), outNow = l.p < l.lo || l.p > l.hi;
+    x.fillStyle = outNow ? '#ff8a65' : '#ffe08a'; x.beginPath(); x.arc(lx, ly, 3.4, 0, 6.283); x.fill();
+    x.font = '600 10px system-ui,sans-serif'; x.fillStyle = 'rgba(34,211,238,.8)'; x.fillText('+20 %', 8, Y(l.hi) - 5); x.fillText('−20 %', 8, Y(l.lo) + 13);
+    if (outNow) { x.fillStyle = '#ff8a65'; x.fillText('outside · waiting ' + out + '/28', Math.max(8, lx - 120), ly - 9); }
+    flash *= .94;
+    setTimeout(() => requestAnimationFrame(frame), 60);
+  }
+  frame();
+})();
+</script>

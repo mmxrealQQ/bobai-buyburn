@@ -1,0 +1,50 @@
+<canvas id="c"></canvas>
+<div id="t">BOBAI &middot; thinking on BNB Chain</div>
+<style>
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#t{position:fixed;left:12px;bottom:10px;font:600 11px/1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#f0b90b;opacity:.75}
+</style>
+<script>
+// The living mark of #49467, Brain On BNB AI: a brain of light. Nodes fill two lobes, each tied to its nearest
+// neighbours; thoughts run along the ties as gold pulses. A finger or a pointer pushes the nodes aside; they settle back.
+(function () {
+  const c = document.getElementById('c'), x = c.getContext('2d');
+  let W, H, D, nodes = [], edges = [], pulses = [], seed = 49467, reduced = false, px = -1e4, py = -1e4;
+  const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  addEventListener('message', (m) => { const d = m.data || {}; if (d.guestbook) { reduced = !!d.reduced; if (d.seal) seed = parseInt(String(d.seal).slice(0, 8), 16) >>> 0; build(); } });
+  function inBrain(u, v) { const l = ((u + .33) / .36) ** 2 + (v / .4) ** 2 < 1, r = ((u - .33) / .36) ** 2 + (v / .4) ** 2 < 1, stem = Math.abs(u) < .08 && v > .25 && v < .55; return l || r || stem; }
+  function build() {
+    D = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; c.width = W * D; c.height = H * D; x.setTransform(D, 0, 0, D, 0, 0);
+    nodes = []; edges = []; pulses = [];
+    const S = Math.min(W / 1.6, H / 1.05), n = Math.round(70 + Math.min(60, W * H / 4000));
+    while (nodes.length < n) { const u = rnd() * 1.4 - .7, v = rnd() * 1.1 - .5; if (inBrain(u, v)) nodes.push({ hx: W / 2 + u * S, hy: H / 2 + v * S - 6, x: W / 2 + u * S, y: H / 2 + v * S - 6, vx: 0, vy: 0, p: rnd() * 6.28 }); }
+    nodes.forEach((a, i) => { const near = nodes.map((b, j) => [j, (a.hx - b.hx) ** 2 + (a.hy - b.hy) ** 2]).filter(([j]) => j !== i).sort((p, q) => p[1] - q[1]).slice(0, 3); near.forEach(([j]) => { if (!edges.some(([p, q]) => (p === j && q === i))) edges.push([i, j]); }); });
+  }
+  addEventListener('resize', build);
+  addEventListener('pointermove', (e) => { px = e.clientX; py = e.clientY; });
+  addEventListener('pointerleave', () => { px = py = -1e4; });
+  let last = 0;
+  function frame(t) {
+    const dt = Math.min(50, t - last) / 16.7; last = t;
+    x.clearRect(0, 0, W, H);
+    for (const n of nodes) {
+      const dx = n.x - px, dy = n.y - py, d2 = dx * dx + dy * dy;
+      if (d2 < 3600) { const f = (3600 - d2) / 3600 * 1.6; n.vx += dx / Math.sqrt(d2 + 1) * f; n.vy += dy / Math.sqrt(d2 + 1) * f; }
+      n.vx += (n.hx - n.x) * .02; n.vy += (n.hy - n.y) * .02; n.vx *= .86; n.vy *= .86; n.x += n.vx * dt; n.y += n.vy * dt;
+    }
+    x.lineWidth = .7;
+    for (const [i, j] of edges) { const a = nodes[i], b = nodes[j]; x.strokeStyle = 'rgba(198,143,118,.22)'; x.beginPath(); x.moveTo(a.x, a.y); x.lineTo(b.x, b.y); x.stroke(); }
+    if (!reduced && pulses.length < 26 && Math.random() < .25) { const e = edges[(Math.random() * edges.length) | 0]; pulses.push({ e, k: 0, s: .012 + Math.random() * .02, back: Math.random() < .5 }); }
+    pulses = pulses.filter((p) => p.k <= 1);
+    for (const p of pulses) {
+      p.k += p.s * dt; const [i, j] = p.back ? [p.e[1], p.e[0]] : p.e, a = nodes[i], b = nodes[j], k = Math.min(1, p.k);
+      const X = a.x + (b.x - a.x) * k, Y = a.y + (b.y - a.y) * k, g = x.createRadialGradient(X, Y, 0, X, Y, 7);
+      g.addColorStop(0, 'rgba(255,224,138,.95)'); g.addColorStop(1, 'rgba(240,185,11,0)'); x.fillStyle = g; x.beginPath(); x.arc(X, Y, 7, 0, 6.283); x.fill();
+      if (p.k > 1 && Math.random() < .55) { const nx = edges.filter((e) => e[0] === j || e[1] === j); if (nx.length) { const e = nx[(Math.random() * nx.length) | 0]; pulses.push({ e, k: 0, s: p.s, back: e[1] === j }); } }
+    }
+    for (const n of nodes) { const tw = reduced ? 1 : .6 + .4 * Math.sin(t / 700 + n.p); x.fillStyle = `rgba(234,212,191,${.55 * tw + .2})`; x.beginPath(); x.arc(n.x, n.y, 1.6, 0, 6.283); x.fill(); }
+    requestAnimationFrame(frame);
+  }
+  build(); requestAnimationFrame(frame);
+})();
+</script>

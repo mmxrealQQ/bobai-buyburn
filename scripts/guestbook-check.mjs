@@ -49,9 +49,32 @@ say(list.j.count === 1 && list.j.entries[0].agent === '49467', 'GET /guestbook l
 let lim = 0; for (let i = 0; i < 12; i++) { const r = await call('POST', '/guestbook', { agent: 49467, words, date: m.j.date, signer: owner.address, signature: sig }, '9.9.9.9'); if (r.status === 429) lim++; }
 say(lim > 0, 'the day\'s limit per address answers 429');
 
+// THE LIVING MARK: the code's hash is in the signed message; changed code is refused; served as text with a sandbox CSP
+{
+  kv.clear();
+  const code = '<canvas id=c></canvas><script>/* mark */document.body.style.background="#000"</script>';
+  const { sha256Hex } = await import('../worker-agent/guestbook.js');
+  const h = await sha256Hex(code);
+  const mm = await call('GET', `/guestbook/message?agent=49467&words=${encodeURIComponent(words)}&code_sha256=${h}`);
+  say(mm.status === 200 && mm.j.message.includes(`My living mark, sha256: ${h}\n`), 'GET /guestbook/message with code_sha256 puts the hash in the message');
+  const sg = await owner.signMessage({ message: mm.j.message });
+  const tampered = await call('POST', '/guestbook', { agent: 49467, words, date: mm.j.date, signer: owner.address, signature: sg, code: code + ' ' }, '5.5.5.5');
+  say(tampered.status === 401, 'code changed after signing: 401', tampered.status);
+  const big = await call('POST', '/guestbook', { agent: 49467, words, date: mm.j.date, signer: owner.address, signature: sg, code: 'x'.repeat(12001) }, '5.5.5.5');
+  say(big.status === 400, 'code over 12,000 bytes: 400', big.status);
+  const okc = await call('POST', '/guestbook', { agent: 49467, words, date: mm.j.date, signer: owner.address, signature: sg, code }, '5.5.5.5');
+  say(okc.status === 201 && okc.j.entry?.code_sha256 === h && /\/guestbook\/code\/49467$/.test(okc.j.entry?.code_url || ''), 'signed with its code: 201, code_sha256 + code_url in the entry', okc.status);
+  const url = new URL('https://agent.brainonbnb.com/guestbook/code/49467');
+  const r = await handleGuestbook(new Request(url), env, url.pathname, url, '1.1.1.1');
+  const body = await r.text();
+  say(body === code && /text\/plain/.test(r.headers.get('content-type')) && /sandbox/.test(r.headers.get('content-security-policy') || '') && r.headers.get('x-content-type-options') === 'nosniff', 'GET /guestbook/code/<id>: the exact bytes, as text, sandbox CSP, nosniff');
+  const plain = await call('GET', '/guestbook');
+  say(plain.j.entries[0].code === undefined, 'the list carries the hash and the address, not the code');
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/guestbook').then((r) => r.json()).catch(() => null);
-  say(g && Array.isArray(g.entries) && g.how?.steps?.length === 3, `live GET /guestbook (${g?.count} entries)`);
+  say(g && Array.isArray(g.entries) && g.how?.steps?.length >= 3, `live GET /guestbook (${g?.count} entries)`);
   const lm = await fetch('https://agent.brainonbnb.com/guestbook/message?agent=49467&words=hello%20there').then((r) => r.json()).catch(() => null);
   say(lm?.message?.startsWith('Brain Guestbook on BNB Chain'), 'live GET /guestbook/message');
 }

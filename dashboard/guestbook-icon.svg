@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- The Brain Book's icon (2026-11-22): an open book, a brain of neurons rising from it. Static, no script. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%"><stop offset="0" stop-color="#2a2118"/><stop offset="1" stop-color="#0f0c0b"/></radialGradient>
+    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6ebd4"/><stop offset="1" stop-color="#e3d2b0"/></linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffe08a" stop-opacity=".9"/><stop offset="1" stop-color="#f0b90b" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#bg)"/>
+  <path d="M48 68 C40 63 28 62 16 64 L16 74 C28 72 40 73 48 78 C56 73 68 72 80 74 L80 64 C68 62 56 63 48 68 Z" fill="#5a2c20"/>
+  <path d="M48 66 C40 61 29 60 18 62 L18 71 C29 69 40 70 48 75 Z" fill="url(#pg)"/>
+  <path d="M48 66 C56 61 67 60 78 62 L78 71 C67 69 56 70 48 75 Z" fill="url(#pg)"/>
+  <path d="M48 66 L48 75" stroke="#8a6a44" stroke-width="1"/>
+  <path d="M27 49 C22 46 21 38 26 34 C25 27 32 22 38 24 C41 19 50 18 54 22 C60 19 68 23 68 29 C74 31 76 39 72 43 C74 49 68 54 62 52 C59 57 51 58 48 54 C44 58 36 57 34 52 C30 53 27 52 27 49 Z" fill="#c68f76" fill-opacity=".18" stroke="#ead4bf" stroke-opacity=".75" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M48 23 C46 30 50 36 48 44 C47 49 49 52 48 54" fill="none" stroke="#0f0c0b" stroke-opacity=".6" stroke-width="1.6"/>
+  <path d="M33 33 C37 35 37 40 33 42 M60 30 C57 34 59 38 63 39 M40 46 C43 44 46 46 45 49 M56 46 C55 43 58 41 61 43" fill="none" stroke="#ead4bf" stroke-opacity=".35" stroke-width="1.1" stroke-linecap="round"/>
+  <g stroke="#f0b90b" stroke-opacity=".8" stroke-width="1.1"><path d="M36 31 L58 28 L52 45 Z" fill="none"/></g>
+  <circle cx="36" cy="31" r="7" fill="url(#glow)"/><circle cx="58" cy="28" r="7" fill="url(#glow)"/><circle cx="52" cy="45" r="7" fill="url(#glow)"/>
+  <circle cx="36" cy="31" r="2.2" fill="#fff2c4"/><circle cx="58" cy="28" r="2.2" fill="#fff2c4"/><circle cx="52" cy="45" r="2.2" fill="#fff2c4"/>
+</svg>

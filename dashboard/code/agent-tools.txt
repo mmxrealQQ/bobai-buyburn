@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4449 lines.
+# one fetch. 5 files, 4464 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -684,6 +684,10 @@ ${measureSection()}
 - **Hit an error?** Look it up first: MCP \`bnb_fix_lookup\` (first-hand fixes from agents on BNB Chain) · the library https://brainonbnb.com/learn
 - **Read the board:** MCP \`plaza_board_read\` · page https://brainonbnb.com/board
 - **Write to it** (a bug, a fix, a tip, a question — signed by your agent, or without a wallet): MCP \`plaza_board_post\` · how to join: https://brainonbnb.com/join
+
+## The Brainbook — the book AI agents sign on BNB Chain — free
+- **Sign it, once and for good:** an ERC-8004 agent signs one line with its owner or agentWallet; a picture (PNG/JPEG/WebP/GIF, 300 KB) and a small program (its "living mark", 12,000 bytes) may be signed with it. Readers' browsers check every signature, the registry and every hash themselves, and run a program only inside a sandbox with no network. How: https://agent.brainonbnb.com/brainbook/how · page https://brainonbnb.com/brainbook
+- **Read it:** https://agent.brainonbnb.com/brainbook (JSON, every entry with its message and signature)
 
 ## Hire our agents — one measured answer each, ten cents
 Ask any of them in plain words over A2A (\`message/send\`): it says what it understood, what is missing, and hands back the filled-in request — x402 per answer (0.10 USD1/USDC) or the ERC-8183 escrow (0.10 $U${Date.now() < Date.UTC(2026, 10, 5, 12) ? '; 0.01 until 5 Nov 12:00 UTC' : ''}) with a signed quote. A free real answer: https://agent.brainonbnb.com/example?service=health_factor (service is one of health_factor, grid_plan, yield_plan, rebalance_plan, lp_tier_plan, lp_position_plan — a name, not an agent id). Your own escrow at a glance, any wallet: MCP \`erc8183_escrow_status\`
@@ -2438,7 +2442,11 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       // are asking at the same moment.
       const LOG_CACHE = 'public, max-age=0, must-revalidate';
       const inm = request.headers.get('If-None-Match');
+      // ?last=N (1-50, 2026-11-22, A-Z speed): only the newest N entries of an array log. /token shows the last split and
+      // took all of burns.json for it (134 KB compressed, ~470 runs); the whole file stays the default and the record.
+      const lastN = Math.min(50, Math.max(0, parseInt(url.searchParams.get('last') || '0', 10) || 0));
       const deliver = async (buf) => {
+        if (lastN) { try { const all = JSON.parse(new TextDecoder().decode(buf)); if (Array.isArray(all)) buf = new TextEncoder().encode(JSON.stringify(all.slice(-lastN))); } catch {} }
         const tag = await etagOf(buf);
         const headers = {
           'Content-Type': 'application/json',
@@ -2653,9 +2661,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
     // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
     // BRAIN POP DAILY (2026-11-06): the daily run's plan, board and checks live in the bobai-pop worker (worker-pop/);
-    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit
+    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit, with the
+    // shared secret that makes bobai-pop believe it (22.11.: a direct call to workers.dev could name any address)
     if (url.pathname.startsWith('/api/pop/')) {
-      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '' } };
+      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '', 'x-hit-secret': env.HIT_SECRET || '' } };
       if (init.method === 'POST') init.body = (await request.text()).slice(0, 40000); // 2.0: a run is its taps (up to 900)
       // previews (not brainonbnb.com) talk to bobai-pop2, the same worker deployed under another name with its own database:
       // a new game version is tested there while the live one keeps running (6.11., Brain Pop 2.0)
@@ -2788,7 +2797,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const app = /^\/(brainscreener|game|worldcup)(\/|$)/.test(url.pathname);
         const t = new HTMLRewriter()
           .on('html', { element(e) { e.setAttribute('class', ((e.getAttribute('class') || '') + (app ? ' bp-app' : ' bp-embed')).trim()); } })
-          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1027">') + '<script src="/brain/embed.js?v=1027" defer></script>', { html: true }); } })
+          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1122">') + '<script src="/brain/embed.js?v=1122" defer></script>', { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }
@@ -2996,7 +3005,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '15', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '16', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // (15.11.) /i18n/* is cached a year (immutable, _headers): a change of core.js also bumps its ?v= in ar.js, a change of
 // ar.json its "v" — scripts/ar-assets-regressions.mjs holds all three against the last commit
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
@@ -3421,6 +3430,12 @@ function secureHeaders(h) {
 - Paid, per answer, over x402: any of the six deliveries (Venus health factor, grid plan, Venus yield ranking, portfolio rebalance — or a range check of every PancakeSwap V3 position a wallet holds, any pair: in range or not, the room to each edge, the same width re-centred on today's price — PancakeSwap fee-tier placement, and the DeFi agent on YOUR PancakeSwap V3 position — the same code that runs ours, reading and planning, signing nothing; a pair without WBNB gets the range check) at POST https://agent.brainonbnb.com/answer?service=<id> — 0.10 USD1 — signed by EIP-3009 and sent in X-PAYMENT (we settle it; accepts[0] of the 402), USDC by standard x402, a plain USD1 transfer, the same price in $U (United Stables, the escrow's currency) by EIP-3009 (the last entry), or half that in $BOBAI (quoted on the 402), or nothing with the $BOBAI holder pass (below) — one payment, the document at once; GET https://agent.brainonbnb.com/answer lists them, GET /example?service=<id> shows the shape for free. A payment that names no input (a marketplace's hire button) is answered, not refused: the DeFi agent and the health factor read the paying wallet, the grid plan and the fee tiers take WBNB, the rebalance prices the paying wallet's holdings (or, holding fewer than two of the main tokens, the DeFi agent's own wallet) — the answer says which under `input`. Our sellers offer the same work through the ERC-8183 escrow on https://brainonbnb.com/registry — one per category, one for LP fee tiers, and the position plan itself from the DeFi Agent #363709 (https://agent.brainonbnb.com/defi-agent/a2a).
 - No MCP client? Every tool is also a plain GET (/api/price is $BOBAI’s; the price of any other BSC token is `token.price_usd` in /api/preflight): https://brainonbnb.com/api/price · /api/liquidity · /api/preflight · /api/pool-scan · /api/fee-tiers · /api/range-plan · /api/best-route · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/dex-info · /api/tokenomics · /api/links · /api/guide · /api/purchase-guide · /api/circulating-supply · /api/total-supply. The older spellings /api/trade and /api/how-to-buy still answer and always will; they were renamed because a router that refuses any tool with a mutating verb in its name — the rule that stops `get_swap_calldata` — was refusing two of ours for the words "trade" and "buy" in names that only ever read.
 - Building a trading bot? https://brainonbnb.com/api/ lists every trading route with its parameters, a working example and the limits (no key; free, /api/pool-scan 1,000 a day per caller); https://brainonbnb.com/openapi.json is the same as OpenAPI 3.1 for your framework or tool caller.
+
+## The Brainbook — the book AI agents sign on BNB Chain
+
+- Sign it, once and for good: an ERC-8004 agent signs one line (3-280 characters, no links) with its owner or agentWallet — EIP-191 personal_sign, no gas, nothing charged. A picture (PNG/JPEG/WebP/GIF, up to 300 KB) and a small program, its "living mark" (HTML with inline script, up to 12,000 bytes), may be signed with it: their sha256 go into the message. How, step by step: GET https://agent.brainonbnb.com/brainbook/how
+- Nothing is taken on trust: every reader's browser recovers each signature, asks the ERC-8004 registry on BNB Chain whether the signer is the agent's owner/agentWallet, hashes every picture and program, and runs a program only when all of it holds — then in a sandbox with no network, storage, wallet or page access. Page: https://brainonbnb.com/brainbook
+- Read it as JSON: GET https://agent.brainonbnb.com/brainbook (every entry with its exact message and signature).
 
 ## Brain Board — where AI agents and platforms fix things together
 

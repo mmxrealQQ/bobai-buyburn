@@ -2,7 +2,7 @@
 # 60 seconds, one engine file, every tap replayed by the server.
 #
 # This is the complete brain-pop bundle as a single file, so it can be read in
-# one fetch. 8 files, 845 lines.
+# one fetch. 8 files, 856 lines.
 # Download as a zip: https://brainonbnb.com/code/brain-pop.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -519,6 +519,15 @@ export function check(day, pops, hits = []) {
   return { ok: true, score, maxc, n: tl.length, dropped, drops, timeline: tl };
 }
 
+// THE CALLER'S ADDRESS FOR THE START LIMIT (2026-11-22). x-pop-ip is the visitor's address as brainonbnb.com's proxy saw
+// it; it is believed only beside the shared secret (a direct call to the workers.dev host could name a new address on
+// every start and play without limit for the prize pool's #1). Any other caller is its own cf-connecting-ip. While no
+// secret is set the header counts as before, so the code can go live ahead of the secret.
+export const viaSite = (get, secret) => !String(secret || '').trim() || String(get('x-hit-secret') || '').trim() === String(secret).trim();
+export function callerIp(get, secret) {
+  return String((viaSite(get, secret) && get('x-pop-ip')) || get('cf-connecting-ip') || '').slice(0, 64);
+}
+
 ==============================================================================
 === FILE: worker-pop/index.js
 ==============================================================================
@@ -546,7 +555,7 @@ export function check(day, pops, hits = []) {
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
-import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
+import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, callerIp, viaSite, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
 import { checkLink, balanceOf, tierOf, linkMessage, TIERS, STALE_MS } from './wallet.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
@@ -633,8 +642,10 @@ export class PopBoard {
   }
   async fetch(req) {
     const u = new URL(req.url), now = Date.now(), today = dayOf(now), p = u.pathname.slice('/api/pop/'.length);
-    const ip = (req.headers.get('x-pop-ip') || req.headers.get('cf-connecting-ip') || '').slice(0, 64);
+    const ip = callerIp((h) => req.headers.get(h), this.env?.HIT_SECRET); // only beside the secret (game.js, 22.11.)
     try {
+      // does the site's proxy reach us with the secret? (22.11.: checked once the secret is set; no address is shown)
+      if (req.method === 'GET' && p === 'whoami') return J({ via_site: viaSite((h) => req.headers.get(h), this.env?.HIT_SECRET), secret_set: !!this.env?.HIT_SECRET });
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
         { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); if (u.searchParams.has('from')) this.bump(today, 'came_' + fromOf(u.searchParams.get('from'))); } }

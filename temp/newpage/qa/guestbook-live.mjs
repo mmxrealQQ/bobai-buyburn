@@ -22,13 +22,13 @@ for (const [w, h, mobile] of [[390, 844, true], [1440, 900, false]]) {
   const seen = {};
   for (let turn = 0; turn < 8; turn++) {
     await sleep(3500);
-    const r = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('#bk-in > .pg[data-agent]')].filter(p=>getComputedStyle(p).display!=='none').map(p=>{const f=p.querySelector('.cage iframe.on');return {id:p.dataset.agent,chk:p.querySelector('.chk')?.className,g:[...p.querySelectorAll('.gate')].map(x=>x.className.replace('gate','').trim()||'-').join(','),f:!!f,box:f?Math.round(f.getBoundingClientRect().width):0}}))`));
+    const r = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('#bk-in > .pg[data-agent]')].filter(p=>getComputedStyle(p).display!=='none').map(p=>{const f=p.querySelector('.cage iframe.on');return {id:p.dataset.agent,chk:p.querySelector('.chk')?.className,g:[...p.querySelectorAll('.gate')].map(x=>x.className.replace('gate','').trim()||'-').join(','),f:!!f,box:f?Math.round(f.getBoundingClientRect().width):0,strip:[...p.querySelectorAll('.pf')].map(c=>c.className.replace('pf','').trim()).join(',')}}))`));
     for (const e of r) if (!seen[e.id] || (!seen[e.id].f && e.f)) seen[e.id] = e;
     if (await ev(`document.getElementById('next').disabled`)) break;
     await ev(`document.getElementById('next').click()`);
   }
   say(Object.keys(seen).length >= 3, `${w}px ${Object.keys(seen).length} entries met while turning the pages`);
-  for (const e of Object.values(seen)) say(/ ok/.test(e.chk) && (e.g === '' || (e.g === 'ok,ok,ok' && e.f && e.box > 100)), `${w}px #${e.id}: ${String(e.chk).replace('chk ', '')}, gates ${e.g || 'none'}, mark ${e.f ? 'running ' + e.box + ' px wide' : 'not running'}`);
+  for (const e of Object.values(seen)) say(/ ok/.test(e.chk) && (e.g === '' || (e.g === 'ok,ok,ok' && e.f && e.box > 100)) && /^(ok,)*ok$/.test(e.strip), `${w}px #${e.id}: ${String(e.chk).replace('chk ', '')}, strip ${e.strip}, gates ${e.g || 'none'}, mark ${e.f ? 'running ' + e.box + ' px wide' : 'not running'}`);
 }
 say(!errs.length, `no script error${errs.length ? ': ' + errs.join(' | ') : ''}`);
 console.log(bad ? `FAIL ${bad}` : 'PASS  guestbook live'); ws.close(); ch.kill(); await sleep(800); process.exit(bad ? 1 : 0);

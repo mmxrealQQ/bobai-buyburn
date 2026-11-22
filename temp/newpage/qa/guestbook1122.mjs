@@ -75,6 +75,10 @@ else {
   const painted = (await send('Runtime.evaluate', { returnByValue: true, awaitPromise: true, expression: `new Promise(r=>setTimeout(()=>{const f=document.querySelector('.cage iframe');try{const d=f.contentWindow.document;r(d?'reachable':'isolated')}catch(e){r('isolated')}},1500))` })).result?.result?.value;
   say(painted === 'isolated', `the page cannot reach into the sandbox (${painted})`);
 }
+const strip = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('.pg[data-agent]:not(.cl)')].map(p=>[...p.querySelectorAll('.pf')].map(c=>c.dataset.k+':'+c.className.replace('pf','').trim()).join(',')))`));
+if (!TAMPER) say(/^sig:ok,chain:ok,code:ok$/.test(strip[0]), `the real entry's strip is green (${strip[0]})`);
+else say(/sig:ok,chain:ok,code:bad/.test(strip[0]), `code swapped: the strip says Sandbox failed (${strip[0]})`);
+say(strip.slice(1).every((x) => /sig:bad/.test(x)), `the fakes' strips say the signature failed (${strip.slice(1).join(' / ')})`);
 say(cage.slice(1).every((c) => !c.f && c.x), `the two fakes' marks do not run (${cage.slice(1).map((c) => c.g).join(' / ')})`);
 await ev(`document.querySelector('.vf').click()`); await sleep(200);
 say(await ev(`getComputedStyle(document.querySelector('.proof')).display==='block'`), 'VERIFY opens the proof');

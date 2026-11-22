@@ -1409,7 +1409,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
   // nothing is charged on an unknown id: a payment counts as used only once an answer is delivered (5.11.)
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES), charged: false,
-    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 29 more) are at https://brainonbnb.com/mcp' } };
+    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 30 more) are at https://brainonbnb.com/mcp' } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
   // Half the price in $BOBAI, quoted now. If the pair cannot be read the
@@ -2060,7 +2060,11 @@ export default {
     if (path === '/guestbook' || path.startsWith('/guestbook/') || path === '/brainbook' || path.startsWith('/brainbook/')) {
       note(`guestbook:${request.method}`);
       const { handleGuestbook } = await import('./guestbook.js');
-      return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, request.headers.get('cf-connecting-ip'));
+      // the site's MCP server signs for many agents from one Cloudflare address: its caller's own address counts, but only
+      // beside the shared secret (as for the board)
+      const gk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;
+      const gip = (gk && request.headers.get('x-board-proxy') === gk && request.headers.get('x-board-client-ip')) || request.headers.get('cf-connecting-ip');
+      return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, gip);
     }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) {
@@ -3389,7 +3393,7 @@ ${pageTail}`;
       const { id, method, params } = body || {};
       if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
       if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
-      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.1.0' }, instructions: `${svc.name}, on BNB Chain. Start free: call ${TRY} (a real public example, read from the chain now; put your own in its place). ${PAID.name} returns the terms of the paid answer, 0.10 USD1 over x402. Read-only: nothing here signs, holds a key or moves funds. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp` });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.1.0' }, instructions: `${svc.name}, on BNB Chain. Start free: call ${TRY} (a real public example, read from the chain now; put your own in its place). ${PAID.name} returns the terms of the paid answer, 0.10 USD1 over x402. Read-only: nothing here signs, holds a key or moves funds. The free toolbox for any BSC token, 31 tools: https://brainonbnb.com/mcp` });
       if (method === 'ping') return rpcOk(id, {});
       if (method === 'tools/list') { note(`agentmcp:${mcpSlug}:tools_list`); return rpcOk(id, { tools: TOOLS }); }
       if (method === 'tools/call') {
@@ -3454,9 +3458,9 @@ ${pageTail}`;
           const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: String(name).slice(0, 60), arguments: a } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
           let out = null;
           try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
-          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 30 tools)' });
+          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 31 tools)' });
         }
-        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp`);
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 31 tools: https://brainonbnb.com/mcp`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
     }

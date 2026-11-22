@@ -49,4 +49,4 @@ if (process.argv.includes('--live')) {
   }
 }
 console.log(`\n${pass} passed, ${fail} failed`);
-process.exit(fail ? 1 : 0);
+process.exitCode = fail ? 1 : 0;   // not process.exit: on Windows it can abort in libuv and report 127

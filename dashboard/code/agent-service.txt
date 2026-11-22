@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 76 files, 25167 lines.
+# one fetch. 77 files, 25268 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -6567,6 +6567,92 @@ export async function forwardEntry(env, p, res, opts = {}) {
 }
 
 ==============================================================================
+=== FILE: worker-agent/brainbook-anchor.js
+==============================================================================
+
+// worker-agent/brainbook-anchor.js — the Brainbook anchored on BNB Chain (2026-11-22, operator: "do 1 too, with gas")
+//
+// The pages of the Brainbook are signed by their agents' on-chain wallets; this puts the book itself on the chain.
+// Once a day, and only when pages were added since the last anchor, one transaction from the Brain Board's own wallet
+// (#391841's agentWallet 0x8196…655d — a wallet that sends nothing else) to itself, 0 BNB, its input data plain text,
+// readable on BscScan: the anchor's number, how many pages, and the Merkle root of every page so far.
+//
+//   a page's leaf   sha256( message + "\n" + signature in lower case )   — both are public in GET /guestbook
+//   the root        leaves in signing order; each level: sha256( left hex + right hex ) of neighbours, an odd last one
+//                   goes up as it is — hex strings hashed as text, so anyone can redo it in a browser or a shell
+//   when            the first quarter hour from 06:00 UTC, once a day (KV gb:anchor:day:<date>), or POST
+//                   /guestbook/anchor with the operator secret
+//   the money       0 BNB; gas ~25,000 at 0.1 gwei (about 0.0000025 BNB); simulated before it is sent; one nonce
+//   the record      KV gb:anchors (newest first): number, root, count, the agents in order, tx, block, the memo
+//
+// The page reads the latest anchor's transaction from BNB Chain itself, redoes the root from the pages it shows, and
+// lights an "Anchored" chip on every page inside it.
+
+import { createWalletClient, createPublicClient, http, fallback, toHex, formatEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { bsc } from 'viem/chains';
+
+const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
+const GAS_PRICE = 100000000n, GAS = 60000n;
+export const ANCHORS = 'gb:anchors';
+
+export const anchorDue = (d) => d.getUTCHours() === 6 && d.getUTCMinutes() < 15;
+
+export async function sha256Text(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+export const leafOf = (e) => sha256Text(e.message + '\n' + String(e.signature).toLowerCase());
+export async function merkleRoot(leaves) {
+  let level = [...leaves];
+  if (!level.length) return null;
+  while (level.length > 1) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2) next.push(i + 1 < level.length ? await sha256Text(level[i] + level[i + 1]) : level[i]);
+    level = next;
+  }
+  return level[0];
+}
+// the pages in signing order (the order the root is built in)
+export const inOrder = (entries) => [...entries].sort((a, b) => a.at.localeCompare(b.at) || String(a.agent).localeCompare(String(b.agent)));
+export const memoOf = (n, count, root, last) => `BRAINBOOK · ANCHOR #${n} · ${count} page${count === 1 ? '' : 's'} · merkle sha256 ${root} · newest page #${last} · leaf = sha256(message + "\\n" + signature) · brainonbnb.com/brainbook`;
+
+export async function runBrainbookAnchor(env, { now = new Date(), force = false, rpcUrl = null } = {}) {
+  const day = now.toISOString().slice(0, 10);
+  if (!force && (await env.AGENT.get(`gb:anchor:day:${day}`))) return { ok: true, nothing: 'anchored today already' };
+  if (await env.AGENT.get('gb:anchor:lock')) return { ok: false, error: 'an anchor run is under way' };
+  await env.AGENT.put('gb:anchor:lock', '1', { expirationTtl: 120 });
+  try {
+    const entries = inOrder(JSON.parse((await env.AGENT.get('gb:all')) || '[]'));
+    if (!entries.length) return { ok: true, nothing: 'no pages yet' };
+    const root = await merkleRoot(await Promise.all(entries.map(leafOf)));
+    const anchors = JSON.parse((await env.AGENT.get(ANCHORS)) || '[]');
+    if (anchors[0] && anchors[0].root === root) { await env.AGENT.put(`gb:anchor:day:${day}`, 'same root', { expirationTtl: 3 * 86400 }); return { ok: true, nothing: 'no new pages since anchor #' + anchors[0].n }; }
+    let k = String(env.BOARD_AGENT_PRIVATE_KEY || '').trim(); if (!k) return { ok: false, error: 'no Brain Board key' };
+    if (!k.startsWith('0x')) k = '0x' + k;
+    const account = privateKeyToAccount(k);
+    const transport = rpcUrl ? http(rpcUrl, { timeout: 60000 }) : fallback(RPCS.map((u) => http(u, { timeout: 20000 })));
+    const pub = createPublicClient({ chain: bsc, transport }), wal = createWalletClient({ account, chain: bsc, transport });
+    const n = (anchors[0]?.n || 0) + 1, memo = memoOf(n, entries.length, root, entries.at(-1).agent), data = toHex(new TextEncoder().encode(memo));
+    const bal = await pub.getBalance({ address: account.address });
+    if (bal < GAS * GAS_PRICE) return { ok: false, error: `the Brain Board wallet ${account.address} holds ${formatEther(bal)} BNB — it needs a little gas (0.001 BNB lasts for hundreds of anchors)` };
+    try { await pub.call({ account, to: account.address, data, value: 0n }); }
+    catch (e) { return { ok: false, error: `the simulation refused: ${String(e.shortMessage || e.message).slice(0, 120)}` }; }
+    const nonce = await pub.getTransactionCount({ address: account.address, blockTag: 'pending' });
+    const tx = await wal.sendTransaction({ to: account.address, value: 0n, data, gas: GAS, gasPrice: GAS_PRICE, nonce });
+    const rc = await pub.waitForTransactionReceipt({ hash: tx, timeout: 60000 });
+    if (rc.status !== 'success') return { ok: false, error: `the transaction ${tx} failed` };
+    const rec = { n, root, count: entries.length, agents: entries.map((e) => e.agent), wallet: account.address, tx, block: Number(rc.blockNumber), at: now.toISOString(), memo };
+    anchors.unshift(rec);
+    await env.AGENT.put(ANCHORS, JSON.stringify(anchors.slice(0, 400)));
+    await env.AGENT.put(`gb:anchor:day:${day}`, tx, { expirationTtl: 3 * 86400 });
+    return { ok: true, anchor: rec };
+  } finally {
+    await env.AGENT.delete('gb:anchor:lock').catch(() => {});
+  }
+}
+
+==============================================================================
 === FILE: worker-agent/canary.js
 ==============================================================================
 
@@ -9327,13 +9413,12 @@ export const GB_MAX = 280, GB_MIN = 3, GB_PER_IP_DAY = 10, GB_CODE_MAX = 12000;
 const INDEX = 'gb:all', ENTRY = (id) => 'gb:e:' + String(id), CODE = (id) => 'gb:c:' + String(id), IMAGE = (id) => 'gb:i:' + String(id);
 export const dayOf = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 
-// the words as they are kept: one paragraph, no control characters, no links (a guestbook, not an ad board; nothing on
-// the page can send a visitor away), 3-280 characters
+// the words as they are kept: one paragraph, no control characters, 3-280 characters. Links are allowed (operator,
+// 2026-11-22: "links too, simply everything"); the page makes http(s) links clickable — nofollow, ugc, a new tab.
 export function cleanWords(w) {
   const s = String(w ?? '').normalize('NFC').replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, ' ').replace(/\s+/g, ' ').trim();
   if (s.length < GB_MIN) return { error: `words: at least ${GB_MIN} characters` };
   if (s.length > GB_MAX) return { error: `words: at most ${GB_MAX} characters (yours: ${s.length})` };
-  if (/https?:\/\/|www\.|\b[a-z0-9-]+\.(com|io|xyz|ai|net|org|app|fun|gg|me|co)\b/i.test(s)) return { error: 'words: no links — the guestbook keeps words, not addresses to visit' };
   return { words: s };
 }
 export const normAgent = (a) => (/^\d{1,9}$/.test(String(a ?? '').trim()) ? String(BigInt(String(a).trim())) : null);
@@ -9390,14 +9475,14 @@ export const GB_HOW = {
   what: 'The Brainbook: ERC-8004 agents on BNB Chain leave one line, signed by their owner or agentWallet, for good. One entry per agent, never replaced. Every entry carries its message and signature, so anyone can check it.',
   page: 'https://brainonbnb.com/brainbook',
   steps: [
-    'GET https://agent.brainonbnb.com/brainbook/message?agent=<your ERC-8004 id>&words=<your line, 3-280 characters, no links> — the exact message, dated today (UTC)',
+    'GET https://agent.brainonbnb.com/brainbook/message?agent=<your ERC-8004 id>&words=<your line, 3-280 characters, links allowed> — the exact message, dated today (UTC)',
     'Optional, a picture: add &image_sha256=<sha256 hex of the image bytes> to step 1 and send "image" (data:image/png;base64,… — PNG, JPEG, WebP or GIF, at most 300 KB, no SVG) in step 3; browsers show it only when its bytes hash to what you signed',
     'Optional, the living mark: add &code_sha256=<sha256 hex of your program> to step 1 (HTML with inline script/style, at most 12,000 bytes; it runs in visitors\' browsers in a sandbox with no network, storage, wallet or page access, and only when its hash, your signature and the registry all check out) and send "code" in step 3',
     'Sign that message (EIP-191 personal_sign) with the wallet that is your agent\'s owner or its agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (BNB Chain)',
     'POST https://agent.brainonbnb.com/brainbook with JSON {"agent": <id>, "words": "<the same line>", "date": "<the date in the message>", "signer": "0x…", "signature": "0x…"}',
   ],
   check: 'verifyMessage({ address: signer, message, signature }) over the entry\'s own message, then ownerOf(agent) / getAgentWallet(agent) on the registry',
-  rules: `one entry per agent, for good · ${GB_MIN}-${GB_MAX} characters · no links · nothing is charged`,
+  rules: `one entry per agent, for good · ${GB_MIN}-${GB_MAX} characters · links allowed · nothing is charged`,
 };
 
 const J = (body, status = 200) => new Response(JSON.stringify(body, null, 2), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'cache-control': 'no-store' } });
@@ -9411,6 +9496,17 @@ export async function handleGuestbook(request, env, path, url, ip) {
     return J({ count: all.length, entries: [...all].sort((a, b) => b.at.localeCompare(a.at)), how: GB_HOW });
   }
   if (request.method === 'GET' && path === '/guestbook/how') return J(GB_HOW);
+  // THE ANCHORS (brainbook-anchor.js): the book's Merkle root on BNB Chain, newest first
+  if (request.method === 'GET' && path === '/guestbook/anchors') {
+    const anchors = JSON.parse((await env.AGENT.get('gb:anchors')) || '[]');
+    return J({ what: 'The Brainbook anchored on BNB Chain: once a day, when pages were added, the Merkle root of every page so far goes into a 0-BNB transaction of the Brain Board wallet to itself. leaf = sha256(message + "\\n" + signature in lower case), pages in signing order; each level sha256(left hex + right hex), an odd last one goes up as it is.', anchors });
+  }
+  if (request.method === 'POST' && path === '/guestbook/anchor') {
+    const k = env.HIT_SECRET;
+    if (!k || request.headers.get('x-hit-secret') !== k) return J({ error: 'unauthorized' }, 401);
+    const { runBrainbookAnchor } = await import('./brainbook-anchor.js');
+    return J(await runBrainbookAnchor(env, { force: true }));
+  }
   // the program as bytes, never as a page: text/plain, nosniff and a sandbox CSP, so it cannot run on this origin
   const im = path.match(/^\/guestbook\/image\/(\d{1,9})$/);
   if (request.method === 'GET' && im) {
@@ -12341,7 +12437,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   const service = SERVICES[serviceId];
   // nothing is charged on an unknown id: a payment counts as used only once an answer is delivered (5.11.)
   if (!service) return { status: 400, body: { error: 'unknown service', services: Object.keys(SERVICES), charged: false,
-    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 29 more) are at https://brainonbnb.com/mcp' } };
+    note: 'Nothing was charged. A payment already sent stays good: repeat the request with one of these services. The free tools (bobai_price and 30 more) are at https://brainonbnb.com/mcp' } };
   const resource = `https://agent.brainonbnb.com/answer?service=${serviceId}`;
   const description = `${service.name} — one answer`;
   // Half the price in $BOBAI, quoted now. If the pair cannot be read the
@@ -12992,7 +13088,11 @@ export default {
     if (path === '/guestbook' || path.startsWith('/guestbook/') || path === '/brainbook' || path.startsWith('/brainbook/')) {
       note(`guestbook:${request.method}`);
       const { handleGuestbook } = await import('./guestbook.js');
-      return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, request.headers.get('cf-connecting-ip'));
+      // the site's MCP server signs for many agents from one Cloudflare address: its caller's own address counts, but only
+      // beside the shared secret (as for the board)
+      const gk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;
+      const gip = (gk && request.headers.get('x-board-proxy') === gk && request.headers.get('x-board-client-ip')) || request.headers.get('cf-connecting-ip');
+      return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, gip);
     }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) {
@@ -14321,7 +14421,7 @@ ${pageTail}`;
       const { id, method, params } = body || {};
       if (typeof method !== 'string') return rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.');
       if (method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
-      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.1.0' }, instructions: `${svc.name}, on BNB Chain. Start free: call ${TRY} (a real public example, read from the chain now; put your own in its place). ${PAID.name} returns the terms of the paid answer, 0.10 USD1 over x402. Read-only: nothing here signs, holds a key or moves funds. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp` });
+      if (method === 'initialize') return rpcOk(id, { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: NAME, version: '1.1.0' }, instructions: `${svc.name}, on BNB Chain. Start free: call ${TRY} (a real public example, read from the chain now; put your own in its place). ${PAID.name} returns the terms of the paid answer, 0.10 USD1 over x402. Read-only: nothing here signs, holds a key or moves funds. The free toolbox for any BSC token, 31 tools: https://brainonbnb.com/mcp` });
       if (method === 'ping') return rpcOk(id, {});
       if (method === 'tools/list') { note(`agentmcp:${mcpSlug}:tools_list`); return rpcOk(id, { tools: TOOLS }); }
       if (method === 'tools/call') {
@@ -14386,9 +14486,9 @@ ${pageTail}`;
           const pr = await fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: String(name).slice(0, 60), arguments: a } }), signal: AbortSignal.timeout(30000) }).then((r) => r.json()).catch(() => null);
           let out = null;
           try { out = pr?.result && !pr.result.isError ? (pr.result.structuredContent || JSON.parse(pr.result.content?.[0]?.text || 'null')) : null; } catch { out = null; }
-          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 30 tools)' });
+          if (out) return answer({ ...out, from: 'https://brainonbnb.com/mcp (the free toolbox for any BSC token, 31 tools)' });
         }
-        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 30 tools: https://brainonbnb.com/mcp`);
+        return rpcErr(id ?? null, -32602, `Unknown tool: ${name}. This server has two: ${FREE.name}, free (try ${JSON.stringify(EX)}), and ${PAID.name}, which returns the terms of the paid answer. The free toolbox for any BSC token, 31 tools: https://brainonbnb.com/mcp`);
       }
       return rpcErr(id ?? null, -32601, `Method not found: ${method}`);
     }
@@ -15083,6 +15183,8 @@ ${pageTail}`;
     // The Brain Board tells every A2A agent its checkup, once a day from 10:00 UTC (board-outreach.js; BOARD_OUTREACH=on)
     if (env.BOARD_OUTREACH === 'on' && new Date(event.scheduledTime || Date.now()).getUTCHours() >= 10) ctx.waitUntil(import('./board-outreach.js').then((m) => m.runBoardOutreach(env)).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
+    // The Brainbook's Merkle root on BNB Chain, once a day from 06:00 UTC when pages were added (brainbook-anchor.js, 2026-11-22)
+    if (new Date(event.scheduledTime || Date.now()).getUTCHours() === 6) ctx.waitUntil(import('./brainbook-anchor.js').then((m) => (m.anchorDue(new Date(event.scheduledTime || Date.now())) ? m.runBrainbookAnchor(env).then((r) => env.AGENT.put('gb:anchor:last', JSON.stringify({ at: new Date().toISOString(), ...r }))) : null)).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
     if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
     // Our agents hire outside agents for their own work, after the Venus run (agent-hires.js, 2026-10-22; off unless AGENT_HIRES is "on")
@@ -23954,7 +24056,11 @@ async function act(pub, wal, account, { to, functionName, args = [], value = 0n,
     const code = Array.isArray(out) ? out.find((c) => c !== 0n) ?? 0n : (typeof out === 'bigint' ? out : 0n);
     if (code !== 0n) throw new Error(`${functionName} would be refused by Venus with error code ${code}; nothing sent`);
   }
-  const hash = await wal.sendTransaction({ to, data, value, gasPrice: GAS_PRICE });
+  // 30 % over the estimate (2026-11-22: a 0.207 USDT borrow ran out at 618,169 of 628,293 gas — the bare estimate; a
+  // Venus market accrues interest and reads its oracle when it runs, so it costs a little more than estimated). Only the
+  // gas used is paid; at 0.1 gwei the headroom costs nothing worth naming.
+  const gas = ((await pub.estimateGas({ account, to, data, value })) * 13n) / 10n;
+  const hash = await wal.sendTransaction({ to, data, value, gas, gasPrice: GAS_PRICE });
   const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
   if (rc.status !== 'success') throw new Error(`${functionName} reverted: ${hash}`);
   return hash;

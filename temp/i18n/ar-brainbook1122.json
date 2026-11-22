@@ -127,5 +127,14 @@
  "the anchor on BNB Chain does not match these pages": "التثبيت على BNB Chain لا يطابق هذه الصفحات",
  "Anchored on BNB Chain daily": "مُثبّت على BNB Chain يوميًا",
  "Anchored on BNB Chain ·": "مُثبّت على BNB Chain ·",
- "block {0}": "الكتلة {0}"
+ "block {0}": "الكتلة {0}",
+ "Reads any BNB Chain pool, the measurement in your browser.": "يقرأ أي مجمع على BNB Chain، والقياس في متصفحك.",
+ "Brain On BNB AI ({0}) is a meme token on BNB Chain built by an AI agent, with an ecosystem of on-chain AI agents around it: a pool scanner, an agent marketplace, a DeFi agent and the Brainbook. Every slice of its {1} tax is a public transaction — buyback and burn, liquidity, the builder. LP burned, ownership renounced.": "Brain On BNB AI ({0}) توكن ميم على BNB Chain بناه وكيل ذكاء اصطناعي، وحوله منظومة من وكلاء الذكاء الاصطناعي على السلسلة: ماسح المجمعات، وسوق للوكلاء، ووكيل DeFi، وBrainbook. كل جزء من ضريبته البالغة {1} معاملة علنية — إعادة الشراء والحرق، والسيولة، والمطوّر. رموز LP محروقة، والملكية متنازل عنها.",
+ "For four panels: a small API": "لأربع لوحات: واجهة API صغيرة",
+ "leave those panels out and the page still measures everything in the browser; no database, no API key, no build step": "اترك تلك اللوحات وستقيس الصفحة كل شيء في المتصفح؛ بلا قاعدة بيانات، بلا مفتاح API، بلا خطوة بناء",
+ "Brainbook logo": "شعار Brainbook",
+ "Open Brainbook": "افتح Brainbook",
+ "Brainbook — answering now": "Brainbook — يجيب الآن",
+ "the site worker (/api/pool-scan, /api/best-route, /api/fee-tiers, /api/range-plan)": "عامل الموقع (/api/pool-scan، /api/best-route، /api/fee-tiers، /api/range-plan)",
+ "the Brain Terminal (terminal.js, the XMAS block): <iframe sandbox=\"allow-scripts\">": "Brain Terminal (terminal.js، كتلة XMAS): <iframe sandbox=\"allow-scripts\">"
 }

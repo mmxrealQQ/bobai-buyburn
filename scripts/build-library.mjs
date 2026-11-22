@@ -231,19 +231,22 @@ promised in dollars settles in tokens at an agreed, recorded rate.`,
     group: 'apps',
     slug: 'pool-scanner',
     title: 'Pool Scanner',
-    tagline: 'Reads any BNB Chain pool. No backend at all.',
+    tagline: 'Reads any BNB Chain pool, the measurement in your browser.',
     about: `Paste a token, a pool or a DexScreener link and it measures what a trader
 actually meets: price impact and real cost per trade size, the transfer tax derived from
 executed trades rather than from a label, and whether the LP is burned, locked or
-withdrawable. Everything happens in the visitor's browser — it costs the operator nothing
-to run, because there is nothing to run.`,
+withdrawable. The measurement runs in the visitor's browser against public RPC endpoints.
+Four panels ask the site's own free API (the best route, the fee tiers, the range plan,
+the server-side scan), and DexScreener and GoPlus are read for the pair list and a second
+opinion on the contract — the bundle carries that worker code too (2026-11-22: it said
+"no backend at all", which stopped being true when those panels came).`,
     reqs: [
       {what: 'A static host', ours: 'Cloudflare Pages',
        alt: 'GitHub Pages, Netlify, Vercel, S3, nginx, or python -m http.server on your laptop'},
       {what: 'Public RPC endpoints', ours: 'six, with failover, all free',
        alt: 'your own node if you expect traffic. Note the requests leave from the visitor\'s browser, not your server — which is why this costs nothing to run'},
-      {what: 'Nothing else', ours: 'no backend, no database, no API key, no build step',
-       alt: 'that is the whole point of it'},
+      {what: 'For four panels: a small API', ours: 'the site worker (/api/pool-scan, /api/best-route, /api/fee-tiers, /api/range-plan)',
+       alt: 'leave those panels out and the page still measures everything in the browser; no database, no API key, no build step'},
     ],
     run: ['drop the files on any static host, or: python -m http.server'],
     // scanner-scan.js is in here even though the page does not load it: it is

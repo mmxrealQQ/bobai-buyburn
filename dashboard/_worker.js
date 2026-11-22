@@ -3048,7 +3048,7 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   rw = rw.on('.nav .ar-in', { element(e) { if (placed || embedded) return; placed = true; e.append(langSwitch(enPath, search, ar), { html: true }); } });
   if (!ar) return rw.transform(res);
   const T = (s) => { const v = translate(dict, s); return typeof v === 'string' ? v : null; };
-  let skip = 0, buf = '';
+  let skip = 0, buf = '', ldBuf = '';
   const deep = { element(e) { skip++; e.onEndTag(() => { skip--; }); } };
   const attr = (names) => ({ element(e) { for (const n of names) { const v = e.getAttribute(n); if (!v) continue; const t = T(decodeHtml(v)); if (t) e.setAttribute(n, t); } } });
   const pagePath = (h) => (h === '/whitepaper.pdf' ? '/whitepaper-ar.pdf' : h && h.startsWith('/') && !h.startsWith('/ar/') ? toAr(h) : h); // the whitepaper's PDF in Arabic (temp/i18n/wp-pdf.mjs prints it from /ar/whitepaper)
@@ -3062,6 +3062,25 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
     .on('link[rel="canonical"],meta[property="og:url"]', { element(e) { for (const n of ['href', 'content']) { const v = e.getAttribute(n); if (v) e.setAttribute(n, abs(v)); } } })
     .on('a[href]', { element(e) { const h = e.getAttribute('href'); const t = pagePath(h); if (t !== h) e.setAttribute('href', t); } })
     .on('iframe[src]', { element(e) { const h = e.getAttribute('src'); const t = pagePath(h); if (t !== h) e.setAttribute('src', t); } })
+    // THE STRUCTURED DATA IN ARABIC TOO (2026-11-22, A-Z round 2: /ar/ pages carried English JSON-LD): the texts a search
+    // engine shows — description, name, headline, text (an FAQ's questions and answers) — from the same dictionary, and
+    // the page's own url in /ar/; names kept as they are, ids, logos, sameAs and other sites untouched
+    .on('script[type="application/ld+json"]', { text(t) {
+      ldBuf += t.text;
+      if (!t.lastInTextNode) { t.remove(); return; }
+      const src = ldBuf; ldBuf = ''; let out = src;
+      try {
+        const KEYS = new Set(['description', 'name', 'headline', 'text', 'alternativeHeadline']);
+        const walk = (v, k) => {
+          if (typeof v === 'string') return KEYS.has(k) ? (T(v) || v) : k === 'url' ? abs(v) : v;
+          if (Array.isArray(v)) return k === 'sameAs' || k === 'alternateName' ? v : v.map((x) => walk(x, k));
+          if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([kk, vv]) => [kk, walk(vv, kk)]));
+          return v;
+        };
+        out = JSON.stringify(walk(JSON.parse(src), '')).replace(/</g, '\\u003c');
+      } catch { out = src; }
+      t.replace(out, { html: true });
+    } })
     .onDocument({ text(t) {
       if (skip > 0) { buf = ''; return; }
       buf += t.text;

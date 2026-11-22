@@ -1,5 +1,5 @@
 # Pool Scanner — Brain On BNB AI
-# Reads any BNB Chain pool. No backend at all.
+# Reads any BNB Chain pool, the measurement in your browser.
 #
 # This is the complete pool-scanner bundle as a single file, so it can be read in
 # one fetch. 6 files, 7988 lines.

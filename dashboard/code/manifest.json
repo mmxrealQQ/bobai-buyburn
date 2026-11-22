@@ -327,12 +327,12 @@
    "slug": "pool-scanner",
    "group": "apps",
    "title": "Pool Scanner",
-   "tagline": "Reads any BNB Chain pool. No backend at all.",
+   "tagline": "Reads any BNB Chain pool, the measurement in your browser.",
    "files": 6,
    "lines": 7988,
-   "zipBytes": 180734,
-   "txtBytes": 540715,
-   "sha256": "6242d1f2cc7c7ae8",
+   "zipBytes": 180942,
+   "txtBytes": 540729,
+   "sha256": "abc02f12ba375084",
    "reqs": [
     {
      "what": "A static host",
@@ -345,9 +345,9 @@
      "alt": "your own node if you expect traffic. Note the requests leave from the visitor's browser, not your server — which is why this costs nothing to run"
     },
     {
-     "what": "Nothing else",
-     "ours": "no backend, no database, no API key, no build step",
-     "alt": "that is the whole point of it"
+     "what": "For four panels: a small API",
+     "ours": "the site worker (/api/pool-scan, /api/best-route, /api/fee-tiers, /api/range-plan)",
+     "alt": "leave those panels out and the page still measures everything in the browser; no database, no API key, no build step"
     }
    ],
    "paths": [
@@ -669,10 +669,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4464,
-   "zipBytes": 166793,
-   "txtBytes": 494817,
-   "sha256": "78ea3036a9928db0",
+   "lines": 4492,
+   "zipBytes": 168067,
+   "txtBytes": 499689,
+   "sha256": "bde442890dc83f5e",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -703,11 +703,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 76,
-   "lines": 25167,
-   "zipBytes": 646788,
-   "txtBytes": 1831061,
-   "sha256": "adc3b4a85008118e",
+   "files": 77,
+   "lines": 25268,
+   "zipBytes": 650261,
+   "txtBytes": 1839326,
+   "sha256": "a2e7aadd5dbaeac7",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -764,6 +764,7 @@
     "worker-agent/board-checkup.js",
     "worker-agent/board-outreach.js",
     "worker-agent/board.js",
+    "worker-agent/brainbook-anchor.js",
     "worker-agent/canary.js",
     "worker-agent/catalog.js",
     "worker-agent/categories.js",

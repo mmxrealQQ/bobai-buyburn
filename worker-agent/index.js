@@ -72,6 +72,7 @@ import { OWN_WALLETS, isOwnWallet } from './own-wallets.js';
 import { withThanks, THANKS_LINE, firstCall } from '../shared/thanks.js';
 import { readPaid, claimPayment, settlePayment } from './ledger.js';
 import { handleA2A, handleJobResult, SERVICES, exampleFor, doWork, extractParams, missingInput, AGENT_SERVICE, checkedFigures, onSale } from './sell.js';
+import { parseTask, answerTask } from './plain-tasks.js';
 import { gridPlan } from './grid.js';
 import { rebalanceDefaultTarget } from './rebalance.js';
 import { understand } from './understand.js';
@@ -3391,6 +3392,21 @@ ${pageTail}`;
         // which name an agent guessed: the tool it wanted (a name only, never an argument), so the next tool is the one asked for
         if (!known) note(`agentmcp:${mcpSlug}:guessed:${String(name ?? '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32) || 'none'}`);
         const answer = (out) => rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }], structuredContent: out });
+        // A TASK IN PLAIN WORDS, AS AN ARGUMENT (2026-11-22). Marque's conformance test reaches these doors over MCP and
+        // hands its case (a V3 position at a block, "Return strict JSON") to one of our tools as text; only the A2A path
+        // read such text, so all three rebalancing agents failed MCS-REB-1 with every field "(not provided)". Any tool
+        // name, any argument: a recognised task is answered from the chain at its block, strict JSON first.
+        const plainText = (() => { const out = []; const walk = (v, d) => { if (d > 3) return; if (typeof v === 'string') out.push(v); else if (v && typeof v === 'object') Object.values(v).forEach((x) => walk(x, d + 1)); }; walk(a, 0); return out.join('\n'); })();
+        const plainTask = plainText ? parseTask(plainText) : null;
+        if (plainTask) {
+          note(`agentmcp:${mcpSlug}:plain_task:${plainTask.kind}`);
+          try {
+            const r = await answerTask(plainTask, [env?.BSC_RPC_KEYED_URL_2, 'https://bsc-mainnet.public.blastapi.io', 'https://bsc-dataseed1.defibit.io'].filter(Boolean));
+            return rpcOk(id, { content: [{ type: 'text', text: JSON.stringify(r.json) }], structuredContent: r.json });
+          } catch (e) {
+            return rpcOk(id, { isError: true, content: [{ type: 'text', text: `could not answer that ${plainTask.kind} task at block ${plainTask.block ?? plainTask.range?.block ?? 'latest'}: ${String(e?.message || e).slice(0, 160)}` }] });
+          }
+        }
         const refuse = (e) => rpcOk(id, { isError: true, content: [{ type: 'text', text: String(e?.shortMessage || e?.message || e).slice(0, 300) + (name === FREE.name ? ` Try: ${JSON.stringify(EX)}` : '') }] });
         if (name === FREE.name && mcpSlug !== 'defi-agent') {
           try {

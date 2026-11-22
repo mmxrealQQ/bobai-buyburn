@@ -74,13 +74,16 @@ export async function answerRangeTask(task, rpcs) {
     ? Math.min((pu / p - 1) * 100, (1 - pl / p) * 100)
     : Math.min(Math.abs(pl / p - 1) * 100, Math.abs(pu / p - 1) * 100);
 
-  // Symmetric re-centre: ±w% in price around spot, snapped outward to the
-  // spacing so the range never ends up narrower than the policy.
+  // Symmetric re-centre: ±w% in price around spot, each bound on the NEAREST
+  // usable tick (2026-11-22: Marque's MCS-REB-1 ground truth rounds to the
+  // nearest multiple — tick -17976, ±6 %, spacing 50 -> -18600/-17400; ours
+  // snapped outward to -17350, and the same liquidity then needed 54.38 of
+  // token0 against the 50.15 it grades within ±0.5 %).
   const w = (task.widthPct ?? 6) / 100;
   const rawLower = tick + Math.log(1 - w) / Math.log(1.0001);
   const rawUpper = tick + Math.log(1 + w) / Math.log(1.0001);
-  const proposedTickLower = Math.floor(rawLower / spacing) * spacing;
-  const proposedTickUpper = Math.ceil(rawUpper / spacing) * spacing;
+  const proposedTickLower = Math.round(rawLower / spacing) * spacing;
+  const proposedTickUpper = Math.round(rawUpper / spacing) * spacing;
 
   // The same liquidity in the new range at the block's price.
   const sq = (t) => Math.sqrt(1.0001 ** t);

@@ -5,6 +5,9 @@
 // claim/test (the category's assertion test, e.g. MCS-REB-1). One off-chain
 // signature by the owner wallet; no transaction, nothing spent.
 // Usage (repo root): node scripts/bnb-sdk/list-marque.mjs <tokenId> <endpoint> <category> [--from defi]
+// REBALANCING over the A2A card (2026-11-22): https://agent.brainonbnb.com/<slug>/.well-known/agent-card.json —
+// over MCP Marque fills only the chosen tool's schema fields from its case (lp-placement got {address: <pool>}),
+// never the position or the block, so MCS-REB-1 cannot pass there. All three passed every field over A2A.
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { privateKeyToAccount } from 'viem/accounts';

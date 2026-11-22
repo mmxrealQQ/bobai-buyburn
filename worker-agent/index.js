@@ -3820,6 +3820,12 @@ ${pageTail}`;
       if (path === '/jobs/board/seed') return json(await seedJobBoard(env, await request.json().catch(() => null)));
       return json(await runJobBoard(env));
     }
+    // the day's run now, by the operator only (2026-11-22: a run that failed on gas is redone the same day, instead of
+    // waiting for tomorrow's 05:00): what is done today stays done, the rest runs as the cron would run it
+    if (path === '/venus/work/run' && request.method === 'POST') {
+      if (!env.HIT_SECRET || request.headers.get('x-hit-secret') !== env.HIT_SECRET) return json({ error: 'unauthorized' }, 401);
+      return json(await runVenusWork(env));
+    }
     if (path === '/venus/work' && request.method === 'GET') {
       note('venus:work');
       return json({

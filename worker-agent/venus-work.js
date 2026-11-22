@@ -129,7 +129,11 @@ async function act(pub, wal, account, { to, functionName, args = [], value = 0n,
     const code = Array.isArray(out) ? out.find((c) => c !== 0n) ?? 0n : (typeof out === 'bigint' ? out : 0n);
     if (code !== 0n) throw new Error(`${functionName} would be refused by Venus with error code ${code}; nothing sent`);
   }
-  const hash = await wal.sendTransaction({ to, data, value, gasPrice: GAS_PRICE });
+  // 30 % over the estimate (2026-11-22: a 0.207 USDT borrow ran out at 618,169 of 628,293 gas — the bare estimate; a
+  // Venus market accrues interest and reads its oracle when it runs, so it costs a little more than estimated). Only the
+  // gas used is paid; at 0.1 gwei the headroom costs nothing worth naming.
+  const gas = ((await pub.estimateGas({ account, to, data, value })) * 13n) / 10n;
+  const hash = await wal.sendTransaction({ to, data, value, gas, gasPrice: GAS_PRICE });
   const rc = await pub.waitForTransactionReceipt({ hash, timeout: 90000 });
   if (rc.status !== 'success') throw new Error(`${functionName} reverted: ${hash}`);
   return hash;

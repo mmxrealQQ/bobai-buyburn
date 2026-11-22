@@ -685,6 +685,19 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     const pc = inSeason ? await getJson(`${AGENT}/pop/chain?day=${y}`) : null, rec = pc?.json;
     ok('Ecosystem', 'yesterday\'s Brain Pop result is written on BNB Chain', !inSeason || (!!rec && (/^0x[0-9a-f]{64}$/.test(rec.tx || '') || rec.players === 0)), !inSeason ? 'outside the season' : rec ? (rec.tx ? `${y}: ${rec.champion} · tx ${rec.tx.slice(0, 10)}…` : `${y}: nobody played`) : `${y}: not written — ${pc?.error || 'see /pop/chain last_run'}`);
   }
+  // THE BRAINBOOK (2026-11-22): the book answers with its pages, the page loads, the latest anchor on BNB Chain holds
+  // every page (or the newest ones came after the day's 06:00 UTC run), and the Brain Board wallet keeps gas for it
+  {
+    const bb = await getJson(`${AGENT}/brainbook`), an = await getJson(`${AGENT}/brainbook/anchors`);
+    const n = bb?.json?.count || 0, a = an?.json?.anchors?.[0];
+    ok('Ecosystem', 'the Brainbook answers with its pages', n >= 3, `${n} pages`);
+    const pg = await page('/brainbook'); ok('Ecosystem', '/brainbook, the page, answers', pg?.status === 200 && /Brainbook/.test(pg.text || ''), pg ? `HTTP ${pg.status}` : 'no answer');
+    const newest = (bb?.json?.entries || []).map((e) => e.at).sort().at(-1) || '';
+    const run = new Date(); run.setUTCHours(6, 15, 0, 0); if (Date.now() < +run) run.setUTCDate(run.getUTCDate() - 1);
+    ok('Ecosystem', 'the Brainbook is anchored on BNB Chain (every page, or the newest came after the last 06:00 UTC run)', !!a && (a.count === n || newest > run.toISOString()), a ? `anchor #${a.n}: ${a.count} of ${n} pages · tx ${String(a.tx).slice(0, 12)}… · block ${a.block}` : 'no anchor yet');
+    const gas = await fetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: ['0x8196bCd90c08011D2F96fb94c1B10407CbA3655d', 'latest'] }), signal: AbortSignal.timeout(15000) }).then((r) => r.json()).then((j) => Number(BigInt(j.result)) / 1e18).catch(() => null);
+    ok('Ecosystem', 'the Brain Board wallet keeps gas for the Brainbook anchors (at least 0.0002 BNB, ~50 anchors)', gas != null && gas >= 0.0002, gas == null ? 'balance not read' : `${gas.toFixed(6)} BNB on 0x8196…655d (top it up from the NFT relayer)`);
+  }
   // THE SCANNER'S LOG HOSTS, AS A BROWSER ON THIS SITE SEES THEM (2026-11-15): a log host missing from the CSP took the
   // trades and the measured tax out of every browser scan for two weeks, and nothing was red. The CSP is pinned in
   // scripts/; what only a live read can see is a host that stops answering eth_getLogs, or stops allowing this origin

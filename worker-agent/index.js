@@ -2056,6 +2056,14 @@ export default {
       return json({ picks });
     }
     // THE GUESTBOOK (2026-11-22): ERC-8004 agents leave one signed line for good; guestbook.js
+    // THE AGENT WALL (2026-11-22): agents put their logo up; ranked hourly by the $BOBAI their wallets hold; wall.js
+    if (path === '/wall' || path.startsWith('/wall/')) {
+      note(`wall:${request.method}`);
+      const wk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;
+      const wip = (wk && request.headers.get('x-board-proxy') === wk && request.headers.get('x-board-client-ip')) || request.headers.get('cf-connecting-ip');
+      const { handleWall } = await import('./wall.js');
+      return await handleWall(request, env, path, url, wip);
+    }
     // renamed THE BRAINBOOK the same day (operator: "nenn es brainbook"): /brainbook/* is the same book, /guestbook/* stays
     if (path === '/guestbook' || path.startsWith('/guestbook/') || path === '/brainbook' || path.startsWith('/brainbook/')) {
       note(`guestbook:${request.method}`);
@@ -4161,6 +4169,8 @@ ${pageTail}`;
     // The Brain Board tells every A2A agent its checkup, once a day from 10:00 UTC (board-outreach.js; BOARD_OUTREACH=on)
     if (env.BOARD_OUTREACH === 'on' && new Date(event.scheduledTime || Date.now()).getUTCHours() >= 10) ctx.waitUntil(import('./board-outreach.js').then((m) => m.runBoardOutreach(env)).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
+    // The Agent Wall ranked by the $BOBAI each agent's wallets hold, once an hour (wall.js, 2026-11-22)
+    if (new Date(event.scheduledTime || Date.now()).getUTCMinutes() < 15) ctx.waitUntil(import('./wall.js').then((m) => m.rankWall(env)).catch(() => {}));
     // The Brainbook's Merkle root on BNB Chain, once a day from 06:00 UTC when pages were added (brainbook-anchor.js, 2026-11-22)
     if (new Date(event.scheduledTime || Date.now()).getUTCHours() === 6) ctx.waitUntil(import('./brainbook-anchor.js').then((m) => (m.anchorDue(new Date(event.scheduledTime || Date.now())) ? m.runBrainbookAnchor(env).then((r) => env.AGENT.put('gb:anchor:last', JSON.stringify({ at: new Date().toISOString(), ...r }))) : null)).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")

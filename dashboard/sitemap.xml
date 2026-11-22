@@ -56,6 +56,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://brainonbnb.com/wall</loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://brainonbnb.com/brainbook</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>

@@ -679,3 +679,23 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 /* NO ZOOM ON FOCUS (2026-11-19, operator: "on mobile everything stays in the window"): a phone browser zooms in on a field
    whose text is under 16 px; on a touch screen every field on the page types at 16 px, the hint keeps its small size */
 @media (pointer:coarse){.bk-line input,.cx01-in input,.faq-search input{font-size:16px}.bk-line input::placeholder{font-size:12px}}
+
+/* THE AGENT WALL BEHIND THE TERMINAL (2026-11-22): between the 3D picture and the vignette, taking no click; only in the
+   standard terminal (never with ROT or a Xmas theme); the WALL switch beside LIVE turns it on and off */
+#bt .bp-wall{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .9s ease}
+#bt .bp-wall.built{opacity:1}
+#bt .bp-wall.off,#bt .br-on .bp-wall,#bt .xm-on .bp-wall{display:none}
+#bt .bp-wall .bw-t{position:absolute;box-sizing:border-box;padding:3px}
+#bt .bp-wall .bw-t>i{display:flex;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border-radius:12px;border:1px solid rgba(240,185,11,.22);background:rgba(240,185,11,.025)}
+#bt .bp-wall .bw-t img{max-width:62%;max-height:62%;object-fit:contain;opacity:.55}
+#bt .bp-wall .bw-t.tiny{padding:1px}
+#bt .bp-wall .bw-t.tiny>i{border-radius:3px;border-color:rgba(240,185,11,.12)}
+#bt .bp-wall .bw-t.tiny img{max-width:90%;max-height:90%}
+#bt .bp-wall .bw-t.free{display:none}
+/* the switch: small and round like ROT, on LIVE's line; gold when the wall is on, grey when off */
+#bt .hud .bt-wall{pointer-events:auto;flex:none;display:inline-grid;place-items:center;width:24px;height:24px;padding:0;margin-top:2px;box-sizing:border-box;border-radius:50%;border:1px solid rgba(240,185,11,.55);background:rgba(240,185,11,.14);color:var(--gold2);cursor:pointer}
+#bt .hud .bt-wall[aria-pressed="false"]{color:var(--muted);border-color:var(--line2);background:rgba(0,0,0,.35)}
+#bt .hud .bt-wall:hover,#bt .hud .bt-wall:focus-visible{border-color:var(--gold);outline:none}
+#bt .hud .bt-wall.bw-abs{position:absolute;margin:0;z-index:6}
+#bt .br-on .hud .bt-wall,#bt .xm-on .hud .bt-wall{display:none}
+@media (prefers-reduced-motion:reduce){#bt .bp-wall{transition:none}}

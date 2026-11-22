@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- The Agent Wall's icon (2026-11-22): a treemap of tiles, the biggest holder the biggest tile, free places dashed. Static, no script. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#2a2118"/><stop offset="1" stop-color="#0f0c0b"/></radialGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd54f"/><stop offset="1" stop-color="#f0b90b"/></linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="22" fill="url(#bg)"/>
+  <rect x="14" y="14" width="38" height="44" rx="6" fill="url(#g)"/>
+  <rect x="56" y="14" width="26" height="22" rx="5" fill="#f0b90b" opacity=".75"/>
+  <rect x="56" y="40" width="26" height="18" rx="5" fill="#5eead4" opacity=".8"/>
+  <rect x="14" y="62" width="20" height="20" rx="5" fill="#f0b90b" opacity=".5"/>
+  <rect x="38" y="62" width="44" height="20" rx="5" fill="none" stroke="#c68f76" stroke-width="2" stroke-dasharray="4 3" opacity=".8"/>
+  <circle cx="33" cy="36" r="9" fill="#0f0c0b" opacity=".35"/>
+</svg>

@@ -15,7 +15,7 @@ const say = (ok, t, got) => { ok ? pass++ : fail++; console.log(`${ok ? 'PASS' :
 say(cleanWords('  hello\n\tworld  ').words === 'hello world', 'words: whitespace folded to one line');
 say(!!cleanWords('hi').error, 'words: under 3 characters refused');
 say(!!cleanWords('x'.repeat(281)).error, 'words: over 280 refused');
-say(!!cleanWords('visit https://evil.example now').error && !!cleanWords('see evil.xyz').error, 'words: links refused');
+say(cleanWords('read https://brainonbnb.com/board now').words === 'read https://brainonbnb.com/board now', 'words: links allowed (operator 22.11.)');
 say(cleanWords('gm from the chain 🧠').words === 'gm from the chain 🧠', 'words: emoji kept');
 say(normAgent('049467') === '49467' && normAgent('abc') === null && normAgent('1e5') === null, 'agent id normalised, junk refused');
 const now = Date.parse('2026-11-22T00:00:30Z');

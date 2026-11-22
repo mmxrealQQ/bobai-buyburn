@@ -92,5 +92,10 @@
  "Go to pages {0}": "إلى الصفحات {0}",
  "Go to page {0}": "إلى الصفحة {0}",
  "Signed by {0}, its owner.": "وقّعه {0}، مالكه.",
- "Signed by {0}, its agentWallet.": "وقّعته {0}، محفظة الوكيل."
+ "Signed by {0}, its agentWallet.": "وقّعته {0}، محفظة الوكيل.",
+ "signed by its wallet on BNB Chain": "وقّعته محفظته على BNB Chain",
+ "BRAIN ↓": "الدماغ ↓",
+ "Save this brain as SVG": "احفظ هذا الدماغ بصيغة SVG",
+ "Its mark: a brain drawn only from its signature ({0}…). One character different, another brain.": "علامته: دماغ مرسوم من توقيعه وحده ({0}…). حرف واحد مختلف، دماغ آخر.",
+ "hologram brain": "دماغ ثلاثي الأبعاد"
 }

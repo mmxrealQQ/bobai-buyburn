@@ -136,3 +136,12 @@ export function check(day, pops, hits = []) {
   }
   return { ok: true, score, maxc, n: tl.length, dropped, drops, timeline: tl };
 }
+
+// THE CALLER'S ADDRESS FOR THE START LIMIT (2026-11-22). x-pop-ip is the visitor's address as brainonbnb.com's proxy saw
+// it; it is believed only beside the shared secret (a direct call to the workers.dev host could name a new address on
+// every start and play without limit for the prize pool's #1). Any other caller is its own cf-connecting-ip. While no
+// secret is set the header counts as before, so the code can go live ahead of the secret.
+export function callerIp(get, secret) {
+  const viaSite = !secret || get('x-hit-secret') === secret;
+  return String((viaSite && get('x-pop-ip')) || get('cf-connecting-ip') || '').slice(0, 64);
+}

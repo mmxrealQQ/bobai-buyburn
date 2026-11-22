@@ -2637,9 +2637,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
     // big, and /m/<moment>.png is that card — drawn by the bobai-cards worker from the logs and the chain, never an
     // uploaded picture. The cards are cached here for ten minutes: the Cache API does nothing on a workers.dev host.
     // BRAIN POP DAILY (2026-11-06): the daily run's plan, board and checks live in the bobai-pop worker (worker-pop/);
-    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit
+    // the terminal talks to its own origin, the visitor's address goes along for the per-address start limit, with the
+    // shared secret that makes bobai-pop believe it (22.11.: a direct call to workers.dev could name any address)
     if (url.pathname.startsWith('/api/pop/')) {
-      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '' } };
+      const init = { method: request.method === 'POST' ? 'POST' : 'GET', headers: { 'content-type': 'application/json', 'x-pop-ip': request.headers.get('cf-connecting-ip') || '', 'x-hit-secret': env.HIT_SECRET || '' } };
       if (init.method === 'POST') init.body = (await request.text()).slice(0, 40000); // 2.0: a run is its taps (up to 900)
       // previews (not brainonbnb.com) talk to bobai-pop2, the same worker deployed under another name with its own database:
       // a new game version is tested there while the live one keeps running (6.11., Brain Pop 2.0)

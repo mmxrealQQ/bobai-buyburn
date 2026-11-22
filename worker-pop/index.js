@@ -21,7 +21,7 @@
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
-import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
+import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, callerIp, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
 import { checkLink, balanceOf, tierOf, linkMessage, TIERS, STALE_MS } from './wallet.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
@@ -108,7 +108,7 @@ export class PopBoard {
   }
   async fetch(req) {
     const u = new URL(req.url), now = Date.now(), today = dayOf(now), p = u.pathname.slice('/api/pop/'.length);
-    const ip = (req.headers.get('x-pop-ip') || req.headers.get('cf-connecting-ip') || '').slice(0, 64);
+    const ip = callerIp((h) => req.headers.get(h), this.env?.HIT_SECRET); // only beside the secret (game.js, 22.11.)
     try {
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');

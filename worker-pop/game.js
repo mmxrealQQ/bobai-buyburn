@@ -141,7 +141,7 @@ export function check(day, pops, hits = []) {
 // it; it is believed only beside the shared secret (a direct call to the workers.dev host could name a new address on
 // every start and play without limit for the prize pool's #1). Any other caller is its own cf-connecting-ip. While no
 // secret is set the header counts as before, so the code can go live ahead of the secret.
+export const viaSite = (get, secret) => !String(secret || '').trim() || String(get('x-hit-secret') || '').trim() === String(secret).trim();
 export function callerIp(get, secret) {
-  const viaSite = !secret || get('x-hit-secret') === secret;
-  return String((viaSite && get('x-pop-ip')) || get('cf-connecting-ip') || '').slice(0, 64);
+  return String((viaSite(get, secret) && get('x-pop-ip')) || get('cf-connecting-ip') || '').slice(0, 64);
 }

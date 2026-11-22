@@ -21,7 +21,7 @@
 //
 // No free text anywhere: a name is three numbers into lists or the player's own (letters, digits, _), brainrotted.
 
-import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, callerIp, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
+import { nameOf, dayOf, dayNo, validDay, seasonOver, askedDay, callerIp, viaSite, ADJ, NOUN, ROT, ROT_KIND, FIRST_DAY, LAST_DAY } from './game.js';
 import { checkLink, balanceOf, tierOf, linkMessage, TIERS, STALE_MS } from './wallet.js';
 // 6.9 ONCE MORE (operator, 6.11.: 'back to the first 6.9, in the whole terminal, with super combos and helpers'): the tap game,
 // pop-engine.mjs, now with SUPER/MEGA/GOD combos and the DeFi helper; its boards (runs3/best3) began at 0 with it
@@ -110,6 +110,8 @@ export class PopBoard {
     const u = new URL(req.url), now = Date.now(), today = dayOf(now), p = u.pathname.slice('/api/pop/'.length);
     const ip = callerIp((h) => req.headers.get(h), this.env?.HIT_SECRET); // only beside the secret (game.js, 22.11.)
     try {
+      // does the site's proxy reach us with the secret? (22.11.: checked once the secret is set; no address is shown)
+      if (req.method === 'GET' && p === 'whoami') return J({ via_site: viaSite((h) => req.headers.get(h), this.env?.HIT_SECRET), secret_set: !!this.env?.HIT_SECRET });
       if (req.method === 'GET' && p === 'day') {
         if (!u.searchParams.has('own')) this.bump(today, u.searchParams.get('d') && u.searchParams.get('d') !== today ? 'opened_challenge' : 'opened');
         { const sp = String(u.searchParams.get('p') || ''); if (/^[0-9a-f]{16}$/.test(sp) && !test0(sp) && !u.searchParams.has('own') && !this.rows('SELECT 1 FROM seen WHERE day = ? AND pid = ?', today, sp).length) { this.sql.exec('INSERT INTO seen (day, pid) VALUES (?, ?)', today, sp); this.bump(today, 'opened_players'); if (u.searchParams.has('from')) this.bump(today, 'came_' + fromOf(u.searchParams.get('from'))); } }

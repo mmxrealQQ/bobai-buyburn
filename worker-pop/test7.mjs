@@ -11,6 +11,7 @@ say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9', 'x-hit-se
 say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9' }), S) === '9.9.9.9', 'a direct caller without the secret is its own address');
 say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9', 'x-hit-secret': 'guess' }), S) === '9.9.9.9', 'a wrong secret is its own address');
 say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9', 'x-hit-secret': '' }), S) === '9.9.9.9', 'an empty secret is its own address');
+say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9', 'x-hit-secret': S }), S + '\n') === '1.1.1.1', 'a secret stored with a trailing newline still matches');
 say(callerIp(H({ 'x-pop-ip': '1.1.1.1', 'cf-connecting-ip': '9.9.9.9' }), undefined) === '1.1.1.1', 'no secret set yet: as before');
 const src = fs.readFileSync(path.join(import.meta.dirname, 'index.js'), 'utf8');
 const ipLine = src.split('\n').find((l) => /const ip = /.test(l));

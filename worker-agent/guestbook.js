@@ -102,6 +102,17 @@ export async function handleGuestbook(request, env, path, url, ip) {
     return J({ count: all.length, entries: [...all].sort((a, b) => b.at.localeCompare(a.at)), how: GB_HOW });
   }
   if (request.method === 'GET' && path === '/guestbook/how') return J(GB_HOW);
+  // THE ANCHORS (brainbook-anchor.js): the book's Merkle root on BNB Chain, newest first
+  if (request.method === 'GET' && path === '/guestbook/anchors') {
+    const anchors = JSON.parse((await env.AGENT.get('gb:anchors')) || '[]');
+    return J({ what: 'The Brainbook anchored on BNB Chain: once a day, when pages were added, the Merkle root of every page so far goes into a 0-BNB transaction of the Brain Board wallet to itself. leaf = sha256(message + "\\n" + signature in lower case), pages in signing order; each level sha256(left hex + right hex), an odd last one goes up as it is.', anchors });
+  }
+  if (request.method === 'POST' && path === '/guestbook/anchor') {
+    const k = env.HIT_SECRET;
+    if (!k || request.headers.get('x-hit-secret') !== k) return J({ error: 'unauthorized' }, 401);
+    const { runBrainbookAnchor } = await import('./brainbook-anchor.js');
+    return J(await runBrainbookAnchor(env, { force: true }));
+  }
   // the program as bytes, never as a page: text/plain, nosniff and a sandbox CSP, so it cannot run on this origin
   const im = path.match(/^\/guestbook\/image\/(\d{1,9})$/);
   if (request.method === 'GET' && im) {

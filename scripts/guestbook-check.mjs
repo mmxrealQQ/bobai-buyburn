@@ -96,6 +96,28 @@ say(lim > 0, 'the day\'s limit per address answers 429');
   say(got.equals(png) && r.headers.get('content-type') === 'image/png' && /sandbox/.test(r.headers.get('content-security-policy') || '') && r.headers.get('x-content-type-options') === 'nosniff', 'GET /guestbook/image/<id>: the exact bytes, image/png, sandbox CSP, nosniff');
 }
 
+// THE ANCHOR (brainbook-anchor.js): the Merkle root as documented, the memo readable, and a run that stops before it
+// sends anything when the wallet has no gas
+{
+  const A = await import('../worker-agent/brainbook-anchor.js');
+  const h = (x) => A.sha256Text(x);
+  const l = [await h('a'), await h('b'), await h('c')];
+  const want = await h((await h(l[0] + l[1])) + l[2]);
+  say((await A.merkleRoot(l)) === want, 'merkle root: sha256(left hex + right hex), an odd last one goes up');
+  say((await A.merkleRoot([l[0]])) === l[0] && (await A.merkleRoot([])) === null, 'merkle root of one page is its leaf, of none is null');
+  const m = A.memoOf(1, 3, want, '49467');
+  say(m.startsWith('BRAINBOOK · ANCHOR #1 · 3 pages · merkle sha256 ' + want), 'the memo reads the anchor, the count and the root');
+  const ord = A.inOrder([{ at: '2026-11-22T06:00:00Z', agent: '2' }, { at: '2026-11-22T05:00:00Z', agent: '1' }]);
+  say(ord[0].agent === '1', 'pages in signing order');
+  if (process.argv.includes('--anchor-dry')) {
+    const store = new Map([['gb:all', JSON.stringify([{ agent: '1', at: '2026-11-22T05:00:00Z', message: 'm', signature: '0xAB' }])]]);
+    const fenv = { AGENT: { get: async (k) => store.get(k) ?? null, put: async (k, v) => { store.set(k, v); }, delete: async (k) => { store.delete(k); } }, BOARD_AGENT_PRIVATE_KEY: process.env.BOARD_AGENT_PRIVATE_KEY };
+    const r = await A.runBrainbookAnchor(fenv, { force: true });
+    console.log('      anchor run against the real chain:', JSON.stringify(r).slice(0, 220));
+    say(r.ok === false ? /gas|BNB/.test(r.error) : !!r.anchor?.tx, r.ok ? `anchored: ${r.anchor.tx}` : 'no gas: the run stopped before sending');
+  }
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/guestbook').then((r) => r.json()).catch(() => null);
   say(g && Array.isArray(g.entries) && g.how?.steps?.length >= 3, `live GET /guestbook (${g?.count} entries)`);

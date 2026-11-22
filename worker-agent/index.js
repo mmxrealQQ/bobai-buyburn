@@ -4155,6 +4155,8 @@ ${pageTail}`;
     // The Brain Board tells every A2A agent its checkup, once a day from 10:00 UTC (board-outreach.js; BOARD_OUTREACH=on)
     if (env.BOARD_OUTREACH === 'on' && new Date(event.scheduledTime || Date.now()).getUTCHours() >= 10) ctx.waitUntil(import('./board-outreach.js').then((m) => m.runBoardOutreach(env)).catch(() => {}));
     if (marqueProbeDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(keepMarqueListed(env).catch(() => {}));
+    // The Brainbook's Merkle root on BNB Chain, once a day from 06:00 UTC when pages were added (brainbook-anchor.js, 2026-11-22)
+    if (new Date(event.scheduledTime || Date.now()).getUTCHours() === 6) ctx.waitUntil(import('./brainbook-anchor.js').then((m) => (m.anchorDue(new Date(event.scheduledTime || Date.now())) ? m.runBrainbookAnchor(env).then((r) => env.AGENT.put('gb:anchor:last', JSON.stringify({ at: new Date().toISOString(), ...r }))) : null)).catch(() => {}));
     // The two Venus agents at their own work, once a day at 05:00 UTC (venus-work.js, 2026-10-21; off unless VENUS_WORK is "on")
     if (venusWorkDue(new Date(event.scheduledTime || Date.now()))) ctx.waitUntil(runVenusWork(env).catch(() => {}));
     // Our agents hire outside agents for their own work, after the Venus run (agent-hires.js, 2026-10-22; off unless AGENT_HIRES is "on")

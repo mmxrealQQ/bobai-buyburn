@@ -76,7 +76,7 @@ else {
   say(painted === 'isolated', `the page cannot reach into the sandbox (${painted})`);
 }
 const strip = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('.pg[data-agent]:not(.cl)')].map(p=>[...p.querySelectorAll('.pf')].map(c=>c.dataset.k+':'+c.className.replace('pf','').trim()).join(',')))`));
-if (!TAMPER) say(/^sig:ok,chain:ok,code:ok$/.test(strip[0]), `the real entry's strip is green (${strip[0]})`);
+if (!TAMPER) say(/^sig:ok,chain:ok,code:ok,anchor:(ok|warn)$/.test(strip[0]), `the real entry's strip is green (${strip[0]})`);
 else say(/sig:ok,chain:ok,code:bad/.test(strip[0]), `code swapped: the strip says Sandbox failed (${strip[0]})`);
 say(strip.slice(1).every((x) => /sig:bad/.test(x)), `the fakes' strips say the signature failed (${strip.slice(1).join(' / ')})`);
 say(cage.slice(1).every((c) => !c.f && c.x), `the two fakes' marks do not run (${cage.slice(1).map((c) => c.g).join(' / ')})`);

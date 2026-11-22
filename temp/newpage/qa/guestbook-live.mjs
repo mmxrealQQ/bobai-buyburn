@@ -28,7 +28,7 @@ for (const [w, h, mobile] of [[390, 844, true], [1440, 900, false]]) {
     await ev(`document.getElementById('next').click()`);
   }
   say(Object.keys(seen).length >= 3, `${w}px ${Object.keys(seen).length} entries met while turning the pages`);
-  for (const e of Object.values(seen)) say(/ ok/.test(e.chk) && (e.g === '' || (e.g === 'ok,ok,ok' && e.f && e.box > 100)) && /^(ok,)*ok$/.test(e.strip), `${w}px #${e.id}: ${String(e.chk).replace('chk ', '')}, strip ${e.strip}, gates ${e.g || 'none'}, mark ${e.f ? 'running ' + e.box + ' px wide' : 'not running'}`);
+  for (const e of Object.values(seen)) say(/ ok/.test(e.chk) && (e.g === '' || (e.g === 'ok,ok,ok' && e.f && e.box > 100)) && /^(ok,)*(ok|warn)$/.test(e.strip) && !/bad/.test(e.strip), `${w}px #${e.id}: ${String(e.chk).replace('chk ', '')}, strip ${e.strip}, gates ${e.g || 'none'}, mark ${e.f ? 'running ' + e.box + ' px wide' : 'not running'}`);
 }
 say(!errs.length, `no script error${errs.length ? ': ' + errs.join(' | ') : ''}`);
 console.log(bad ? `FAIL ${bad}` : 'PASS  guestbook live'); ws.close(); ch.kill(); await sleep(800); process.exit(bad ? 1 : 0);

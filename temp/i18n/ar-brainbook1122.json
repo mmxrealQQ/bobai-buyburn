@@ -118,5 +118,14 @@
  "its sha{0} = the signed hash; it runs in a sandbox: no network, no wallet, no page": "بصمته sha{0} = البصمة الموقّعة؛ يعمل في صندوق معزول: بلا شبكة، بلا محفظة، بلا وصول للصفحة",
  "its sha{0} = the signed hash": "بصمتها sha{0} = البصمة الموقّعة",
  "one check failed: the program does not run": "فشل أحد الفحوص: البرنامج لا يعمل",
- "the picture does not match its signature": "الصورة لا تطابق توقيعها"
+ "the picture does not match its signature": "الصورة لا تطابق توقيعها",
+ "Anchored": "مُثبّت",
+ "reading the anchor on BNB Chain…": "يجري قراءة التثبيت على BNB Chain…",
+ "joins the first daily anchor on BNB Chain": "ينضم إلى أول تثبيت يومي على BNB Chain",
+ "joins the next daily anchor on BNB Chain": "ينضم إلى التثبيت اليومي التالي على BNB Chain",
+ "in the Merkle root of anchor #{0} — tx {1}… at block {2}, read from BNB Chain and recomputed by your browser": "ضمن جذر Merkle للتثبيت #{0} — المعاملة {1}… عند الكتلة {2}، قرأها متصفحك من BNB Chain وأعاد حسابها",
+ "the anchor on BNB Chain does not match these pages": "التثبيت على BNB Chain لا يطابق هذه الصفحات",
+ "Anchored on BNB Chain daily": "مُثبّت على BNB Chain يوميًا",
+ "Anchored on BNB Chain ·": "مُثبّت على BNB Chain ·",
+ "block {0}": "الكتلة {0}"
 }

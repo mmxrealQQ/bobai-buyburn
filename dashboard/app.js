@@ -661,11 +661,14 @@ function bdata(b){try{if(b&&b.length>0){BOB_OURS=b.reduce((s,x)=>s+(parseFloat(x
 // modified" instead of the full 88 KB.
 // liq-boost-log.json is the finished $BOB archive from June and never changes
 // again — it is fetched exactly once, at load.
+// burns.json only where it is shown (2026-11-22, A-Z speed): /token, /defi and /liquidity read nothing from it but took
+// all 134 KB (compressed, ~470 runs) on every visit; the burn table, the burn sums and the Giggle card are its only users.
+const NEED_BURNS=['tx-body','gg-count','burn-count','bob-burned-usd','bobai-burned-usd'].some(id=>document.getElementById(id));
 async function logs(){
-  const [burns,bb]=await Promise.all([gj('burns.json'),gj('bobai-liq-log.json')]);
+  const [burns,bb]=await Promise.all([NEED_BURNS?gj('burns.json'):null,gj('bobai-liq-log.json')]);
   if(burns)NUMS.burns=burns;if(bb)NUMS.liq=bb;
   bdata(burns);bbdata(bb);bb2data(bb);bb3data(bb);lfgdata(bb);bbsrc(bb);ggdata(burns);
-  return !!(burns&&bb);
+  return !!((burns||!NEED_BURNS)&&bb);
 }
 // Static file, appended once per manual run: read once at load, and fetched
 // directly rather than through gj() — that helper probes the log worker first,

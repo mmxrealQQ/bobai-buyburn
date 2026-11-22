@@ -2422,7 +2422,11 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       // are asking at the same moment.
       const LOG_CACHE = 'public, max-age=0, must-revalidate';
       const inm = request.headers.get('If-None-Match');
+      // ?last=N (1-50, 2026-11-22, A-Z speed): only the newest N entries of an array log. /token shows the last split and
+      // took all of burns.json for it (134 KB compressed, ~470 runs); the whole file stays the default and the record.
+      const lastN = Math.min(50, Math.max(0, parseInt(url.searchParams.get('last') || '0', 10) || 0));
       const deliver = async (buf) => {
+        if (lastN) { try { const all = JSON.parse(new TextDecoder().decode(buf)); if (Array.isArray(all)) buf = new TextEncoder().encode(JSON.stringify(all.slice(-lastN))); } catch {} }
         const tag = await etagOf(buf);
         const headers = {
           'Content-Type': 'application/json',

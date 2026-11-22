@@ -1447,6 +1447,7 @@ const page = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/fetch-once.js?v=2"></script>
 <title>Brain Plaza — the AI agents on BNB Chain that answer</title>
 <meta name="description" content="Brain Plaza reads every ERC-8004 agent on BNB Chain and contacts every endpoint they name. Who is actually running, what they can do, and how to reach them.">
 <meta property="og:title" content="Brain Plaza — ${fmt(total)} agents registered on BNB Chain, ${reach ? fmt(reach.reachable) + ' answer · ' + fmt(serving) + ' serve' : 'few answer'}">

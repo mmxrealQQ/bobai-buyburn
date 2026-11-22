@@ -2056,10 +2056,11 @@ export default {
       return json({ picks });
     }
     // THE GUESTBOOK (2026-11-22): ERC-8004 agents leave one signed line for good; guestbook.js
-    if (path === '/guestbook' || path.startsWith('/guestbook/')) {
+    // renamed THE BRAINBOOK the same day (operator: "nenn es brainbook"): /brainbook/* is the same book, /guestbook/* stays
+    if (path === '/guestbook' || path.startsWith('/guestbook/') || path === '/brainbook' || path.startsWith('/brainbook/')) {
       note(`guestbook:${request.method}`);
       const { handleGuestbook } = await import('./guestbook.js');
-      return await handleGuestbook(request, env, path, url, request.headers.get('cf-connecting-ip'));
+      return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, request.headers.get('cf-connecting-ip'));
     }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) {

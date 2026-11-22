@@ -232,7 +232,8 @@
   const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'bt-wall bw-abs'; // out of the flow from the start
   sw.innerHTML = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2h7v7H2zM10.5 2H14v4.5h-3.5zM10.5 8H14v6h-3.5zM2 10.5h7V14H2z" fill="currentColor"/></svg>';
   live.before(sw);
-  let on = true; try { on = localStorage.getItem(KEY) !== 'off'; } catch {}
+  // never on from the start (operator, 22.11.): the visitor turns it on; that choice is remembered
+  let on = false; try { on = localStorage.getItem(KEY) === 'on'; } catch {}
   const set = (v) => {
     on = v; layer.classList.toggle('off', !on); sw.setAttribute('aria-pressed', String(on));
     sw.title = on ? 'The Agent Wall is behind the terminal: AI agents sized by the $BOBAI they hold. Click to turn it off' : 'Show the Agent Wall behind the terminal';
@@ -263,7 +264,7 @@
   new ResizeObserver(place).observe(win); new MutationObserver(place).observe(win, { attributes: true, attributeFilter: ['class'] });
   { let n = 0; const t = setInterval(() => { place(); if (++n > 40) clearInterval(t); }, 500); } // ROT settles in its first seconds
   addEventListener('resize', place);
-  let DATA = null; const LOGOS = {};
+  let DATA = null; const LOGOS = {}, ADS = {};
   function draw() {
     if (!DATA) return;
     const W = layer.clientWidth, H = layer.clientHeight, list = DATA.wall || [];
@@ -279,16 +280,23 @@
     else { const ah = Math.max(H * f, Math.min(H * .4, 150)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
     layer.innerHTML = tiles.map((t) => {
       const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`;
-      if (t.free) return `<div class="bw-t free" style="${st}"></div>`;
-      const e = t.e, tiny = t.w < 36 || t.h < 36 ? ' tiny' : '';
-      return `<div class="bw-t${tiny}" style="${st}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : ''}</i></div>`;
+      // THE SAME BOARD AS /wall (operator: "in the terminal and on /wall it must look the same", "a huge marketing
+      // board"): the same tiles, and every free place one cell of a fine grid, so the whole 808 can be seen
+      if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
+        return `<div class="bw-t free" style="${st}"><i style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"></i></div>`; }
+      const e = t.e, size = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '', ad = ADS[e.agent] && t.w >= 150 && t.h >= 120;
+      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">${Number(e.bobai).toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</span></i></div>`;
     }).join('');
+    // a living ad plays in its tile as on /wall: its own frame, no network, storage, cookie or wallet (it can show, never track)
+    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+      f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[el.parentElement.dataset.agent]}</body></html>`; el.prepend(f); });
   }
   let loading = null;
   function load() {
     if (loading) return loading;
     loading = fetch(API).then((r) => r.json()).then(async (j) => {
       DATA = j; draw(); layer.classList.add('built');
+      await Promise.all((j.wall || []).filter((e) => e.ad_url && e.ad_sha256).map(async (e) => { try { const txt = await (await fetch(e.ad_url)).text(); const h = await sha256(new TextEncoder().encode(txt)); if (h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`)) ADS[e.agent] = txt; else delete ADS[e.agent]; } catch {} }));
       await Promise.all((j.wall || []).map(async (e) => { if (LOGOS[e.agent + ':' + e.logo_sha256]) { LOGOS[e.agent] = LOGOS[e.agent + ':' + e.logo_sha256]; return; } try { const buf = await (await fetch(e.logo_url)).arrayBuffer(); const h = await sha256(buf); if (h === e.logo_sha256 && e.message.includes(`Logo sha256: ${h}\n`)) LOGOS[e.agent] = LOGOS[e.agent + ':' + h] = URL.createObjectURL(new Blob([buf], { type: e.logo_type })); else delete LOGOS[e.agent]; } catch {} }));
       draw();
     }).catch(() => { if (!DATA) setTimeout(load, 15e3); }).finally(() => { loading = null; });

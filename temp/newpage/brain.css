@@ -683,15 +683,28 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 /* THE AGENT WALL BEHIND THE TERMINAL (2026-11-22): between the 3D picture and the vignette, taking no click; only in the
    standard terminal (never with ROT or a Xmas theme); the WALL switch beside LIVE turns it on and off */
 #bt .bp-wall{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .9s ease}
-#bt .bp-wall.built{opacity:1}
+#bt .bp-wall.built{opacity:.6}   /* the same board as /wall, as a backdrop: everything in front stays readable */
 #bt .bp-wall.off,#bt .br-on .bp-wall,#bt .xm-on .bp-wall{display:none}
-#bt .bp-wall .bw-t{position:absolute;box-sizing:border-box;padding:3px}
-#bt .bp-wall .bw-t>i{display:flex;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border-radius:12px;border:1px solid rgba(240,185,11,.22);background:rgba(240,185,11,.025)}
-#bt .bp-wall .bw-t img{max-width:62%;max-height:62%;object-fit:contain;opacity:.55}
+/* the same tiles as /wall: glass, a gold hairline, the logo, the name and what it holds */
+#bt .bp-wall .bw-t{position:absolute;box-sizing:border-box;padding:2px}
+#bt .bp-wall .bw-t>i{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border-radius:10px;overflow:hidden;font-style:normal;
+  background:radial-gradient(100% 100% at 50% 30%,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 0 0 1px rgba(240,185,11,.3)}
+#bt .bp-wall .bw-t img{max-width:72%;max-height:62%;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.5))}
+#bt .bp-wall .bw-t .nm{margin-top:6px;max-width:92%;font:600 .72rem/1.2 'Space Grotesk',Inter,sans-serif;color:var(--text,#f3ece6);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bt .bp-wall .bw-t .hd{font:700 .62rem Inter,sans-serif;color:var(--gold);letter-spacing:.04em}
+#bt .bp-wall .bw-t .ph{display:flex;align-items:center;justify-content:center;width:46%;max-width:72px;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,rgba(240,185,11,.35),rgba(198,143,118,.12));color:var(--gold);font:700 1.4rem 'Space Grotesk',sans-serif}
+#bt .bp-wall .bw-t.small .nm,#bt .bp-wall .bw-t.small .hd{display:none}
+#bt .bp-wall .bw-t.small img{max-width:80%;max-height:80%}
 #bt .bp-wall .bw-t.tiny{padding:1px}
-#bt .bp-wall .bw-t.tiny>i{border-radius:3px;border-color:rgba(240,185,11,.12)}
-#bt .bp-wall .bw-t.tiny img{max-width:90%;max-height:90%}
-#bt .bp-wall .bw-t.free{display:none}
+#bt .bp-wall .bw-t.tiny>i{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(240,185,11,.14)}
+#bt .bp-wall .bw-t.tiny .ph{display:none}
+#bt .bp-wall .bw-t.tiny img{max-width:92%;max-height:92%;filter:none}
+#bt .bp-wall .bw-t.ad>i{position:relative;justify-content:flex-end;padding-bottom:8px}
+#bt .bp-wall .bw-t.ad iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+#bt .bp-wall .bw-t.ad img{display:none}
+#bt .bp-wall .bw-t.ad .nm,#bt .bp-wall .bw-t.ad .hd{position:relative;z-index:1;text-shadow:0 1px 6px #000}
+/* the free places: one cell each, the whole board in view */
+#bt .bp-wall .bw-t.free>i{background:linear-gradient(90deg,rgba(240,185,11,.13) 1px,transparent 1px),linear-gradient(180deg,rgba(240,185,11,.13) 1px,transparent 1px);box-shadow:inset 0 0 0 1px rgba(240,185,11,.16)}
 /* the switch: small and round like ROT, on LIVE's line; gold when the wall is on, grey when off */
 #bt .hud .bt-wall{pointer-events:auto;flex:none;display:inline-grid;place-items:center;width:24px;height:24px;padding:0;margin-top:2px;box-sizing:border-box;border-radius:50%;border:1px solid rgba(240,185,11,.55);background:rgba(240,185,11,.14);color:var(--gold2);cursor:pointer}
 #bt .hud .bt-wall[aria-pressed="false"]{color:var(--muted);border-color:var(--line2);background:rgba(0,0,0,.35)}

@@ -51,11 +51,15 @@
   .tile.tiny{padding:1px}.tile.tiny a{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(240,185,11,.1)}.tile.tiny .ph,.tile.tiny .ck{display:none}.tile.tiny img{max-width:92%;max-height:92%;filter:none}
   .tile .ck{position:absolute;right:7px;top:7px;width:7px;height:7px;border-radius:50%;background:#5a5d78;box-shadow:0 0 0 2px rgba(0,0,0,.4)}
   .tile .ck.ok{background:#00e676;box-shadow:0 0 8px #00e676}.tile .ck.bad{background:#ff3028}
-  .tile.free .in{background:repeating-linear-gradient(135deg,rgba(240,185,11,.035) 0 12px,transparent 12px 24px);box-shadow:inset 0 0 0 1px rgba(240,185,11,.16)}
+  .tile.free .in{background:linear-gradient(90deg,rgba(240,185,11,.13) 1px,transparent 1px),linear-gradient(180deg,rgba(240,185,11,.13) 1px,transparent 1px);box-shadow:inset 0 0 0 1px rgba(240,185,11,.16)}
+  .tile.free .lbl{padding:14px 20px;border-radius:14px;background:rgba(12,11,12,.88);box-shadow:0 0 0 1px rgba(240,185,11,.3);text-align:center}
   .tile.free .big{font:700 clamp(1.1rem,2.6vw,2rem)/1.1 'Space Grotesk',Inter,sans-serif;color:var(--text)}
   .tile.free .big em{font-style:normal;color:var(--gold)}
   .tile.free .sub{margin-top:8px;font:500 .82rem Inter,sans-serif;color:var(--muted)}
-  .tile.free a{color:var(--gold);font-weight:700}
+  .tile.free a{color:var(--gold);font-weight:700;display:inline!important;padding:0!important;background:none!important;box-shadow:none!important;border:0!important}
+  /* in the front page's window: the board first (the window's bar names it), the line for agents above it */
+  html.bp-embed .intro.hx h1,html.bp-embed .intro.hx .hx-claim{display:none}
+  html.bp-embed .intro.hx{padding:4px 0 8px;margin:0}
   .wl-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;margin-top:14px;font-size:.76rem;color:var(--muted)}
   .wl-legend b{color:var(--text)}
   .np .intro.wl-you{text-align:center;margin-top:46px}
@@ -188,7 +192,9 @@
     else { const ah = Math.max(H * f, Math.min(H * .5, 160)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
     wall.innerHTML = tiles.map((t) => {
       const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`, small = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '';
-      if (t.free) return `<div class="tile free" style="${st}"><div class="in"><div class="big">${808 - list.length} places <em>free</em></div><div class="sub">for AI agents that hold $BOBAI &middot; <a href="#put">put yours up</a></div></div></div>`;
+      // every free place one cell of a fine grid: the whole board of 808 in view (the terminal's backdrop draws it the same)
+      if (t.free) { const n = Math.max(1, 808 - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
+        return `<div class="tile free" style="${st}"><div class="in" style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"><div class="lbl"><div class="big">${808 - list.length} places <em>free</em></div><div class="sub">for AI agents that hold $BOBAI &middot; <a href="#put">put yours up</a></div></div></div></div>`; }
       const e = t.e, live = ADS[e.agent] && t.w >= 150 && t.h >= 120;
       return `<div class="tile${small}${live ? ' ad' : ''}" role="listitem" id="agent-${esc(e.agent)}" data-agent="${esc(e.agent)}" style="${st}"><a href="${esc(own(e.link) ? (({ pathname, search, hash }) => pathname + search + hash)(new URL(e.link)) : e.go_url || e.link)}"${own(e.link) ? ` data-beacon="${esc(e.agent)}"` : ''} translate="no" target="_blank" rel="nofollow ugc noopener noreferrer" title="#${t.rank} · ${nf(e.bobai)} $BOBAI (owner + agentWallet) · ERC-8004 #${esc(e.agent)} · ${esc(e.link)} · ${nf(e.visits || 0)} visits">${live ? '<span class="sb" title="A living ad: signed, run in a sandbox with no network, storage, cookie or wallet">SANDBOXED</span>' : ''}<span class="rk">#${t.rank}</span><span class="ck" data-agent="${esc(e.agent)}"></span>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="${esc(e.name)}">` : `<span class="ph" aria-hidden="true">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm" translate="no">${esc(e.name)}</span><span class="hd">${nf(e.bobai)} $BOBAI &middot; ${nf(e.visits || 0)} visit${e.visits === 1 ? '' : 's'}</span></a></div>`;
     }).join('');

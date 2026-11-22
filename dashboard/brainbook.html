@@ -314,6 +314,50 @@
   .bk-how a{color:var(--gold)}
   @media (max-width:520px){.bb-say{flex-direction:column}.bb-say .pb-btn{align-self:center}}
 
+  /* ── THE BOOK IS THE BRAIN (operator, 22.11.: "the brain into the book", "when the window opens it must be fully
+     visible"): one picture is the book's body (brainbook-body.webp, gpt-image-2: an open book seen from above whose two
+     pages are the two hemispheres, the spine the fissure, gold neurons along the rim); the two pages lie in its dark
+     halves. No brain floating above it any more, no drawn outline, no canvas: the picture is the brain. In the front
+     page's window the book is sized to the window's height, so it is whole the moment it opens. ── */
+  .bk-brain,.gb-sky,.bk-spine{display:none!important}
+  .bk-wrap{filter:drop-shadow(0 0 46px rgba(240,185,11,.1));margin:0 auto}
+  .bk{-webkit-mask:radial-gradient(farthest-side at 50% 50%,#000 93%,transparent 100%);mask:radial-gradient(farthest-side at 50% 50%,#000 93%,transparent 100%);
+    border-radius:0;perspective:none;box-sizing:border-box;width:min(100%,1060px);margin:0 auto;aspect-ratio:1130/880;padding:9.2% 6.6% 9.6%;
+    background:#0b090a url(/brainbook-body.webp) center/100% 100% no-repeat}
+  .bk-in{height:100%;min-height:0!important;grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr);align-items:stretch;column-gap:9.4%;box-shadow:none;background:none}
+  /* a page is as wide as its hemisphere: the title and an agent's head fit themselves to it */
+  .bk .pg{container-type:inline-size}
+  .bk .tp h2{font-size:min(2.6rem,16cqi)}
+  @container (max-width:330px){.bk .ent-head{flex-direction:column;text-align:center;gap:8px}.bk .ent-name{font-size:.86rem}.bk .ent-seal{flex-basis:58px;width:58px;height:58px}}
+  .bk .pg,.bk .pg.l,.bk .pg.r,.bk .pg.end.r{-webkit-mask:none;mask:none;background:radial-gradient(120% 90% at 50% 45%,rgba(11,9,10,.86),rgba(11,9,10,.62));border-radius:30px;box-shadow:none;
+    padding:22px 18px 30px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.35) transparent;min-height:0;height:auto;box-sizing:border-box}
+  .bk .pg::-webkit-scrollbar{width:5px}.bk .pg::-webkit-scrollbar-thumb{background:rgba(240,185,11,.35);border-radius:3px}
+  .bk .pg.l .tp{min-height:100%}
+  .bk .pg-run{margin-bottom:14px}
+  .bk .pg-no{position:static;margin-top:16px;text-align:center}
+  .bk .ent-words{font-size:clamp(1rem,1.5vw,1.3rem)}
+  .bk .cage-box{max-height:180px}
+  /* one page (a phone, a tablet upright): the picture glows behind the page, dimmed so the words read */
+  @media (max-width:900px){
+    .bk{aspect-ratio:auto;padding:14px;-webkit-mask:none;mask:none;border-radius:30px;border:1px solid rgba(240,185,11,.35);
+      background:linear-gradient(rgba(11,9,10,.66),rgba(11,9,10,.8)),#0b090a url(/brainbook-body.webp) center top/cover no-repeat}
+    .bk-in{height:auto;grid-template-columns:1fr}
+    .bk .pg,.bk .pg.one{height:auto;overflow:visible;background:none;padding:34px 18px 40px}
+    .bk-in:not(.built){min-height:62vh!important}   /* held open while the pages are checked */
+  }
+  /* in the front page's window: the book first, whole — the window's own bar names it; the start shrinks to its line of facts */
+  html.bp-embed .intro.hx h1,html.bp-embed .intro.hx .hx-claim{display:none}
+  html.bp-embed .intro.hx{padding:4px 0 8px;margin:0}
+  html.bp-embed .hx-trust > span:last-child{display:none}
+  @media (min-width:901px){
+    html.bp-embed{--bkw:min(100%,1060px,calc((100vh - 96px) * 1.284))}
+    html.bp-embed .bk{width:var(--bkw)}
+    /* the page buttons in the book's own dark corners, the dots under the spine */
+    html.bp-embed .bk-nav{position:relative;z-index:3;width:var(--bkw);margin:-62px auto 0;justify-content:space-between;pointer-events:none}
+    html.bp-embed .bk-nav > *{pointer-events:auto}
+    html.bp-embed .bk-nav .pn{display:inline-block;padding:2px 10px;border-radius:999px;background:rgba(11,9,10,.82)}
+  }
+
   </style>
 </head>
 <body class="np">

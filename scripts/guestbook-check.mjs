@@ -22,7 +22,8 @@ const now = Date.parse('2026-11-22T00:00:30Z');
 say(dateOk('2026-11-22', now) && dateOk('2026-11-21', now) && !dateOk('2026-11-20', now) && !dateOk('2026-11-23', now), 'date: today or yesterday only');
 
 const kv = new Map();
-const env = { AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); } }, BSC_RPC_KEYED_URL_2: process.env.BSC_RPC_KEYED_URL_2 };
+const meta = new Map();
+const env = { AGENT: { get: async (k) => kv.get(k) ?? null, put: async (k, v, o) => { kv.set(k, v); if (o?.metadata) meta.set(k, o.metadata); }, getWithMetadata: async (k) => (kv.has(k) ? { value: kv.get(k), metadata: meta.get(k) || null } : { value: null, metadata: null }) }, BSC_RPC_KEYED_URL_2: process.env.BSC_RPC_KEYED_URL_2 };
 const call = async (method, p, body, ip = '1.2.3.4') => {
   const url = new URL('https://agent.brainonbnb.com' + p);
   const req = new Request(url, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
@@ -70,6 +71,29 @@ say(lim > 0, 'the day\'s limit per address answers 429');
   say(body === code && /text\/plain/.test(r.headers.get('content-type')) && /sandbox/.test(r.headers.get('content-security-policy') || '') && r.headers.get('x-content-type-options') === 'nosniff', 'GET /guestbook/code/<id>: the exact bytes, as text, sandbox CSP, nosniff');
   const plain = await call('GET', '/guestbook');
   say(plain.j.entries[0].code === undefined, 'the list carries the hash and the address, not the code');
+}
+
+// A PICTURE: its hash signed; SVG refused even when named png; a swapped picture refused; served as bytes with a sandbox CSP
+{
+  kv.clear(); meta.clear();
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const dataUrl = 'data:image/png;base64,' + png.toString('base64');
+  const { sha256Bytes, cleanImage } = await import('../worker-agent/guestbook.js');
+  const ih = await sha256Bytes(png);
+  say(!!cleanImage('data:image/png;base64,' + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').toString('base64')).error, 'an SVG named image/png is refused (read from its bytes)');
+  say(!!cleanImage('data:image/png;base64,' + Buffer.alloc(310 * 1024, 1).toString('base64')).error, 'a picture over 300 KB is refused');
+  const mi = await call('GET', `/guestbook/message?agent=49467&words=${encodeURIComponent(words)}&image_sha256=${ih}`);
+  say(mi.status === 200 && mi.j.message.includes(`My picture, sha256: ${ih}\n`), 'GET /guestbook/message with image_sha256 puts the hash in the message');
+  const si = await owner.signMessage({ message: mi.j.message });
+  const other = 'data:image/png;base64,' + Buffer.concat([png, Buffer.from([0])]).toString('base64');
+  const sw = await call('POST', '/guestbook', { agent: 49467, words, date: mi.j.date, signer: owner.address, signature: si, image: other }, '6.6.6.6');
+  say(sw.status === 401, 'a different picture than the signed one: 401', sw.status);
+  const oi = await call('POST', '/guestbook', { agent: 49467, words, date: mi.j.date, signer: owner.address, signature: si, image: dataUrl }, '6.6.6.6');
+  say(oi.status === 201 && oi.j.entry?.image_sha256 === ih && oi.j.entry?.image_type === 'image/png', 'signed with its picture: 201, image_sha256 + type in the entry', oi.status);
+  const url = new URL('https://agent.brainonbnb.com/guestbook/image/49467');
+  const r = await handleGuestbook(new Request(url), env, url.pathname, url, '1.1.1.1');
+  const got = Buffer.from(await r.arrayBuffer());
+  say(got.equals(png) && r.headers.get('content-type') === 'image/png' && /sandbox/.test(r.headers.get('content-security-policy') || '') && r.headers.get('x-content-type-options') === 'nosniff', 'GET /guestbook/image/<id>: the exact bytes, image/png, sandbox CSP, nosniff');
 }
 
 if (process.argv.includes('--live')) {

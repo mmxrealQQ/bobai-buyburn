@@ -12,7 +12,7 @@
 //   GET  /guestbook                      the entries, newest first, and how to sign
 //   GET  /guestbook/message?agent=&words= the exact message to sign (today, UTC)
 //   POST /guestbook {agent, words, signer, signature, date}
-import { verifySigned, normSigType, typedJson, bawFor } from './sig712.js';
+import { verifySigned, normSigType, typedJson, bawFor, normSig } from './sig712.js';
 import { agentIdentity } from './board.js';
 
 export const GB_MAX = 280, GB_MIN = 3, GB_PER_IP_DAY = 10, GB_CODE_MAX = 12000;
@@ -149,6 +149,7 @@ export async function handleGuestbook(request, env, path, url, ip) {
     const w = cleanWords(p.words);
     if (w.error) return J({ error: w.error }, 400);
     if (!dateOk(String(p.date || ''))) return J({ error: `date: the date in the message, today (${dayOf()}) or yesterday, UTC` }, 400);
+    p.signature = normSig(p.signature, p.signature_recovery ?? p.signatureRecovery);   // the Binance Agentic Wallet answers r||s without 0x + signatureRecovery
     if (!/^0x[0-9a-fA-F]{40}$/.test(String(p.signer || '')) || !/^0x[0-9a-fA-F]{130}$/.test(String(p.signature || ''))) return J({ error: 'signer (0x + 40 hex) and signature (0x + 130 hex) are needed' }, 400);
     const cc = cleanCode(p.code);
     if (cc.error) return J({ error: cc.error }, 400);

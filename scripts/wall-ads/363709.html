@@ -1,44 +1,58 @@
 <style>
 html,body{background:#07060a}
 #c{position:absolute;inset:0;width:100%;height:100%}
-.t{position:absolute;left:0;right:0;top:9%;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none}
-.k{display:inline-block;padding:2px 9px;border-radius:99px;border:1px solid rgba(94,234,212,.45);background:rgba(45,212,191,.08);font:800 clamp(7px,2.2vw,9.5px) ui-monospace,monospace;letter-spacing:.2em;color:#5eead4}
+.t{position:absolute;left:0;right:0;top:8%;text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none}
+.k{display:inline-flex;align-items:center;gap:.45em;padding:2px 9px;border-radius:99px;border:1px solid rgba(94,234,212,.45);background:rgba(45,212,191,.08);font:800 clamp(7px,2.2vw,9.5px) ui-monospace,monospace;letter-spacing:.2em;color:#5eead4}
+.k i{width:.55em;height:.55em;border-radius:50%;background:#35e07a;box-shadow:0 0 8px #35e07a;animation:bl 1.6s ease-in-out infinite}
+@keyframes bl{50%{opacity:.3}}
 .t b{display:block;margin-top:.25em;font-size:clamp(15px,7vw,30px);font-weight:900;letter-spacing:-.02em;color:#fff;text-shadow:0 0 18px rgba(45,212,191,.35)}
 .t b em{font-style:normal;background:linear-gradient(100deg,#b8860b,#ffd54f 35%,#fff6cf 50%,#ffd54f 65%,#c68f76);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:sh 4.5s linear infinite}
 @keyframes sh{0%{background-position:120% 0}100%{background-position:-130% 0}}
-.r{position:relative;height:1.5em;margin-top:.3em;font-size:clamp(8px,3vw,12px);color:#e8ddd3;overflow:hidden}
-.r span{position:absolute;left:0;right:0;opacity:0;transform:translateY(70%);transition:opacity .5s,transform .5s}
-.r span.on{opacity:1;transform:none}
-.r i{font-style:normal;color:#ffd54f;font-weight:700}
+.lv{display:flex;justify-content:center;flex-wrap:wrap;gap:.3em .5em;margin:.5em auto 0;max-width:94%;font:700 clamp(8px,2.9vw,12px) ui-monospace,monospace;color:#f3ece6;opacity:0;transition:opacity .6s}
+.lv.on{opacity:1}
+.lv span{padding:.18em .55em;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid rgba(94,234,212,.22)}
+.lv .ok{color:#5eead4}.lv .warn{color:#ff9a3d}.lv .gold{color:#ffd54f}
+.s{display:block;margin-top:.45em;font-size:clamp(8px,2.8vw,11.5px);color:#cfc7d8}
+.s i{font-style:normal;color:#ffd54f;font-weight:700}
 </style>
 <canvas id="c"></canvas>
-<div class="t"><span class="k">DEFI AGENT &middot; PANCAKESWAP</span><b>It earns. It buys <em>$BOBAI</em>.</b>
-<div class="r" id="r"><span class="on">a third of every fee it earns <i>buys $BOBAI</i></span><span>it <i>holds</i> what it buys &mdash; that&rsquo;s this tile&rsquo;s size</span><span>its own liquidity, <i>every move on BNB Chain</i></span><span>losses shown too &middot; <i>brainonbnb.com/defi</i></span></div></div>
+<div class="t"><span class="k"><i></i>LIVE &middot; DEFI AGENT &middot; PANCAKESWAP</span><b>It earns. It buys <em>$BOBAI</em>.</b>
+<div class="lv" id="lv"><span id="lw">&ndash;</span><span id="lr">&ndash;</span><span class="gold" id="lh">&ndash; $BOBAI held</span></div>
+<span class="s">a third of every fee it earns <i>buys $BOBAI</i>, never sold</span></div>
 <script>
-// a price line that wanders inside a liquidity range, drawn here; nothing is fetched, nothing is stored
+// its own rule, drawn: the price wanders inside its +-20 % range; the band turns orange when the LIVE state the page
+// hands in ({ wall: 1, live: { defi: … } }, read by the page from the agent's public record) says out of range.
+// The sandbox fetches nothing and stores nothing.
 const c = document.getElementById('c'), x = c.getContext('2d');
-let W, H; const P = []; let s = 363709; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+let W, H, inRange = true; const P = []; let s = 363709; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
 function size() { W = c.width = innerWidth * 2; H = c.height = innerHeight * 2; }
 size(); addEventListener('resize', size);
 let v = 0, last = 0;
 for (let i = 0; i < 160; i++) { v += (r() - .5) * .09 - v * .04; P.push(v); }
 function f(t) {
-  if (c.width !== innerWidth * 2 || c.height !== innerHeight * 2) size();   /* the frame may get its size after the script ran */
-  if (t - last > 60) { last = t; v += (r() - .5) * .09 - v * .04; P.push(v); if (P.length > 160) P.shift(); }
+  if (c.width !== innerWidth * 2 || c.height !== innerHeight * 2) size();
+  if (t - last > 60) { last = t; v += (r() - .5) * .09 - v * .04; if (!inRange) v += .02; P.push(v); if (P.length > 160) P.shift(); }
   x.clearRect(0, 0, W, H);
-  const top = H * .5, bot = H * .9, mid = (top + bot) / 2, half = (bot - top) / 2;
-  x.fillStyle = 'rgba(45,212,191,.08)'; x.fillRect(0, top, W, bot - top);
-  x.strokeStyle = 'rgba(45,212,191,.45)'; x.lineWidth = 2; x.setLineDash([10, 8]);
+  const top = H * .56, bot = H * .92, mid = (top + bot) / 2, half = (bot - top) / 2, band = inRange ? '45,212,191' : '255,154,61';
+  const g = x.createLinearGradient(0, top, 0, bot); g.addColorStop(0, `rgba(${band},.14)`); g.addColorStop(1, `rgba(${band},.03)`); x.fillStyle = g; x.fillRect(0, top, W, bot - top);
+  x.strokeStyle = `rgba(${band},.5)`; x.lineWidth = 2; x.setLineDash([10, 8]);
   for (const y of [top, bot]) { x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); }
   x.setLineDash([]);
-  x.strokeStyle = '#ffd54f'; x.lineWidth = 4; x.lineJoin = 'round'; x.beginPath();
+  x.strokeStyle = '#ffd54f'; x.lineWidth = 4; x.lineJoin = 'round'; x.shadowColor = 'rgba(255,213,79,.6)'; x.shadowBlur = 14; x.beginPath();
   P.forEach((p, i) => { const px = (i / 159) * W, py = mid - Math.max(-1.2, Math.min(1.2, p)) * half; i ? x.lineTo(px, py) : x.moveTo(px, py); });
-  x.stroke();
-  const p = P[P.length - 1] || 0, inR = Math.abs(p) <= 1, py = mid - Math.max(-1.2, Math.min(1.2, p)) * half;
-  x.fillStyle = inR ? '#5eead4' : '#ff7a3d'; x.beginPath(); x.arc(W - 6, py, 9, 0, 6.283); x.fill();
+  x.stroke(); x.shadowBlur = 0;
+  const p = P[P.length - 1] || 0, py = mid - Math.max(-1.2, Math.min(1.2, p)) * half;
+  x.fillStyle = inRange ? '#5eead4' : '#ff9a3d'; x.beginPath(); x.arc(W - 8, py, 10, 0, 6.283); x.fill();
   requestAnimationFrame(f);
 }
 requestAnimationFrame(f);
-const R = [...document.querySelectorAll('#r span')]; let at = 0;
-setInterval(() => { R[at].classList.remove('on'); at = (at + 1) % R.length; R[at].classList.add('on'); }, 2600);
+const $ = (id) => document.getElementById(id);
+const usd = (v) => v >= 1e3 ? '$' + Math.round(v).toLocaleString('en-US') : '$' + v.toFixed(2);
+addEventListener('message', (m) => {
+  const d = m.data && m.data.wall && m.data.live && m.data.live.defi; if (!d) return;
+  if (d.worth_usd > 0) $('lw').textContent = usd(Number(d.worth_usd)) + ' at work';
+  if (d.in_range != null) { inRange = !!d.in_range; $('lr').textContent = inRange ? '● in range' : '● out of range'; $('lr').className = inRange ? 'ok' : 'warn'; }
+  if (d.bobai_held > 0) $('lh').textContent = Math.round(d.bobai_held).toLocaleString('en-US') + ' $BOBAI held' + (d.bobai_held_usd > 0 ? ' (' + usd(Number(d.bobai_held_usd)) + ')' : '');
+  $('lv').classList.add('on');
+});
 </script>

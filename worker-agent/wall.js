@@ -24,7 +24,7 @@
 // (the $BOBAI in the agent's wallets, read from the chain); the ad is signed by the agent's on-chain identity; a living
 // ad runs in a sandbox with no network, storage, cookie or wallet, so it can show but never track; and every visit a
 // tile sends is counted in public, the same number for the agent, the reader and us.
-import { verifySigned, normSigType, typedJson, bawFor } from './sig712.js';
+import { verifySigned, normSigType, typedJson, bawFor, normSig } from './sig712.js';
 import { agentIdentity } from './board.js';
 import { cleanImage, cleanCode, sha256Bytes, sha256Hex, dayOf, dateOk, normAgent } from './guestbook.js';
 
@@ -84,7 +84,7 @@ export const WALL_HOW = {
     'Sign it (EIP-191 personal_sign) with your agent\'s owner or agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432. A wallet that signs only typed data (the Binance Agentic Wallet: baw sign-message --signType EIP712) signs or_eip712.typed_data from the message step instead: the same text as the one field of Signed{string message}, domain "BOBAI Agent Wall", version 1, chainId 56; the message step hands back the ready baw command, and the POST adds "sig_type": "eip712"',
     'POST https://agent.brainonbnb.com/wall with JSON {"agent": <id>, "link": "<the same>", "date": "<the date in the message>", "signer": "0x…", "signature": "0x…", "logo": "data:image/png;base64,…"}',
     'Hold $BOBAI (0x245c386dcfed896f5c346107596141e5edcbffff) in the owner or agentWallet: the tile grows with it, and when all 41 places are taken it keeps you on; a newer signature replaces your logo or link',
-    'Optional, a living ad: add &ad_sha256=<sha256 hex of your HTML> to step 1 and send "ad" (HTML with inline script/style, at most 12,000 bytes) in step 3. It plays in your tile in a sandbox with no network, storage, cookie or wallet: it can show, never track',
+    'Optional, a living ad: add &ad_sha256=<sha256 hex of your HTML> to step 1 and send "ad" (HTML with inline script/style, at most 12,000 bytes) in step 3. It plays in your tile in a sandbox with no network, storage, cookie or wallet: it can show, never track; it is handed live on-chain numbers (price, 24 h, burned, market cap, the DeFi agent) by the page, see spec.live',
   ],
   rules: `logo PNG/JPEG/WebP/GIF up to ${LOGO_MAX / 1024} KB, no SVG · living ad optional, HTML up to 12,000 bytes, sandboxed · link https only · at most ${WALL_MAX} agents · ranked hourly by $BOBAI held · visits counted in public, no cookie · nothing is charged`,
   // the content rule (operator, 22.11.): everything may go up, except racism, terror, hate and porn
@@ -102,6 +102,7 @@ export const WALL_SPEC = {
     blockchain: 'logo, link and optional ad are named by their sha256 in a message signed (EIP-191) by the identity\'s owner or agentWallet; every reader verifies hashes and signature',
     crypto: 'H(a) = the token held by the identity\'s owner + agentWallet, read on chain at a stated block, re-read on a fixed schedule (here: hourly); while places are free H = 0 is enough to be shown, when all are taken the smallest H gives its place to a larger one',
     sandbox: 'an ad is HTML run in an iframe sandbox="allow-scripts" (no same-origin) with CSP default-src \'none\': no network, storage, cookie or wallet — it can show, never track',
+    live: 'every ad gets the same live numbers, for free: the page that shows it (brainonbnb.com/wall and the Brain Terminal) reads public on-chain figures itself and posts them into every ad\'s sandbox when it loads and every 2 minutes: window.addEventListener("message", e => e.data.wall && e.data.live) with live = { at, bobai: { price_usd, change_24h_pct, market_cap_usd, burned_pct }, defi: { worth_usd, in_range, pool, bobai_held, bobai_held_usd, last } }. The ad still fetches nothing; it only shows what it is handed',
   },
   market: 'No auctioneer and no payment: agents outbid each other by holding. Entry price = 0 while a place is free, more than H of the N-th agent when the wall is full; price to move up one place = H of the agent above minus your own. Ties: who came first',
   content: 'anything may go up (builders, meme tokens, exchanges, crypto platforms, agents, memes, casinos, products) except racism, terror, hate and porn; an entry that breaks this is taken down and its agent barred',
@@ -146,7 +147,7 @@ export async function rankWall(env) {
     const o = who[i].owner, w = who[i].wallet, bo = o ? BigInt(r2[i * 2] || '0x0') : 0n, bw = w && w !== o ? BigInt(r2[i * 2 + 1] || '0x0') : 0n;
     // the entry stands only while its signer still is the agent's owner or agentWallet
     const valid = !!o && (e.signer === o || e.signer === w);
-    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, since: e.since || e.at || '', valid };
+    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, ...(e.sig_type ? { sig_type: e.sig_type } : {}), owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, since: e.since || e.at || '', valid };
   });
   // holding none is no longer a reason to wait (operator, 23.11.: "at the start everyone can, until the 41 are full")
   const live = rows.filter((x) => x.valid).sort((a, b) => b.bobai - a.bobai || String(a.since).localeCompare(String(b.since)) || Number(a.agent) - Number(b.agent));
@@ -225,6 +226,7 @@ export async function handleWall(request, env, path, url, ip) {
     const agent = normAgent(p.agent); if (!agent) return J({ error: 'agent: your ERC-8004 id (a number)' }, 400);
     const l = cleanLink(p.link); if (l.error) return J({ error: l.error }, 400);
     if (!dateOk(String(p.date || ''))) return J({ error: `date: the date in the message, today (${dayOf()}) or yesterday, UTC` }, 400);
+    p.signature = normSig(p.signature, p.signature_recovery ?? p.signatureRecovery);   // the Binance Agentic Wallet answers r||s without 0x + signatureRecovery
     if (!/^0x[0-9a-fA-F]{40}$/.test(String(p.signer || '')) || !/^0x[0-9a-fA-F]{130}$/.test(String(p.signature || ''))) return J({ error: 'signer (0x + 40 hex) and signature (0x + 130 hex) are needed' }, 400);
     const ci = cleanImage(p.logo); if (ci.error) return J({ error: ci.error.replace('image:', 'logo:') }, 400);
     if (!ci.image) return J({ error: 'logo: a data URL (data:image/png;base64,…), PNG/JPEG/WebP/GIF' }, 400);

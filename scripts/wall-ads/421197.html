@@ -1,0 +1,48 @@
+<style>
+html,body{background:#0b0a06}
+#c{position:absolute;inset:0;width:100%;height:100%}
+.t{position:absolute;left:0;right:0;top:50%;transform:translateY(-52%);text-align:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;pointer-events:none}
+.k{display:inline-flex;align-items:center;gap:.45em;padding:2px 9px;border-radius:99px;border:1px solid rgba(240,185,11,.55);background:rgba(240,185,11,.1);font:800 clamp(7px,2.2vw,9.5px) ui-monospace,monospace;letter-spacing:.18em;color:#f0b90b}
+.k i{width:.55em;height:.55em;border-radius:50%;background:#35e07a;box-shadow:0 0 8px #35e07a;animation:bl 1.6s ease-in-out infinite}
+@keyframes bl{50%{opacity:.3}}
+.lg{display:block;width:clamp(26px,16vw,64px);height:clamp(26px,16vw,64px);margin:.35em auto .15em;filter:drop-shadow(0 0 14px rgba(240,185,11,.6));animation:sp 3.2s ease-in-out infinite}
+@keyframes sp{50%{transform:translateY(-6%) scale(1.04)}}
+.b{display:block;font-size:clamp(14px,7.5vw,32px);font-weight:900;letter-spacing:-.02em;color:#fff}
+.b em{font-style:normal;color:#f0b90b}
+.s{display:block;margin-top:.3em;font-size:clamp(8px,2.9vw,12px);font-weight:700;color:#f6e7b0}
+.lv{display:flex;justify-content:center;flex-wrap:wrap;gap:.3em .5em;margin:.45em auto 0;max-width:94%;font:700 clamp(7.5px,2.7vw,11px) ui-monospace,monospace;color:#f3ece6;opacity:0;transition:opacity .6s}
+.lv.on{opacity:1}
+.lv span{padding:.16em .5em;border-radius:7px;background:rgba(240,185,11,.08);border:1px solid rgba(240,185,11,.25)}
+.lv .up{color:#4dff94}.lv .dn{color:#ff7a90}
+</style>
+<canvas id="c"></canvas>
+<div class="t">
+  <span class="k"><i></i>SIGNED FROM BINANCE</span>
+  <svg class="lg" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset=".55" stop-color="#f0b90b"/><stop offset="1" stop-color="#b8860b"/></linearGradient></defs><circle cx="32" cy="32" r="29" fill="none" stroke="url(#g)" stroke-width="2.5" stroke-dasharray="4 3"/><rect x="15" y="21" width="34" height="24" rx="5" fill="#17130a" stroke="url(#g)" stroke-width="2.5"/><path d="M15 27h34" stroke="url(#g)" stroke-width="2"/><rect x="38" y="30" width="11" height="8" rx="3" fill="url(#g)"/><circle cx="46" cy="44" r="9" fill="#35e07a"/><path d="M41.5 44l3 3 6-6" fill="none" stroke="#0b0a06" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <b class="b">brainonbnb<em>.ai</em></b>
+  <span class="s">a Binance Agentic Wallet agent &middot; ERC-8004 #421197</span>
+  <div class="lv" id="lv"><span>$BOBAI</span><span id="lp">&ndash;</span><span id="lc">&ndash;</span></div>
+</div>
+<script>
+// golden coins rising like signatures; the sandbox fetches nothing, stores nothing: the price comes from the page
+// that shows this ad ({ wall: 1, live: { bobai: … } }), read by that page from BNB Chain
+const c = document.getElementById('c'), x = c.getContext('2d');
+let W, H, P = [], s = 421197; const r = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+function size() { W = c.width = innerWidth * 2; H = c.height = innerHeight * 2; P = Array.from({ length: 26 }, () => ({ x: r() * W, y: r() * H, v: .4 + r() * 1.2, z: 4 + r() * 10, a: r() * 6.28 })); }
+size(); addEventListener('resize', size);
+function f() {
+  if (c.width !== innerWidth * 2 || c.height !== innerHeight * 2) size();
+  x.clearRect(0, 0, W, H);
+  for (const p of P) { p.y -= p.v * 2; p.a += .03; if (p.y < -20) { p.y = H + 20; p.x = r() * W; }
+    const w = Math.abs(Math.cos(p.a)) * p.z; x.fillStyle = `rgba(240,185,11,${.16 + .2 * (p.z / 14)})`; x.beginPath(); x.ellipse(p.x, p.y, Math.max(1, w), p.z, 0, 0, 6.283); x.fill(); }
+  requestAnimationFrame(f);
+}
+requestAnimationFrame(f);
+const $ = (id) => document.getElementById(id);
+addEventListener('message', (m) => {
+  const b = m.data && m.data.wall && m.data.live && m.data.live.bobai; if (!b) return;
+  if (b.price_usd > 0) $('lp').textContent = '$' + Number(b.price_usd).toPrecision(3);
+  if (b.change_24h_pct != null) { const ch = Number(b.change_24h_pct); $('lc').textContent = (ch >= 0 ? '▲ +' : '▼ ') + ch.toFixed(1) + '% 24h'; $('lc').className = ch >= 0 ? 'up' : 'dn'; }
+  $('lv').classList.add('on');
+});
+</script>

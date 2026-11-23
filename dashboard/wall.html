@@ -201,7 +201,7 @@
     }).join('');
     wall.classList.add('built');
     // the living ads: each in a frame with no network, storage, cookie or wallet, under a clear link
-    wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
+    wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
     for (const [agent, cls] of Object.entries(CHECKS)) wall.querySelectorAll(`.ck[data-agent="${agent}"]`).forEach((c) => (c.className = 'ck ' + cls));
   }
 
@@ -230,7 +230,26 @@
     draw();
   }
 
-  fetch(API).then((r) => r.json()).then((j) => {
+  // LIVE IN THE SANDBOX (23.11., operator: "every illustration must be live in the sandbox"): the sandbox keeps no network;
+  // the PAGE reads public numbers itself (our on-chain price API, the DeFi agent's public portfolio) and hands them to every
+  // living ad as a message: { wall: 1, live: { at, bobai: {...}, defi: {...} } }. An ad may show them; it can send nothing.
+  const FEED = { at: 0, live: null };
+  async function feedLive() {
+    if (FEED.live && Date.now() - FEED.at < 60e3) return FEED.live;
+    const [p, d] = await Promise.all([fetch('/api/price', { cache: 'no-store' }).then((r) => r.json()).catch(() => null), fetch('https://agent.brainonbnb.com/lp/portfolio', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)]);
+    if (!p && !d) return FEED.live;
+    FEED.live = { at: new Date().toISOString(),
+      bobai: p ? { price_usd: p.price_usd, change_24h_pct: p.market_24h?.change_pct ?? null, market_cap_usd: p.market_cap_usd, burned_pct: p.circulating_supply ? +(100 - Number(p.circulating_supply) / 1e7).toFixed(2) : null } : null,
+      defi: d ? { worth_usd: d.worth?.usd ?? null, in_range: d.pool?.in_range ?? null, pool: d.pool?.label || null, bobai_held: d.holdings?.bobai_units ?? null, bobai_held_usd: d.holdings?.bobai_usd ?? null, last: d.day?.last?.what || null } : null };
+    FEED.at = Date.now(); return FEED.live;
+  }
+  async function pushLive(f) { const live = await feedLive(); if (!live) return; for (const fr of f ? [f] : wall.querySelectorAll('iframe[sandbox]')) { try { fr.contentWindow.postMessage({ wall: 1, live }, '*'); } catch {} } }
+  setInterval(() => { if (!document.hidden) pushLive(); }, 120e3);
+  // IT KEEPS ITSELF UP TO DATE (23.11., operator: "the page updates by itself, right?"): asked again every 2 minutes
+  // while visible; drawn again only when the board changed (a new agent, a new rank, a new block)
+  let last = "";
+  const load = () => fetch(API, { cache: "no-store" }).then((r) => r.json()).then((j) => {
+    const sig = JSON.stringify([j.block, (j.wall || []).map((a) => [a.agent, a.bobai, a.logo_sha256, a.ad_sha256 || ""])]); if (sig === last) return; last = sig;
     DATA = j; const list = j.wall || [];
     document.getElementById('w-n').textContent = list.length;
     document.getElementById('w-sum').textContent = nf(list.reduce((s, a) => s + a.bobai, 0));
@@ -238,7 +257,9 @@
     if (j.market) document.getElementById('w-entry').textContent = j.market.entry ? `more than ${nf(j.market.entry)} $BOBAI (what the smallest agent on the full wall holds)` : `nothing while ${MAX - list.length} of ${MAX} places are free; when all are taken, more than the smallest holder`;
     if (j.block) document.getElementById('w-block').textContent = `ranked from BNB Chain at block ${Number(j.block).toLocaleString('en-US')}`;
     draw(); check(list);
-  }).catch(() => { wall.innerHTML = '<div class="tile free" style="left:0;top:0;width:100%;height:100%"><div class="in"><div class="big">The wall could not be read just now.</div></div></div>'; });
+  }).catch(() => { if (DATA) return; wall.innerHTML = '<div class="tile free" style="left:0;top:0;width:100%;height:100%"><div class="in"><div class="big">The wall could not be read just now.</div></div></div>'; });
+  load(); setInterval(() => { if (!document.hidden) load(); }, 120e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
   let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(draw, 120); });
 })();
 </script>

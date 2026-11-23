@@ -278,6 +278,21 @@
   { let n = 0; const t = setInterval(() => { place(); if (++n > 40) clearInterval(t); }, 500); } // ROT settles in its first seconds
   addEventListener('resize', place);
   let DATA = null; const LOGOS = {}, ADS = {};
+  // LIVE IN THE SANDBOX (23.11., operator: "every illustration must be live in the sandbox"): the sandbox keeps no network;
+  // this page reads public numbers itself (our on-chain price API, the DeFi agent's public portfolio) and hands them to
+  // every living ad as a message { wall: 1, live: {...} } (the same feed as /wall); an ad may show them, it sends nothing
+  const FEED = { at: 0, live: null };
+  async function feedLive() {
+    if (FEED.live && Date.now() - FEED.at < 60e3) return FEED.live;
+    const [p, d] = await Promise.all([fetch('/api/price', { cache: 'no-store' }).then((r) => r.json()).catch(() => null), fetch('https://agent.brainonbnb.com/lp/portfolio', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)]);
+    if (!p && !d) return FEED.live;
+    FEED.live = { at: new Date().toISOString(),
+      bobai: p ? { price_usd: p.price_usd, change_24h_pct: p.market_24h?.change_pct ?? null, market_cap_usd: p.market_cap_usd, burned_pct: p.circulating_supply ? +(100 - Number(p.circulating_supply) / 1e7).toFixed(2) : null } : null,
+      defi: d ? { worth_usd: d.worth?.usd ?? null, in_range: d.pool?.in_range ?? null, pool: d.pool?.label || null, bobai_held: d.holdings?.bobai_units ?? null, bobai_held_usd: d.holdings?.bobai_usd ?? null, last: d.day?.last?.what || null } : null };
+    FEED.at = Date.now(); return FEED.live;
+  }
+  async function pushLive(f) { if (!on) return; const live = await feedLive(); if (!live) return; for (const fr of f ? [f] : layer.querySelectorAll('iframe[sandbox]')) { try { fr.contentWindow.postMessage({ wall: 1, live }, '*'); } catch {} } }
+  setInterval(() => { if (on && !document.hidden) pushLive(); }, 120e3);
   function draw() {
     if (!DATA) return;
     // the board ends above the chart strip (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart"):
@@ -311,13 +326,15 @@
       return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">${Number(e.bobai).toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</span></i></div>`;
     }).join('');
     // a living ad plays in its tile as on /wall: its own frame, no network, storage, cookie or wallet (it can show, never track)
-    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
       f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[el.parentElement.dataset.agent]}</body></html>`; el.prepend(f); });
   }
   let loading = null;
   function load() {
     if (loading) return loading;
-    loading = fetch(API).then((r) => r.json()).then(async (j) => {
+    loading = fetch(API, { cache: 'no-store' }).then((r) => r.json()).then(async (j) => {
+      // only a changed board is drawn again (23.11.: asked every 2 min now; a redraw restarted every living ad)
+      const sig = JSON.stringify([(j.wall || []).map((a) => [a.agent, a.bobai, a.logo_sha256, a.ad_sha256 || '']), j.max]); if (DATA && sig === load.sig) return; load.sig = sig;
       DATA = j; draw(); layer.classList.add('built');
       await Promise.all((j.wall || []).filter((e) => e.ad_url && e.ad_sha256).map(async (e) => { try { const txt = await (await fetch(e.ad_url)).text(); const h = await sha256(new TextEncoder().encode(txt)); if (h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`)) ADS[e.agent] = txt; else delete ADS[e.agent]; } catch {} }));
       await Promise.all((j.wall || []).map(async (e) => { if (LOGOS[e.agent + ':' + e.logo_sha256]) { LOGOS[e.agent] = LOGOS[e.agent + ':' + e.logo_sha256]; return; } try { const buf = await (await fetch(e.logo_url)).arrayBuffer(); const h = await sha256(buf); if (h === e.logo_sha256 && e.message.includes(`Logo sha256: ${h}\n`)) LOGOS[e.agent] = LOGOS[e.agent + ':' + h] = URL.createObjectURL(new Blob([buf], { type: e.logo_type })); else delete LOGOS[e.agent]; } catch {} }));
@@ -329,5 +346,6 @@
   // the terminal's own start comes first (not on 'load': the terminal's clips keep that event waiting for long)
   if (on) setTimeout(load, 2500);
   new ResizeObserver(() => { clearTimeout(draw.t); draw.t = setTimeout(draw, 150); }).observe(layer);
-  setInterval(() => { if (on && !document.hidden) load(); }, 10 * 60e3);
+  // 23.11. (operator: "faster than 10 min"): every 2 minutes while the wall is on and the page is in view
+  setInterval(() => { if (on && !document.hidden) load(); }, 2 * 60e3);
 })();

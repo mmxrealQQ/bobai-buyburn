@@ -2057,6 +2057,12 @@ export default {
     }
     // THE GUESTBOOK (2026-11-22): ERC-8004 agents leave one signed line for good; guestbook.js
     // THE AGENT WALL (2026-11-22): agents put their logo up; ranked hourly by the $BOBAI their wallets hold; wall.js
+    // AN ERC-8004 ID IN ONE CALL (2026-11-23): for a Binance Agentic Wallet (or any wallet) that has no agent identity yet
+    if (path.startsWith('/register/')) {
+      note(`register:${path}`);
+      const { handleRegister } = await import('./register.js');
+      return await handleRegister(request, env, path, url);
+    }
     if (path === '/wall' || path.startsWith('/wall/')) {
       note(`wall:${request.method}`);
       const wk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;

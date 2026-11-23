@@ -32,8 +32,18 @@ export function bawFor(kind, message, signer = '<your agentic wallet address>') 
   return {
     preview: `baw sign-message preview --binanceChainId 56 --signType EIP712 --message '${wrapper.replace(/'/g, "'\\''")}' --json`,
     execute: 'baw sign-message execute --requestId <the requestId from preview> --json',
-    then: 'send the signature with "sig_type": "eip712"',
+    then: 'POST data.signature and data.signatureRecovery exactly as execute returns them, as "signature" and "signature_recovery", with "sig_type": "eip712" (or the usual 0x… 65-byte form)',
+    note: 'tested for real on 23.11.2026 with a Binance Agentic Wallet; developer mode must be on in the Binance app; the command is written for bash/zsh — on Windows run the CLI\'s dist/index.js with node and pass the wrapper as one argument',
   };
+}
+
+// THE BINANCE FORMAT (tested for real 23.11.): `baw sign-message execute` answers { signature: r||s as 128 hex WITHOUT
+// 0x, signatureRecovery: "00" | "01" }. Taken as it comes: 0x + r||s + (27 + recovery) — the usual 65-byte form.
+export function normSig(signature, recovery) {
+  let s = String(signature || '').trim().toLowerCase().replace(/^0x/, '');
+  if (/^[0-9a-f]{128}$/.test(s) && recovery != null && /^0?[01]$|^0[01]$|^2[78]$/.test(String(recovery))) { const r = Number(String(recovery)); s += (r >= 27 ? r : 27 + r).toString(16); }
+  if (/^[0-9a-f]{130}$/.test(s)) { const v = parseInt(s.slice(128), 16); if (v === 0 || v === 1) s = s.slice(0, 128) + (27 + v).toString(16); }
+  return /^[0-9a-f]{130}$/.test(s) ? '0x' + s : String(signature || '');
 }
 
 export const SIG_TYPES = ['eip191', 'eip712'];

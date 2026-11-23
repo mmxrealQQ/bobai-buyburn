@@ -323,7 +323,7 @@
       if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
         return `<div class="bw-t free" style="${st}"><i style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"></i></div>`; }
       const e = t.e, size = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '', ad = ADS[e.agent] && t.w >= 150 && t.h >= 120;
-      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">${Number(e.bobai).toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</span></i></div>`;
+      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">ERC-8004 #${esc(e.agent)}</span></i></div>`;
     }).join('');
     // a living ad plays in its tile as on /wall: its own frame, no network, storage, cookie or wallet (it can show, never track)
     layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');

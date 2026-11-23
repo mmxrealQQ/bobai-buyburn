@@ -17,7 +17,7 @@ html,body{background:#07060a}
 </style>
 <canvas id="c"></canvas>
 <div class="t"><span class="k"><i></i>LIVE &middot; DEFI AGENT &middot; PANCAKESWAP</span><b>It earns. It buys <em>$BOBAI</em>.</b>
-<div class="lv" id="lv"><span id="lw">&ndash;</span><span id="lr">&ndash;</span><span class="gold" id="lh">&ndash; $BOBAI held</span></div>
+<div class="lv" id="lv"><span id="lw">&ndash;</span><span id="lr">&ndash;</span><span class="gold" id="lh">&ndash;</span></div>
 <span class="s">a third of every fee it earns <i>buys $BOBAI</i>, never sold</span></div>
 <script>
 // its own rule, drawn: the price wanders inside its +-20 % range; the band turns orange when the LIVE state the page
@@ -52,7 +52,7 @@ addEventListener('message', (m) => {
   const d = m.data && m.data.wall && m.data.live && m.data.live.defi; if (!d) return;
   if (d.worth_usd > 0) $('lw').textContent = usd(Number(d.worth_usd)) + ' at work';
   if (d.in_range != null) { inRange = !!d.in_range; $('lr').textContent = inRange ? '● in range' : '● out of range'; $('lr').className = inRange ? 'ok' : 'warn'; }
-  if (d.bobai_held > 0) $('lh').textContent = Math.round(d.bobai_held).toLocaleString('en-US') + ' $BOBAI held' + (d.bobai_held_usd > 0 ? ' (' + usd(Number(d.bobai_held_usd)) + ')' : '');
+  if (d.pool) $('lh').textContent = d.pool;   /* no $BOBAI amounts on the wall (operator, 23.11.) */
   $('lv').classList.add('on');
 });
 </script>

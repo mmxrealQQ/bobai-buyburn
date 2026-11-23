@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="record.css?v=5">
   <style>/* the intro as wide as the card under it (2026-10-28) */
 .np .intro{width:min(820px,calc(100% - 40px))}
-.rc-row[hidden]{display:none}.rc-more{display:block;margin:-6px auto 16px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
+.rc-row[hidden]{display:none}.rc-more{display:block;margin:12px auto 18px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}</style>
 </head>
 <body class="np">
 <div class="aur" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
@@ -126,7 +126,7 @@
     $('r-u').textContent = '$' + nf(rt.returned_u || 0, 2);
     $('r-cl').textContent = nf((rt.clients || []).length);
     const rrows = (rf.log || []);
-    $('rf-rows').innerHTML = (rl ? '<div class="rc-row rc-muted"><span class="rc-what">Last run <b>' + when(rl.at) + '</b> · ' + nf(rl.refunded) + ' refunded, $' + nf(rl.returned_u || 0, 2) + ' back' + (rl.refused ? ', ' + nf(rl.refused) + ' not sent (the simulation said no: refunded by someone else, or a read error)' : '') + (rl.failed ? ', <span class="no">' + nf(rl.failed) + ' failed</span>' : '') + ' · gas ' + bnb(Number(rl.gas_bnb) * 1e18, usd) + (rl.stopped ? '<br><span class="no">Stopped: ' + esc(rl.stopped) + '</span>' : '') + '</span></div>' : '')
+    $('rf-rows').innerHTML = (rl ? '<div class="rc-row rc-muted"><span class="rc-what">Last run <b>' + when(rl.at) + '</b> · ' + (rl.refunded ? nf(rl.refunded) + ' refunded, $' + nf(rl.returned_u || 0, 2) + ' back' : 'no refund was due') + (rl.refused ? ', ' + nf(rl.refused) + ' not sent (the simulation said no: refunded by someone else, or a read error)' : '') + (rl.failed ? ', <span class="no">' + nf(rl.failed) + ' failed</span>' : '') + (Number(rl.gas_bnb) > 0 ? ' · gas ' + bnb(Number(rl.gas_bnb) * 1e18, usd) : ', no gas spent') + (rl.stopped ? '<br><span class="no">Stopped: ' + esc(rl.stopped) + '</span>' : '') + '</span></div>' : '')
       + (rrows.length ? rrows.map((d) => d.refunded
         ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · $' + nf(d.returned_u, 2) + ' back to ' + addr(d.client) + ' <i>never delivered by ' + addr(d.provider) + '</i></span>'
           + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a> · gas ' + bnb(d.gas_wei, usd) + '</span></div>'

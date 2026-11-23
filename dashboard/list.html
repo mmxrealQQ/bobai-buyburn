@@ -17,9 +17,9 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://brainonbnb.com/og/page/list.png">
-<link rel="stylesheet" href="/styles.css?v=83">
+<link rel="stylesheet" href="/styles.css?v=84">
 <style>
-  .lst{max-width:900px;margin:0 auto}
+  .lst{max-width:900px;margin:0 auto 36px} /* its rounded edge sat on the footer line (A-Z 23.11.) */
   .lst h1{font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(28px,5.4vw,44px);line-height:1.08;margin:0 0 14px}
   .lst h1 em{font-style:normal;color:var(--gold)}
   .lead{color:var(--muted);font-size:17px;line-height:1.6;max-width:66ch}
@@ -100,8 +100,8 @@
     <div class="card step" id="s3" aria-disabled="true">
       <h2><span class="st">03</span>Pay and go live</h2>
       <div class="out" id="l-pay-info"></div>
-      <div class="row"><input type="text" id="l-contact" autocomplete="off" placeholder="Telegram or X handle (optional, for us to reach you)" aria-label="Contact"></div>
-      <div class="row"><input type="url" id="l-alarm" autocomplete="off" placeholder="Alarm webhook, https:// (optional): told the moment your agent stops answering" aria-label="Alarm webhook"></div>
+      <div class="row"><input type="text" id="l-contact" autocomplete="off" placeholder="Telegram or X (optional)" title="Telegram or X handle (optional, for us to reach you)" aria-label="Contact: Telegram or X handle, optional, for us to reach you"></div>
+      <div class="row"><input type="url" id="l-alarm" autocomplete="off" placeholder="Alarm webhook https:// (optional)" title="Alarm webhook, https:// (optional): told the moment your agent stops answering" aria-label="Alarm webhook, optional: told the moment your agent stops answering"></div>
       <div class="row"><button class="btn" id="l-pay" type="button">Pay from my wallet</button></div>
       <p class="muted" style="margin-top:10px">Paid another way? Paste the transaction hash:</p>
       <div class="row"><input type="text" id="l-tx" autocomplete="off" placeholder="0x… transaction hash" aria-label="Transaction hash"><button class="btn ghost" id="l-submit" type="button">Submit</button></div>
@@ -113,7 +113,7 @@
       <ol class="rules">
         <li>The agent is registered on the ERC-8004 identity registry on BNB Smart Chain and answers: an A2A <code>message/send</code> or an MCP <code>initialize</code> that comes back with a result.</li>
         <li>You prove it is yours by signing with the wallet that owns the id, or with its agentWallet.</li>
-        <li>You pay from your own wallet, straight to the project's wallet <code>0x5c82…dC3C</code>. Nothing here holds a key or moves your funds; the transfer is read from the chain.</li>
+        <li>You pay from your own wallet, straight to the project's wallet <code style="white-space:nowrap">0x5c82…dC3C</code>. Nothing here holds a key or moves your funds; the transfer is read from the chain.</li>
         <li>One payment, one listing. A listed agent that stops answering keeps its page but loses the badge until it answers again.</li>
         <li>The list order on Brain Plaza is never for sale.</li>
       </ol>

@@ -156,6 +156,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .sc .v.plain{background:none;-webkit-text-fill-color:initial;color:var(--text)}
 .sc .v.green{background:none;-webkit-text-fill-color:initial;color:var(--green);font-size:1.05rem;margin-top:4px}
 @media(max-width:760px){.sbar{grid-template-columns:repeat(2,1fr)}}
+/* the stats stand alone in their section: its padding, the bar's margin and the next section's padding added up to 84 px above and 108 px below (A-Z 23.11.) */
+.sbar:last-child{margin-bottom:0}.sec:has(>.sbar:only-child){padding-top:6px}
 
 /* TIER AVAILABILITY */
 .tier-grid{display:grid;gap:10px}
@@ -196,7 +198,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 /* Four columns still ask for more than a small phone has once the labels are
    set. Three fit with room to spare, and the last guard is the label itself:
    allowed to break rather than to widen its column. */
-@media(max-width:480px){.rarity-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:480px){.rarity-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.rarity-grid>:nth-child(7):last-child{grid-column:1/-1}}
 .rc .name{overflow-wrap:anywhere}
 
 /* TIER BLOCKS — availability + per-rarity breakdown + progress bar */
@@ -219,7 +221,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,8,20,.88)
 .tr-val .sl{color:var(--muted);font-weight:400;font-size:.7rem}
 .tr-ch{display:block;font-size:.54rem;color:#fff;margin-top:2px;letter-spacing:.2px}
 @media(max-width:760px){.tb-rars{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:420px){.tb-rars{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:420px){.tb-rars{grid-template-columns:repeat(3,1fr)}.tb-rars>:nth-child(7):last-child{grid-column:1/-1}} /* seven rarities in three columns: IMMORTAL spans its own row instead of standing in a corner (A-Z 23.11.) */
 
 /* LEDGER */
 .ledger-wrap{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:var(--radius);overflow-y:auto;overflow-x:hidden;position:relative;max-height:500px;scrollbar-width:thin;scrollbar-color:rgba(240,185,11,.3) transparent}

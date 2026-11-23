@@ -78,13 +78,14 @@
   .tile.ad .nm,.tile.ad .hd{position:relative;z-index:1;text-shadow:0 1px 6px #000}
   .tile .sb{position:absolute;z-index:1;left:8px;bottom:7px;padding:2px 6px;border-radius:6px;border:1px solid rgba(45,212,191,.45);background:rgba(11,9,10,.7);color:#5eead4;font:700 .52rem ui-monospace,monospace;letter-spacing:.12em}
   .tile.ad .sb{bottom:auto;top:24px}
+  .tile.ad.adz .sb{position:relative;left:auto;top:auto;bottom:auto;margin-bottom:4px}
   .tile.small .sb{display:none}
-  .wl-agent{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px;max-width:1180px;margin:0 auto 14px;padding:10px 16px;box-sizing:border-box;border-radius:14px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.06);font-size:.84rem;color:var(--text)}
+  .wl-agent{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px;max-width:1140px;width:calc(100% - 40px);margin:0 auto 14px;padding:10px 16px;box-sizing:border-box;border-radius:14px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.06);font-size:.84rem;color:var(--text)}
   .wl-agent b{font:700 .9rem 'Space Grotesk',sans-serif;color:var(--gold)}
   .wl-agent span{display:inline-flex;align-items:center;gap:7px}
   .wl-agent i{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#111;font:800 .7rem Inter,sans-serif;font-style:normal}
   .wl-agent a{color:var(--gold);font-family:ui-monospace,monospace;font-size:.8rem}
-  @media (max-width:700px){.wl-agent{margin:0 14px 14px;justify-content:flex-start}}
+  @media (max-width:700px){.wl-agent{width:auto;margin:0 14px 14px;justify-content:flex-start}}
   .wl-formula{max-width:860px;margin:30px auto 0;padding:0 20px;text-align:center}
   .wl-formula h2{font:700 clamp(1.2rem,2.2vw,1.55rem) 'Space Grotesk',sans-serif;margin:0 0 10px}
   .wl-eq{display:inline-flex;flex-direction:column;gap:6px;margin:0;padding:14px 22px;border-radius:14px;border:1px solid rgba(240,185,11,.45);background:rgba(240,185,11,.07)}
@@ -97,7 +98,7 @@
   .wl-four span{font-size:.8rem;color:var(--muted);line-height:1.5}
   @media (max-width:900px){.wl-four{grid-template-columns:repeat(2,1fr)}}
   @media (max-width:520px){.wl-four{grid-template-columns:1fr;padding:0 14px}}
-  @media (max-width:700px){.wall{aspect-ratio:3/4}.wl{padding:6px 14px 0}}
+  @media (max-width:700px){.wall{aspect-ratio:3/5}.wl{padding:6px 14px 0}.tile.free .lbl{padding:10px 14px}}
   @media (max-width:520px){.bb-say{flex-direction:column}.bb-say .pb-btn{align-self:center}}
   </style>
 </head>
@@ -189,8 +190,9 @@
     const used = items.reduce((s, i) => s + i.w, 0), f = list.length >= MAX ? 1 : Math.min(1, used / cap);
     let tiles;
     if (f >= .999 || !items.length) tiles = squarify(items, 0, 0, W, H);
-    else if (W >= H) { const aw = Math.max(W * f, Math.min(W * .5, 160)); tiles = [...squarify(items, 0, 0, aw, H), { free: true, x: aw, y: 0, w: W - aw, h: H }]; }
-    else { const ah = Math.max(H * f, Math.min(H * .5, 160)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
+    // the free places keep room for their own label (23.11.: at 110 px wide or 46 px high it was cut on every screen)
+    else if (W >= H) { const aw = Math.min(Math.max(W * f, Math.min(W * .5, 160)), W - Math.min(W * .32, 250)); tiles = [...squarify(items, 0, 0, aw, H), { free: true, x: aw, y: 0, w: W - aw, h: H }]; }
+    else { const ah = Math.min(Math.max(H * f, Math.min(H * .5, 160)), H - Math.min(H * .26, 150)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
     wall.innerHTML = tiles.map((t) => {
       const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`, small = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '';
       // every free place one cell of the grid: the whole board of 41 in view (the terminal's backdrop draws it the same)
@@ -201,7 +203,7 @@
     }).join('');
     wall.classList.add('built');
     // the living ads: each in a frame with no network, storage, cookie or wallet, under a clear link
-    wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
+    wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; { const tw = a.clientWidth - 4, th = a.clientHeight - 4, s = Math.min(1, th / 200, tw / 260); if (s < 1) { f.style.cssText = `width:${tw / s}px;height:${th / s}px;transform:scale(${s});transform-origin:0 0`; a.parentElement.classList.add('adz'); } } /* 23.11.: a living ad is laid out at least 260 x 200 px and scaled down, never squeezed (a phone's 136 px tile ran its chart through its text) */ f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
     for (const [agent, cls] of Object.entries(CHECKS)) wall.querySelectorAll(`.ck[data-agent="${agent}"]`).forEach((c) => (c.className = 'ck ' + cls));
   }
 

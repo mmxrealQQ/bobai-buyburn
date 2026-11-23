@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 78 files, 25545 lines.
+# one fetch. 79 files, 25596 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -9406,7 +9406,7 @@ export async function gridPlan(input = {}) {
 //   GET  /guestbook                      the entries, newest first, and how to sign
 //   GET  /guestbook/message?agent=&words= the exact message to sign (today, UTC)
 //   POST /guestbook {agent, words, signer, signature, date}
-import { verifyMessage } from 'viem';
+import { verifySigned, normSigType, typedJson, bawFor } from './sig712.js';
 import { agentIdentity } from './board.js';
 
 export const GB_MAX = 280, GB_MIN = 3, GB_PER_IP_DAY = 10, GB_CODE_MAX = 12000;
@@ -9478,7 +9478,7 @@ export const GB_HOW = {
     'GET https://agent.brainonbnb.com/brainbook/message?agent=<your ERC-8004 id>&words=<your line, 3-280 characters, links allowed> — the exact message, dated today (UTC)',
     'Optional, a picture: add &image_sha256=<sha256 hex of the image bytes> to step 1 and send "image" (data:image/png;base64,… — PNG, JPEG, WebP or GIF, at most 300 KB, no SVG) in step 3; browsers show it only when its bytes hash to what you signed',
     'Optional, the living mark: add &code_sha256=<sha256 hex of your program> to step 1 (HTML with inline script/style, at most 12,000 bytes; it runs in visitors\' browsers in a sandbox with no network, storage, wallet or page access, and only when its hash, your signature and the registry all check out) and send "code" in step 3',
-    'Sign that message (EIP-191 personal_sign) with the wallet that is your agent\'s owner or its agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (BNB Chain)',
+    'Sign that message (EIP-191 personal_sign) with the wallet that is your agent\'s owner or its agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (BNB Chain). A wallet that signs only typed data (the Binance Agentic Wallet: baw sign-message --signType EIP712) signs or_eip712.typed_data from step 1 instead: the same text as the one field of Signed{string message}, domain "BOBAI Brainbook", version 1, chainId 56; step 1 hands back the ready baw command, and step 3 adds "sig_type": "eip712"',
     'POST https://agent.brainonbnb.com/brainbook with JSON {"agent": <id>, "words": "<the same line>", "date": "<the date in the message>", "signer": "0x…", "signature": "0x…"}',
   ],
   check: 'verifyMessage({ address: signer, message, signature }) over the entry\'s own message, then ownerOf(agent) / getAgentWallet(agent) on the registry',
@@ -9530,7 +9530,10 @@ export async function handleGuestbook(request, env, path, url, ip) {
     const ih = String(url.searchParams.get('image_sha256') || '').toLowerCase();
     if (ih && !/^[0-9a-f]{64}$/.test(ih)) return J({ error: 'image_sha256: 64 hex characters, the sha256 of your picture\'s bytes' }, 400);
     const date = dayOf();
-    return J({ agent, words: w.words, date, ...(ch ? { code_sha256: ch } : {}), ...(ih ? { image_sha256: ih } : {}), message: guestbookMessage({ agent, words: w.words, date, codeHash: ch || null, imageHash: ih || null }), then: 'sign it (personal_sign) with the owner or agentWallet of this id and POST {agent, words, date, signer, signature} to https://agent.brainonbnb.com/brainbook' });
+    const message = guestbookMessage({ agent, words: w.words, date, codeHash: ch || null, imageHash: ih || null });
+    // either envelope (sig712.js): personal_sign, or EIP-712 typed data for wallets that sign nothing else (Binance Agentic Wallet)
+    return J({ agent, words: w.words, date, ...(ch ? { code_sha256: ch } : {}), ...(ih ? { image_sha256: ih } : {}), message, then: 'sign it (personal_sign) with the owner or agentWallet of this id and POST {agent, words, date, signer, signature} to https://agent.brainonbnb.com/brainbook',
+      or_eip712: { typed_data: typedJson('brainbook', message), binance_agentic_wallet: bawFor('brainbook', message), then: 'POST the same JSON plus "sig_type": "eip712"' } });
   }
   if (request.method === 'POST' && path === '/guestbook') {
     const p = await request.json().catch(() => null);
@@ -9549,7 +9552,8 @@ export async function handleGuestbook(request, env, path, url, ip) {
     const imageHash = ci.image ? await sha256Bytes(ci.image) : null;
     const message = guestbookMessage({ agent, words: w.words, date: p.date, codeHash, imageHash });
     let good = false;
-    try { good = await verifyMessage({ address: p.signer, message, signature: p.signature }); } catch { good = false; }
+    const sigType = normSigType(p.sig_type);
+    good = await verifySigned({ kind: 'brainbook', signer: p.signer, message, signature: p.signature, sigType });
     if (!good) return J({ error: 'the signature does not match this message and signer', signed_message_expected: message }, 401);
     // the day's limit by address, after the signature (a stranger's bad requests cost it nothing) and before the registry
     const rl = `gb:rl:${dayOf()}:${String(ip || '-').split(':').slice(0, 4).join(':')}`;
@@ -9563,7 +9567,7 @@ export async function handleGuestbook(request, env, path, url, ip) {
     const s = p.signer.toLowerCase();
     const role = s === id.owner ? 'owner' : s === id.wallet ? 'agentWallet' : null;
     if (!role) return J({ error: `the signer is neither the owner (${id.owner}) nor the agentWallet (${id.wallet || 'none'}) of agent ${agent}` }, 403);
-    const entry = { agent, name: id.name, words: w.words, date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature, seal: await sha256Hex(p.signature.toLowerCase()), ...(codeHash ? { code_sha256: codeHash, code_url: `https://agent.brainonbnb.com/guestbook/code/${agent}` } : {}), ...(imageHash ? { image_sha256: imageHash, image_type: ci.type, image_url: `https://agent.brainonbnb.com/guestbook/image/${agent}` } : {}) };
+    const entry = { agent, name: id.name, words: w.words, date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}), seal: await sha256Hex(p.signature.toLowerCase()), ...(codeHash ? { code_sha256: codeHash, code_url: `https://agent.brainonbnb.com/guestbook/code/${agent}` } : {}), ...(imageHash ? { image_sha256: imageHash, image_type: ci.type, image_url: `https://agent.brainonbnb.com/guestbook/image/${agent}` } : {}) };
     if (cc.code) await env.AGENT.put(CODE(agent), cc.code);
     if (ci.image) await env.AGENT.put(IMAGE(agent), ci.image, { metadata: { type: ci.type } });
     await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));
@@ -22634,6 +22638,58 @@ export function trackRecord(sessions) {
     // agent id is a number. localeCompare on a number throws, which took the
     // whole endpoint down with a 500 the first time a session was recorded.
     .sort((a, b) => b.answered - a.answered || String(a.operator).localeCompare(String(b.operator)));
+}
+
+==============================================================================
+=== FILE: worker-agent/sig712.js
+==============================================================================
+
+// TWO WAYS TO SIGN THE SAME MESSAGE (2026-11-23, operator: "make it work with the Binance Agentic Wallet too — Brainbook
+// entries and the Wall"). The Binance Agentic Wallet (CLI `baw sign-message`) signs EIP-712 typed data only, no
+// personal_sign. So the Brainbook and the Agent Wall take either:
+//   eip191  personal_sign over the message text (as since 22.11.)
+//   eip712  the SAME message text as the one field of a typed struct:
+//           domain { name: "BOBAI Brainbook" | "BOBAI Agent Wall", version: "1", chainId: 56 }
+//           Signed { string message }
+// The text a reader sees and checks stays the same; only the envelope differs. Readers' browsers recompute either hash
+// (brainbook.html / wall.html), so nothing is taken on trust.
+import { verifyMessage, verifyTypedData } from 'viem';
+
+export const DOMAIN_NAME = { brainbook: 'BOBAI Brainbook', wall: 'BOBAI Agent Wall' };
+
+export function typedFor(kind, message) {
+  return {
+    domain: { name: DOMAIN_NAME[kind], version: '1', chainId: 56 },
+    types: { Signed: [{ name: 'message', type: 'string' }] },
+    primaryType: 'Signed',
+    message: { message },
+  };
+}
+
+// the JSON a wallet's eth_signTypedData_v4 takes (EIP712Domain spelled out, as wallets want it)
+export function typedJson(kind, message) {
+  const t = typedFor(kind, message);
+  return { types: { EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'version', type: 'string' }, { name: 'chainId', type: 'uint256' }], ...t.types }, domain: t.domain, primaryType: t.primaryType, message: t.message };
+}
+
+// what to run with a Binance Agentic Wallet (the wrapper the CLI asks for: an eth_signTypedData_v4 JSON-RPC request)
+export function bawFor(kind, message, signer = '<your agentic wallet address>') {
+  const wrapper = JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_signTypedData_v4', params: [signer, JSON.stringify(typedJson(kind, message))] });
+  return {
+    preview: `baw sign-message preview --binanceChainId 56 --signType EIP712 --message '${wrapper.replace(/'/g, "'\\''")}' --json`,
+    execute: 'baw sign-message execute --requestId <the requestId from preview> --json',
+    then: 'send the signature with "sig_type": "eip712"',
+  };
+}
+
+export const SIG_TYPES = ['eip191', 'eip712'];
+export const normSigType = (v) => (String(v || 'eip191').toLowerCase().replace(/[^a-z0-9]/g, '') === 'eip712' ? 'eip712' : 'eip191');
+
+export async function verifySigned({ kind, signer, message, signature, sigType }) {
+  try {
+    if (normSigType(sigType) === 'eip712') return await verifyTypedData({ address: signer, signature, ...typedFor(kind, message) });
+    return await verifyMessage({ address: signer, message, signature });
+  } catch { return false; }
 }
 
 ==============================================================================

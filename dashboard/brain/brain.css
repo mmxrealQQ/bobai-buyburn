@@ -700,6 +700,20 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
    - chart strip and brain.log are frosted glass: the tiles' colours come through, their words blur, so no text stands
      on text. Typing or hovering the log still brings its dark glass back. */
 #bt .bw-on:not(.br-on):not(.xm-on) .bp-wall.built{opacity:1}
+/* THE TERMINAL THROUGH THE ADS (operator, 23.11. later: "the ads more transparent so the standard terminal shows: the
+   brain and the bots circling"): the board goes UNDER the 3D scene, and the scene is laid over it as light (screen): its
+   near-black ground vanishes, the brain, the bots, their orbits and flows glow on top of the ads, the ads stay readable */
+#bt .bw-on:not(.br-on):not(.xm-on){isolation:isolate}
+#bt .bw-on:not(.br-on):not(.xm-on) .bp-wall{z-index:0}
+#bt .bw-on:not(.br-on):not(.xm-on) #bt-gl{position:absolute;z-index:1;mix-blend-mode:screen}
+#bt .bw-on.portrait:not(.br-on):not(.xm-on) .bp-wall.built{opacity:.88}
+/* brain.log small (desktop): the fold button in its head; folded = head + input line */
+#bt .term .hd .lg-min{margin-left:auto;width:22px;height:18px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:var(--dim,#8a8299);font:700 12px/1 var(--mono,monospace);cursor:pointer;pointer-events:auto}
+#bt .term .hd .lg-min:hover,#bt .term .hd .lg-min:focus-visible{color:var(--gold,#f0b90b);border-color:rgba(240,185,11,.5);outline:none}
+#bt .term.lg-min-on .bd{display:none}
+#bt .term.lg-min-on .hd{border-bottom-color:transparent}
+#bt .portrait .term .hd .lg-min{display:none}
+#bt .portrait .term.lg-min-on .bd{display:flex}
 #bt .bw-on:not(.br-on):not(.xm-on) .vign,#bt .bw-on:not(.br-on):not(.xm-on) .mood{opacity:0;transition:opacity .6s}
 #bt .bw-on:not(.br-on):not(.xm-on) .mdc,#bt .bw-on:not(.br-on):not(.xm-on) #bt-br,#bt .bw-on:not(.br-on):not(.xm-on) .hud .clk,
 #bt .bw-on:not(.br-on):not(.xm-on) .ttl small,#bt .bw-on:not(.br-on):not(.xm-on) .wk i,#bt .bw-on:not(.br-on):not(.xm-on) .src .s{visibility:hidden}

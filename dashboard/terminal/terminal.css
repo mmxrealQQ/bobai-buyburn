@@ -711,13 +711,14 @@
 #bt .scn-b small{font:600 9.5px var(--mono);color:var(--muted);white-space:nowrap}
 #bt .in-moment .scnl{display:none}
 /* phone: a square button under the share button, the list across the scene */
-#bt .portrait .scn{position:absolute;right:12px;top:58px;height:32px;padding:0 9px;margin:0;font-size:.52rem;letter-spacing:.1em}
+/* MOMENTS on a phone (operator, 23.11.: "MOMENTS beside, between BOBAI BRAIN TERMINAL and the arrow"): in the title row, before the arrow */
+#bt .portrait .scn{position:static;flex:none;margin:0 0 0 auto;height:32px;padding:0 9px;font-size:.52rem;letter-spacing:.1em}
 #bt .portrait .scnl{left:8px;right:8px;top:100px;width:auto;max-height:calc(100% - 100px - 190px)}
 #bt .portrait .scn-h span{display:none}
 #bt .portrait.cx-on .scn{visibility:hidden}
 #bt .scn,#bt .shr{white-space:nowrap}
 #bt .scn-h b{white-space:nowrap}
-#bt .portrait .hud .scn + .shr{margin-left:auto}
+#bt .portrait .hud .scn + .shr{margin-left:0}
 /* THE LABELS NAME, THE PAGE COUNTS (operator, 2026-09-27: "take the white numbers out — the page shows them cleanly,
    and the terminal gets more room and a nicer view"): each destination keeps its name and its share of the tax;
    its figures are one tap away on its board and in the windows around the terminal. */

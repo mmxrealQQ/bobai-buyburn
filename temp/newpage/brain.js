@@ -155,7 +155,8 @@
   const mirror = () => { for (const v of $$('[data-mirror]')) { const s = document.getElementById(v.dataset.mirror); const t = s && s.textContent.trim(); if (t && t !== '--' && v.textContent !== t) v.textContent = t; } };
   mirror(); setInterval(mirror, 2000);
   // the windows' images load quietly once the terminal has started, so a window opens complete
-  setTimeout(() => $$('.bw-win img[loading="lazy"]').forEach((i) => { i.loading = 'eager'; }), 6000);
+  // (A-Z 23.11.: not what sits in a closed <details> such as the archive, and nothing when the visitor asked to save data)
+  setTimeout(() => { if (navigator.connection && navigator.connection.saveData) return; $$('.bw-win img[loading="lazy"]').forEach((i) => { if (!i.closest('details:not([open])')) i.loading = 'eager'; }); }, 6000);
   // a reload on a layer step (or a return from another site) finds nothing open: step off it quietly
   if (layer()) history.replaceState(null, '');
   // A LINK WITH AN ANCHOR opens its window (2026-09-27): brainonbnb.com/#tokenomics, #faq, #giggle … are linked from
@@ -197,6 +198,18 @@
     // Esc: a window or the share dialog open over it close first (they take the key themselves)
     addEventListener('keydown', (e) => { if (e.key === 'Escape' && isBig() && !open && !$('#bt-shm.on')) set(false); });
   }
+})();
+
+// BRAIN.LOG SMALL (2026-11-23, operator: "on the desktop let brain.log be made smaller"): a button in its head folds the
+// log to its head and the input line (typing still works), a second click opens it; remembered. On a phone the log is a
+// tab of its own and stays whole.
+(() => {
+  const term = document.querySelector('#bt .term'), hd = term && term.querySelector('.hd'); if (!hd) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'lg-min'; hd.appendChild(b);
+  let min = false; try { min = localStorage.getItem('bt-logmin') === '1'; } catch {}
+  const set = (v) => { min = v; term.classList.toggle('lg-min-on', v); b.textContent = v ? '+' : '–'; b.title = v ? 'Show brain.log' : 'Make brain.log small';
+    b.setAttribute('aria-label', b.title); b.setAttribute('aria-expanded', String(!v)); try { localStorage.setItem('bt-logmin', v ? '1' : '0'); } catch {} };
+  set(min); b.addEventListener('click', (e) => { e.stopPropagation(); set(!min); });
 })();
 
 // THE AGENT WALL BEHIND THE TERMINAL (2026-11-22, operator: "the background of the terminal, like the Million Dollar

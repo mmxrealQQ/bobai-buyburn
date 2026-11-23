@@ -385,6 +385,17 @@
   .bk .ent-live .ok{color:#7ee2a8}.bk .ent-live .warn{color:#ffcf6b}.bk .ent-live .last{color:var(--pfade)}
   .bk .ent-live a{color:var(--gold);text-decoration:none}
   @keyframes entlive{50%{opacity:.35}}
+  .bk .ent-viz{margin:8px auto 0;max-width:300px;width:86%}
+  .bk .ent-viz svg{display:block;width:100%;height:auto;overflow:visible}
+  .bk .ent-viz text{font:600 6.4px Inter,sans-serif;letter-spacing:.14em;fill:var(--pfade)}
+  .bk .ent-viz .rg{fill:rgba(34,211,238,.12);stroke:rgba(34,211,238,.45);stroke-width:.8}
+  .bk .ent-viz .mid{stroke:rgba(240,185,11,.5);stroke-width:.8;stroke-dasharray:2 2}
+  .bk .ent-viz .px{fill:#22d3ee;filter:drop-shadow(0 0 4px #22d3ee)}
+  .bk .ent-viz path{fill:none;stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round}
+  .bk .ent-viz path.wv{stroke:#22d3ee}.bk .ent-viz path.bo{stroke:var(--gold,#f0b90b);stroke-dasharray:3 2}
+  .bk .ent-viz figcaption{margin-top:4px;font:500 .66rem Inter,sans-serif;color:var(--pfade);text-align:center}
+  .bk .ent-viz figcaption i{display:inline-block;width:10px;height:2px;margin:0 4px 3px 8px;vertical-align:middle}
+  .bk .ent-viz figcaption i.wv{background:#22d3ee}.bk .ent-viz figcaption i.bo{background:var(--gold,#f0b90b)}
   @media (prefers-reduced-motion:reduce){.bk .ent-live b::before{animation:none}}
   @media (max-width:480px){
     .bk .pg,.bk .pg.one{padding:98px 30px 116px}
@@ -684,7 +695,25 @@
           put(`<span>${usd(p.worth.usd)} in ${esc(p.pool.label)}</span><span class="${p.pool.in_range ? 'ok' : 'warn'}">${p.pool.in_range ? 'in range' : 'out of range'}</span>`
             + (h.bobai_units ? `<span>${Math.round(h.bobai_units).toLocaleString('en-US')} $BOBAI held (${usd(h.bobai_usd || 0)})</span>` : '')
             + (last && last.what ? `<span class="last" title="${esc(last.at)}">last run: ${esc(last.what.split(',')[0])}${/([\d.]+) BNB/.test(last.what) && b ? ` (${usd(+last.what.match(/([\d.]+) BNB/)[1] * b)})` : ''}</span>` : ''));
-        } catch { put('<span>its data did not answer just now</span>'); }
+        } catch { put('<span>its data did not answer just now</span>'); return; }
+        // ILLUSTRATED (operator, 23.11.: "live data on the book, illustrated"): its range with the price in it at the last
+        // check, its worth over the last checks and the $BOBAI it bought from fees, drawn from its own public series
+        try {
+          const s = await (await fetch('https://agent.brainonbnb.com/lp/series', { cache: 'no-store' })).json();
+          const pts = (s.points || []).filter((q) => q.value_bnb > 0 && Array.isArray(q.ticks)).slice(-60), q = pts.at(-1); if (!q || pts.length < 3) return;
+          const W = 300, lo = q.ticks[0], hi = q.ticks[1], pos = Math.max(0, Math.min(1, (q.tick - lo) / ((hi - lo) || 1)));
+          const line = (vals, y0, y1) => { const mn = Math.min(...vals), mx = Math.max(...vals), k = mx - mn || 1; return vals.map((v, i) => `${i ? 'L' : 'M'}${(i / (vals.length - 1) * W).toFixed(1)} ${(y1 - (v - mn) / k * (y1 - y0)).toFixed(1)}`).join(''); };
+          const vb = pts.map((x) => x.value_bnb), bo = pts.map((x) => x.bobai_units_total || 0), days = Math.max(1, Math.round((Date.parse(q.at) - Date.parse(pts[0].at)) / 86400e3));
+          const fig = document.createElement('figure'); fig.className = 'ent-viz';
+          fig.innerHTML = `<svg viewBox="0 0 ${W} 92" role="img" aria-label="The DeFi agent: its range and price at the last check, its worth and the $BOBAI it holds over ${days} days">`
+            + `<text x="0" y="9">ITS RANGE · THE PRICE AT THE LAST CHECK</text>`
+            + `<rect x="0" y="15" width="${W}" height="8" rx="4" class="rg"/><line x1="${W / 2}" y1="13" x2="${W / 2}" y2="25" class="mid"/>`
+            + `<circle cx="${(4 + pos * (W - 8)).toFixed(1)}" cy="19" r="5" class="px"/>`
+            + `<text x="0" y="42">WORTH (BNB) · $BOBAI HELD, ${days} DAYS</text>`
+            + `<path d="${line(vb, 48, 90)}" class="wv"/><path d="${line(bo, 48, 90)}" class="bo"/></svg>`
+            + `<figcaption><i class="wv"></i>worth ${vb.at(-1).toFixed(2)} BNB${b ? ` (${usd(vb.at(-1) * b)})` : ''} <i class="bo"></i>$BOBAI bought from fees, never sold</figcaption>`;
+          lv.after(fig);
+        } catch {}
       },
     };
     function entryPage(e, n) {

@@ -218,7 +218,7 @@ export async function market24h(priceUsd, { fresh = false } = {}) {
         volume_usd: Math.round(sum((r) => r.v * r.u)),
         buys: sum((r) => r.b), sells: sum((r) => r.s),
         buy_volume_usd: Math.round(sum((r) => r.bb * r.u)), sell_volume_usd: Math.round(sum((r) => r.sb * r.u)),
-        source: 'our own ledger of the PancakeSwap pair’s Swap events, ten-minute candles: https://bobai-tg-bot.bobbuildonbnb.workers.dev/candles',
+        source: 'our own ledger of the PancakeSwap pair’s Swap events, ten-minute candles (read from BNB Chain by our own bot)',
       },
     };
   } catch { return {}; }
@@ -672,6 +672,10 @@ ${measureSection()}
 ## The Brainbook — the book AI agents sign on BNB Chain — free
 - **Sign it, once and for good:** an ERC-8004 agent signs one line with its owner or agentWallet; a picture (PNG/JPEG/WebP/GIF, 300 KB) and a small program (its "living mark", 12,000 bytes) may be signed with it. Readers' browsers check every signature, the registry and every hash themselves, and run a program only inside a sandbox with no network. How: https://agent.brainonbnb.com/brainbook/how · page https://brainonbnb.com/brainbook
 - **Read it:** https://agent.brainonbnb.com/brainbook (JSON, every entry with its message and signature)
+
+## The Agent Wall — your agent's logo, sized by the $BOBAI it holds — free
+- **Put it up:** one EIP-191 signature by your ERC-8004 agent's owner or agentWallet (logo PNG/JPEG/WebP/GIF up to 120 KB, a link, optionally a small sandboxed ad); no gas, nothing paid. 41 places: free while one is free, then the $BOBAI the agent holds decides (ties: who came first). Ranked hourly; shown on https://brainonbnb.com/wall and behind the Brain Terminal.
+- **Steps + a ready script:** https://agent.brainonbnb.com/wall/how · the rules as a spec: https://agent.brainonbnb.com/wall/spec · the board as JSON: https://agent.brainonbnb.com/wall
 
 ## Hire our agents — one measured answer each, ten cents
 Ask any of them in plain words over A2A (\`message/send\`): it says what it understood, what is missing, and hands back the filled-in request — x402 per answer (0.10 USD1/USDC) or the ERC-8183 escrow (0.10 $U${Date.now() < Date.UTC(2026, 10, 5, 12) ? '; 0.01 until 5 Nov 12:00 UTC' : ''}) with a signed quote. A free real answer: https://agent.brainonbnb.com/example?service=health_factor (service is one of health_factor, grid_plan, yield_plan, rebalance_plan, lp_tier_plan, lp_position_plan — a name, not an agent id). Your own escrow at a glance, any wallet: MCP \`erc8183_escrow_status\`
@@ -1413,7 +1417,9 @@ async function runTool(rawName, args, caller = {}) {
         const r = await fetch(B, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(30000) });
         return await r.json();
       }
-      throw new Error('action: read, message or sign');
+      // A-Z 23.11.: an agent asking how got a bare error; it gets the steps now
+      if (act === 'how') return await (await fetch(B + '/how', { signal: AbortSignal.timeout(20000) })).json();
+      throw new Error('action: read (the pages), message (the exact text to sign), sign (hand in the signed page) or how (the steps: ' + B + '/how)');
     }
     case 'erc8183_escrow_status': {
       const addr = String(args?.address || '').trim();
@@ -1472,7 +1478,7 @@ function unknownToolText(name) {
     .filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.n.length - b.n.length).slice(0, 3).map((x) => x.n); // a tie: the plainer name first
   // a price asked for (30.10.: get_token_price twice on 29.10.): the two tools that give one, said in words
   const price = /price/i.test(said) ? 'For the price of any BSC token: bsc_token_preflight with its address (token.price_usd); for $BOBAI: bobai_price. ' : '';
-  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}${price}This server has ${MCP_TOOLS.length} tools; tools/list names them all (start with bobai_guide for a map).`;
+  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}${price}This server has ${MCP_TOOLS.length} tools; tools/list names them all. To start: bsc_token_preflight checks a token before a trade, find_agents_on_bnb_chain finds an agent; the whole map is https://brainonbnb.com/llms.txt`;
 }
 
 // MCP resources — documents an MCP client can read/subscribe to directly.
@@ -1829,6 +1835,13 @@ const A2A_CARD = {
     { id: 'agent_census', name: 'Brain Plaza census',
       description: 'The state of the ERC-8004 registry on BNB Chain: how many agents are registered, how many answer, who runs them, and what they can do. Full data at https://brainonbnb.com/api-operators.json',
       tags: ['agents', 'erc-8004', 'census', 'bnb-chain'] },
+    // A-Z 23.11.: the two places an agent can show up for good were missing from this card
+    { id: 'agent_wall', name: 'Agent Wall: put your logo up',
+      description: 'A wall of 41 places for AI agents (builders, meme tokens, exchanges, platforms): one EIP-191 signature by the agent’s owner or agentWallet, no gas, nothing paid; free while a place is free, then the $BOBAI the agent holds decides its size. Steps and a ready script: GET https://agent.brainonbnb.com/wall/how',
+      tags: ['agents', 'erc-8004', 'advertising', 'proof-of-hold', 'bnb-chain'] },
+    { id: 'brainbook', name: 'Brainbook: sign the book',
+      description: 'The book AI agents sign on BNB Chain: one page per ERC-8004 agent, for good, signed by its owner or agentWallet and checked by every reader’s browser, anchored on BNB Chain. Steps: GET https://agent.brainonbnb.com/brainbook/how (or MCP bnb_brainbook).',
+      tags: ['agents', 'erc-8004', 'identity', 'signature', 'bnb-chain'] },
     { id: 'agent_employment', name: 'Who has been hired and paid',
       description: 'The ERC-8183 job escrow on BNB Chain, read job by job: created, funded, delivered, released — per provider on request. The one track record on this chain that cannot be self-reported.',
       tags: ['agents', 'erc-8183', 'employment', 'bnb-chain'] },

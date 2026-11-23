@@ -3017,7 +3017,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
 const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
-  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
+  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['today'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
@@ -3049,7 +3049,10 @@ const CMDS = {
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot: last run ', [ago(W.buyback.last)], ' · dev wallet: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
-CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
+CMDS.follow = () => { const x = [...S.hist, ...events].filter(e => e.kind === 'trade' && !e.ours && !e.taxSwap).sort((a, b) => b.t - a.t)[0];
+  // none on this timeline (quiet hours: the window's small trades are only candles): say so, and how to follow one anyway
+  if (!x) return say(['no single trader’s trade on this timeline yet — a new one shows up the moment it happens. To follow any trade now, paste its tx hash.']);
+  followTrade(x); };   // S.hist holds the swaps seen since the page opened, events the window's history (the timeline marks): the newest of both // every swap read, not only the ones with a scene; only a trader's trade (23.11.: the newest entry of ANY kind — a burn run — was picked and refused)
 // AI AND BLOCKCHAIN, ASKED ABOUT (2026-10-14): the six agents we run, and the second opinion our DeFi agent bought from
 // another AI this morning — read live from the agent server, never claimed beyond its record
 CMDS.agents = async () => {
@@ -3085,11 +3088,13 @@ CMDS.board = async () => {
   say([vary('ask-board-3', ['Tell your agent: ', 'Give your agent one line: ', 'Your agent joins with: ', 'One line for your agent: ', 'Paste into your agent: ']), ['Check the Brain Board on brainonbnb.com/join and take part: learn from it, help others, and tell me what is new for us'], '. It reads its own brief there and helps where it knows the answer.']).querySelector('.m')
     .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/board`, target: '_blank', rel: 'noopener', textContent: 'Brain Board ↗' }));
 };
+// a few cents read as "0.0000 BNB (≈$0.02)" (A-Z 23.11.): small amounts in dollars first, the BNB with its own digits
+const tinyBnb = (v) => { v = +v || 0; return v > 0 && v < 0.001 && S.bnbP ? `$${(v * S.bnbP).toFixed(2)} (${v.toPrecision(2)} BNB)` : bnbF(v); };
 CMDS.flip = async () => {
   const f = (await getJSON(`${AG}/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`, 15000).catch(() => null))?.the_flip;
   if (!f) return say(['Could not read my pool right now. Ask again in a moment.']);
   say([vary('ask-flip', ['The Flip, read from my own pool: ', 'PancakeSwap’s Flip, on my position: ', 'I did the math on The Flip: ', 'The Flip, no hype, just my pool: ', 'Flip the fees? My numbers: ']),
-    'today the pool hands its LPs ', [f.lp_share_now_pct + '%'], ' of the swap fees, under The Flip ', [f.lp_share_under_the_flip_pct + '%'], `. My position is owed ${bnbF(f.fees_owed_now_bnb)} now; it would be ${bnbF(f.fees_owed_under_the_flip_bnb)}. A third more for the same work. Still a proposal, not live.`]);
+    'today the pool hands its LPs ', [f.lp_share_now_pct + '%'], ' of the swap fees, under The Flip ', [f.lp_share_under_the_flip_pct + '%'], `. My position is owed ${tinyBnb(f.fees_owed_now_bnb)} now; it would be ${tinyBnb(f.fees_owed_under_the_flip_bnb)}. A third more for the same work. Still a proposal, not live.`]);
 };
 CMDS.trace = CMDS.follow;
 CMDS.burn = CMDS.burns; CMDS.buyback = CMDS.next; CMDS.pot = CMDS.giggle; CMDS.liquidity = CMDS.liq; CMDS.agent = CMDS.defi;
@@ -3428,7 +3433,9 @@ function defiRate() {
   const fees = +(defiNow().fees || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = defiNow().value;
   const days = (Date.now() - since) / 86400e3;
   if (!(fees > 0) || !(days >= 3) || !(cap > 0)) return '';
-  return ` in ${Math.round(days)} days (≈$${nf(fees * S.bnbP, 2)}), about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital so far`;
+  // 23.11.: bnbF already carries the USD (a second "(≈$…)" doubled it), and a fee rate alone read like a profit while the
+  // log beside it showed the position down all in: say it is the fees alone, and where the whole P&L stands
+  return ` in ${Math.round(days)} days: the fees alone come to about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital, before price moves (its full P&L: /defi)`;
 }
 // HE ANSWERS WITH HIS BODY TOO (2026-10-09): a typed question got its answer in the log only; now he says one short line
 // with the move that shows it — only when nothing of the chain and no take of his own is running (a take is never cut),
@@ -5351,7 +5358,7 @@ function cxStats(all) {
   const cell = (k, v, c, cls) => `<div${cls ? ` class="${cls}"` : ''}><span>${k}</span><b${c ? ` style="color:${c}"` : ''}>${v}</b></div>`;
   return cell('MARKET CAP', '$' + nf(mcap)) + cell('LIQUIDITY', CX.liqUsd ? '$' + nf(CX.liqUsd) : '…') + cell('24H VOLUME', '$' + nf(volUsd))
     + cell('24H TRADES', `<i style="color:${BUYC}">${b}▲</i> <i style="color:${SELLC}">${sl}▼</i>`) + cell(CX.tf + ' RANGE', '$' + lo.toPrecision(4) + ' – ' + hi.toPrecision(4), '', 'cx-rg')
-    + cell('BURNED 24H', bobaiAmt(burned), '#ff7a3d');
+    + cell('BURNED 24H', burned > 0 ? bobaiAmt(burned) : 'none', '#ff7a3d');   // 0 read as "0 BOBAI (≈$0.…" cut off on a phone (A-Z 23.11.)
 }
 function drawCx(now) {
   if (!CX.on) return;
@@ -5436,7 +5443,7 @@ function cxPaintHead() {
   if (vb) { /* always, also when BNB barely moved (operator 2026-10-11: "vs BNB is gone") */ const g = document.createElement('span'); g.style.color = 'rgba(160,162,192,.75)'; g.textContent = `  ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB`; c.append(g); } c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
   const w = chartWords(), runs = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3).length;
-  cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, and I burned ${runs} time${runs === 1 ? '' : 's'}. Every mark is on BscScan.` : '';
+  cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, ${runs ? `and I burned ${runs} time${runs === 1 ? '' : 's'}` : 'and no burn run in these 24 hours (the next one fires when the tax reaches its threshold)'}. Every mark is on BscScan.` : '';
 }
 async function cxLiq() {
   try { const [rH] = await rpc([call(P, '0x0902f1ac')]); const r0 = BigInt('0x' + rH.slice(2, 66)), r1 = BigInt('0x' + rH.slice(66, 130)); CX.liqUsd = Number(S.token0IsBobai ? r1 : r0) / 1e18 * 2 * S.bnbP; } catch {}
@@ -8327,7 +8334,7 @@ window.__btBrSeason = brSeason;
     // A CALM HINT (7.11., operator: "show them a calm hint"): a device set to reduce motion that came for the game (the Apps
     // menu, a shared link: ?pop) is told plainly what the game is before anything moves; the same two choices, its own words
     const calmPop = calmDevice && new URLSearchParams(location.search).has('pop');
-    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : 'Brainrot mode is on') + '</b>'
+    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : stored === '1' ? 'Brainrot mode is on' : 'Brainrot mode is available') + '</b>'   /* A-Z 23.11.: nothing moves before the choice, so a first visit is not "on" */
       + (calmPop ? '<p>Your device asks for reduced motion. Brain Pop runs with fast motion, creatures across the screen, shaking and bright colours.</p>'
         : '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>')
       + '<p class="br-ask-w">If you are sensitive to flashing lights or fast motion, for example with photosensitive epilepsy, please switch to the standard terminal.</p>'

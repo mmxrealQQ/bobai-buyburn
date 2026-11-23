@@ -14,3 +14,5 @@
 .ar-sw{display:inline-flex;align-items:center;gap:0;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;font:600 12px/1 'Inter',system-ui,sans-serif;vertical-align:middle}
 .ar-sw a{padding:6px 9px;color:#a0a2c0;text-decoration:none}
 .ar-sw a.on{background:rgba(240,185,11,.16);color:#f3efe6}
+/* BOBAI's line on /ar/ (A-Z 23.11.): typed into the bubble letter by letter, after the translator ran, so it never got .ar-p — in an ltr box the full stop stood alone at the far left; the bubble takes its direction from its first letter */
+#bt .say{unicode-bidi:plaintext}

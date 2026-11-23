@@ -817,7 +817,10 @@
 #bt .portrait .say.top{z-index:6}
 /* the chip lives inside the title row, which hides while he speaks: the row goes invisible, the chip alone stays at half */
 #bt .portrait.talking .ttl{opacity:1;visibility:hidden}
-#bt .portrait.talking .ttl .mdc{visibility:visible} /* above the HUD (z 5): the dimmed chip and MOMENTS lie under his line, never over it */
+/* 23.11. (operator: "nothing is set in stone"): the half-seen chip peeked out from under the edge of his line on a tablet — on a stacked screen it steps out while he speaks, the title row is his */
+#bt .portrait.talking .ttl .mdc{visibility:hidden}
+/* the ROT and WALL switches under the LIVE pill went on showing through a long line's edge: they step out with LIVE while he speaks */
+#bt .portrait.talking .hw-sw,#bt .portrait.talking .bt-wall{opacity:0;pointer-events:none;transition:opacity .25s ease}
 #bt .portrait .scn{transition:opacity .4s ease .3s} /* a scene of the chain has the stage: its title runs where the chip sits (2026-09-30) */
 @media (prefers-reduced-motion:reduce){#bt .mdc .mi,#bt .mdc.turn{animation:none!important}}
 /* loud hours glow and bounce quicker, quiet ones slow down and dim a little */

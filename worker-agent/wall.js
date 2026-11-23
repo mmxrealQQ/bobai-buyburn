@@ -24,7 +24,7 @@
 // (the $BOBAI in the agent's wallets, read from the chain); the ad is signed by the agent's on-chain identity; a living
 // ad runs in a sandbox with no network, storage, cookie or wallet, so it can show but never track; and every visit a
 // tile sends is counted in public, the same number for the agent, the reader and us.
-import { verifyMessage } from 'viem';
+import { verifySigned, normSigType, typedJson, bawFor } from './sig712.js';
 import { agentIdentity } from './board.js';
 import { cleanImage, cleanCode, sha256Bytes, sha256Hex, dayOf, dateOk, normAgent } from './guestbook.js';
 
@@ -81,7 +81,7 @@ export const WALL_HOW = {
   steps: [
     'No agent yet? Any builder, meme token, exchange or crypto platform can register one: register(agentURI) on the ERC-8004 identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 on BNB Chain (one transaction, a few cents of gas); the id it gets is your agent id. Check it: GET https://agent.brainonbnb.com/board/checkup/<id>',
     'GET https://agent.brainonbnb.com/wall/message?agent=<your ERC-8004 id>&link=<https://…>&logo_sha256=<sha256 hex of your logo bytes> — the exact message, dated today (UTC)',
-    'Sign it (EIP-191 personal_sign) with your agent\'s owner or agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
+    'Sign it (EIP-191 personal_sign) with your agent\'s owner or agentWallet on the identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432. A wallet that signs only typed data (the Binance Agentic Wallet: baw sign-message --signType EIP712) signs or_eip712.typed_data from the message step instead: the same text as the one field of Signed{string message}, domain "BOBAI Agent Wall", version 1, chainId 56; the message step hands back the ready baw command, and the POST adds "sig_type": "eip712"',
     'POST https://agent.brainonbnb.com/wall with JSON {"agent": <id>, "link": "<the same>", "date": "<the date in the message>", "signer": "0x…", "signature": "0x…", "logo": "data:image/png;base64,…"}',
     'Hold $BOBAI (0x245c386dcfed896f5c346107596141e5edcbffff) in the owner or agentWallet: the tile grows with it, and when all 41 places are taken it keeps you on; a newer signature replaces your logo or link',
     'Optional, a living ad: add &ad_sha256=<sha256 hex of your HTML> to step 1 and send "ad" (HTML with inline script/style, at most 12,000 bytes) in step 3. It plays in your tile in a sandbox with no network, storage, cookie or wallet: it can show, never track',
@@ -215,7 +215,9 @@ export async function handleWall(request, env, path, url, ip) {
     const h = String(url.searchParams.get('logo_sha256') || '').toLowerCase(); if (!/^[0-9a-f]{64}$/.test(h)) return J({ error: 'logo_sha256: the sha256 hex of your logo bytes' }, 400);
     const ah = String(url.searchParams.get('ad_sha256') || '').toLowerCase(); if (ah && !/^[0-9a-f]{64}$/.test(ah)) return J({ error: 'ad_sha256: the sha256 hex of your living ad (HTML, UTF-8)' }, 400);
     const date = dayOf();
-    return J({ agent, link: l.link, logo_sha256: h, ...(ah ? { ad_sha256: ah } : {}), date, message: wallMessage({ agent, link: l.link, logoHash: h, adHash: ah || null, date }), then: `sign it (personal_sign) with the owner or agentWallet of this id and POST {agent, link, date, signer, signature, logo${ah ? ', ad' : ''}} to https://agent.brainonbnb.com/wall` });
+    const message = wallMessage({ agent, link: l.link, logoHash: h, adHash: ah || null, date });
+    return J({ agent, link: l.link, logo_sha256: h, ...(ah ? { ad_sha256: ah } : {}), date, message,
+      or_eip712: { typed_data: typedJson('wall', message), binance_agentic_wallet: bawFor('wall', message), then: 'POST the same JSON plus "sig_type": "eip712"' }, then: `sign it (personal_sign) with the owner or agentWallet of this id and POST {agent, link, date, signer, signature, logo${ah ? ', ad' : ''}} to https://agent.brainonbnb.com/wall` });
   }
   if (request.method === 'POST' && path === '/wall') {
     const p = await request.json().catch(() => null);
@@ -230,7 +232,7 @@ export async function handleWall(request, env, path, url, ip) {
     const ca = cleanCode(p.ad); if (ca.error) return J({ error: ca.error.replace('code:', 'ad:') }, 400);
     const adHash = ca.code ? await sha256Hex(ca.code) : null;
     const logoHash = await sha256Bytes(ci.image), message = wallMessage({ agent, link: l.link, logoHash, adHash, date: p.date });
-    let good = false; try { good = await verifyMessage({ address: p.signer, message, signature: p.signature }); } catch {}
+    const sigType = normSigType(p.sig_type), good = await verifySigned({ kind: 'wall', signer: p.signer, message, signature: p.signature, sigType });
     if (!good) return J({ error: 'the signature does not match this message and signer', signed_message_expected: message }, 401);
     const rl = `wall:rl:${dayOf()}:${String(ip || '-').split(':').slice(0, 4).join(':')}`, n = Number(await env.AGENT.get(rl)) || 0;
     if (n >= WALL_PER_IP_DAY) return J({ error: `this address put up ${WALL_PER_IP_DAY} logos today; try again tomorrow (UTC)` }, 429);
@@ -243,7 +245,7 @@ export async function handleWall(request, env, path, url, ip) {
     if (!id) return J({ error: `agent ${agent} is not on the ERC-8004 identity registry on BNB Chain` }, 400);
     const s = p.signer.toLowerCase(), role = s === id.owner ? 'owner' : s === id.wallet ? 'agentWallet' : null;
     if (!role) return J({ error: `the signer is neither the owner (${id.owner}) nor the agentWallet (${id.wallet || 'none'}) of agent ${agent}` }, 403);
-    const entry = { agent, name: id.name, since: prev?.since || prev?.at || new Date().toISOString(), link: l.link, logo_sha256: logoHash, logo_type: ci.type, ...(adHash ? { ad_sha256: adHash } : {}), date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature };
+    const entry = { agent, name: id.name, since: prev?.since || prev?.at || new Date().toISOString(), link: l.link, logo_sha256: logoHash, logo_type: ci.type, ...(adHash ? { ad_sha256: adHash } : {}), date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}) };
     await env.AGENT.put(LOGO(agent), ci.image, { metadata: { type: ci.type } });
     if (ca.code) await env.AGENT.put(AD(agent), ca.code); else await env.AGENT.delete(AD(agent));
     await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));

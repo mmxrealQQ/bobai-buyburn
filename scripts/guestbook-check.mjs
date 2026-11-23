@@ -118,6 +118,20 @@ say(lim > 0, 'the day\'s limit per address answers 429');
   }
 }
 
+// EIP-712 (2026-11-23, operator: "make it work with the Binance Agentic Wallet"): that wallet signs typed data only
+{
+  const { typedFor } = await import('../worker-agent/sig712.js');
+  for (const k of [...kv.keys()]) if (k.startsWith('gb:')) kv.delete(k);   // a fresh book: one page per agent
+  const w7 = 'Signed as typed data, as a Binance Agentic Wallet does.';
+  const me = await call('GET', `/guestbook/message?agent=49467&words=${encodeURIComponent(w7)}`);
+  say(me.j.or_eip712?.typed_data?.domain?.name === 'BOBAI Brainbook' && me.j.or_eip712.typed_data.message.message === me.j.message && /baw sign-message preview --binanceChainId 56 --signType EIP712/.test(me.j.or_eip712.binance_agentic_wallet?.preview || ''), 'the message step offers the EIP-712 envelope and the ready baw command');
+  const t = await owner.signTypedData(typedFor('brainbook', me.j.message)), tw = await owner.signTypedData(typedFor('wall', me.j.message));
+  say((await call('POST', '/guestbook', { agent: 49467, words: w7, date: me.j.date, signer: owner.address, signature: t })).status === 401, 'an EIP-712 signature sent without sig_type: 401');
+  say((await call('POST', '/guestbook', { agent: 49467, words: w7, date: me.j.date, signer: owner.address, signature: tw, sig_type: 'eip712' })).status === 401, 'an EIP-712 signature for the Wall\'s domain: 401 in the book');
+  const ok7 = await call('POST', '/guestbook', { agent: 49467, words: w7, date: me.j.date, signer: owner.address, signature: t, sig_type: 'eip712' });
+  say(ok7.status === 201 && ok7.j.entry?.sig_type === 'eip712', 'signed as EIP-712 typed data by the owner: 201, kept as sig_type eip712', ok7);
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/guestbook').then((r) => r.json()).catch(() => null);
   say(g && Array.isArray(g.entries) && g.how?.steps?.length >= 3, `live GET /guestbook (${g?.count} entries)`);

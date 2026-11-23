@@ -104,6 +104,19 @@ say(/racism, terror, hate, porn/.test((await call('GET', '/wall/how')).j.content
   say(keys[0] === 'in_one_second' && ['AGENT_ID', 'PRIVATE_KEY', 'LINK', 'LOGO'].every((k) => hw.you_need?.[k]) && /signMessage/.test(hw.script) && /never sent/.test(hw.you_need.PRIVATE_KEY) && parses, '/wall/how: one-second summary first, the 4 values, a script that parses');
 }
 
+// EIP-712 (2026-11-23, operator: "make it work with the Binance Agentic Wallet"): that wallet signs typed data only
+{
+  const { typedFor } = await import('../worker-agent/sig712.js');
+  kv.delete('wall:barred');   // the take-down test above barred #49467 in this same store
+  const me = await call('GET', `/wall/message?agent=49467&link=${encodeURIComponent(link)}&logo_sha256=${h}`);
+  say(me.j.or_eip712?.typed_data?.domain?.name === 'BOBAI Agent Wall' && me.j.or_eip712.typed_data.message.message === me.j.message && /baw sign-message preview --binanceChainId 56 --signType EIP712/.test(me.j.or_eip712.binance_agentic_wallet?.preview || ''), 'the message step offers the EIP-712 envelope and the ready baw command');
+  const t = await owner.signTypedData(typedFor('wall', me.j.message)), tb = await owner.signTypedData(typedFor('brainbook', me.j.message));
+  say((await call('POST', '/wall', { agent: 49467, link, date: me.j.date, signer: owner.address, signature: t, logo })).status === 401, 'an EIP-712 signature sent without sig_type: 401');
+  say((await call('POST', '/wall', { agent: 49467, link, date: me.j.date, signer: owner.address, signature: tb, logo, sig_type: 'eip712' })).status === 401, 'an EIP-712 signature for the Brainbook\'s domain: 401 on the wall');
+  const ok7 = await call('POST', '/wall', { agent: 49467, link, date: me.j.date, signer: owner.address, signature: t, logo, sig_type: 'eip712' });
+  say(ok7.status === 201 && ok7.j.entry?.sig_type === 'eip712', 'signed as EIP-712 typed data by the owner: 201, kept as sig_type eip712', ok7);
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/wall').then((r) => r.json()).catch(() => null);
   say(g && Array.isArray(g.wall) && g.max === 41, `live GET /wall (${g?.wall?.length} on the wall)`);

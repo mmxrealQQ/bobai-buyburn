@@ -68,7 +68,7 @@
 .hx-trust a{color:var(--gold)}
 .hx-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#00c96b;box-shadow:0 0 8px rgba(0,230,118,.6);
   margin-right:6px;vertical-align:1px}
-@media (max-width:560px){.hx-trust>span{white-space:normal}}
+@media (max-width:560px){.hx-trust>span{white-space:normal}.hx-trust{flex-direction:column;align-items:center;gap:4px}} /* one line each on a phone: two side by side read as one sentence (A-Z 23.11.) */
 /* PROOF IN THE START (2026-11-03, /token first): a few live rows, each a fact and the transaction behind it. */
 .hx-proof{max-width:860px;margin:22px auto 0;border:1px solid var(--border);border-radius:16px;background:var(--card);
   text-align:left;overflow:hidden}

@@ -316,7 +316,7 @@ function page() {
   .sv-form-go .sv-holder{background:transparent;color:var(--gold,#f0b90b);box-shadow:inset 0 0 0 1px rgba(240,185,11,.5)}
   .sv-holder-out{margin-top:8px;font-size:.82rem;line-height:1.55;border-left:2px solid rgba(240,185,11,.5);padding:4px 0 4px 10px;overflow-wrap:anywhere}
   .sv-holder-out pre{white-space:pre-wrap;font-size:.72rem;max-height:260px;overflow:auto}.sv-holder-out .sv-no{color:#ff7a6e}
-  .sv-example{display:inline-block;margin:10px 0 0 14px;color:var(--gold,#f0b90b);font-size:.82rem}
+  .sv-example{display:inline-block;margin:10px 0 0;color:var(--gold,#f0b90b);font-size:.82rem}
   .sv-capsw>summary,.sv-how>summary{list-style:none;cursor:pointer;color:var(--gold,#f0b90b);font-size:.84rem;margin:2px 0 6px}.sv-capsw>summary::after,.sv-how>summary::after{content:' ▾'}.sv-capsw[open]>summary::after,.sv-how[open]>summary::after{content:' ▴'}
   .sv-how>summary b{color:var(--text)}
   .sv-dev{margin-top:6px}.sv-dev summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
@@ -347,6 +347,7 @@ function page() {
   .sv-ask{color:var(--gold);font-size:.84rem;line-height:1.5;margin:0 0 8px}
   .sv-what{color:var(--muted);font-size:.8rem;line-height:1.6;margin:0}
   .sv-cost{color:var(--muted);font-size:.75rem;line-height:1.5;margin:10px 0 0;opacity:.85}
+  .sv-cost a{white-space:nowrap} /* "Open" and its arrow stay together; the example link lines up with the card (A-Z 23.11.) */
   .sv-curl{margin:6px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;font-size:.72rem;line-height:1.5;max-width:100%}
   .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}

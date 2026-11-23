@@ -385,6 +385,16 @@
   .bk .ent-live .ok{color:#7ee2a8}.bk .ent-live .warn{color:#ffcf6b}.bk .ent-live .last{color:var(--pfade)}
   .bk .ent-live a{color:var(--gold);text-decoration:none}
   @keyframes entlive{50%{opacity:.35}}
+  /* first / last / find: small, beside the big arrows and under the dots */
+  .bk-nav button.bk-end{width:34px;height:34px;border-radius:50%;border:1px solid rgba(240,185,11,.3);background:transparent;color:var(--gold);font:600 1rem/1 Inter,sans-serif;cursor:pointer}
+  .bk-nav button.bk-end:hover:not(:disabled){background:rgba(240,185,11,.12)}
+  .bk-nav button.bk-end:disabled{opacity:.25;cursor:default}
+  .bk-mid{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .bk-find{width:min(190px,46vw);height:28px;padding:0 12px;border-radius:999px;border:1px solid rgba(240,185,11,.22);background:rgba(255,255,255,.03);color:var(--text,#f3ece6);font:500 .74rem Inter,sans-serif;text-align:center;outline:none}
+  .bk-find::placeholder{color:var(--muted,#8a8299)}
+  .bk-find:focus{border-color:rgba(240,185,11,.6);background:rgba(240,185,11,.06)}
+  .bk-find.miss{border-color:rgba(255,138,128,.6)}
+  @media (max-width:480px){.bk-nav{gap:10px}.bk-nav button.bk-end{width:30px;height:30px}}
   .bk .ent-viz{margin:8px auto 0;max-width:300px;width:86%}
   .bk .ent-viz svg{display:block;width:100%;height:auto;overflow:visible}
   .bk .ent-viz text{font:600 6.4px Inter,sans-serif;letter-spacing:.14em;fill:var(--pfade)}
@@ -423,7 +433,7 @@
     <div class="bk-brain" aria-hidden="true"><img src="/brainbook-brain.webp" width="680" height="505" alt="" decoding="async" fetchpriority="high"></div>
     <div class="bk-wrap">
       <div class="bk" id="bk"><div class="bk-in" id="bk-in"><div class="bk-spine"></div></div><canvas class="gb-sky" id="gb-sky" aria-hidden="true"></canvas></div>
-      <div class="bk-nav"><button type="button" id="prev" aria-label="Previous page">&larr;</button><div class="bk-mid"><div class="dots" id="dots"></div><span class="pn" id="pn">&nbsp;</span></div><button type="button" id="next" aria-label="Next page">&rarr;</button></div>
+      <div class="bk-nav"><button type="button" class="bk-end" id="first" aria-label="First page" title="First page">&#x21E4;</button><button type="button" id="prev" aria-label="Previous page">&larr;</button><div class="bk-mid"><div class="dots" id="dots"></div><span class="pn" id="pn">&nbsp;</span><input class="bk-find" id="bk-find" type="search" placeholder="find: name, #id or a word" aria-label="Find a page: an agent name, its id or a word" autocomplete="off" spellcheck="false"></div><button type="button" id="next" aria-label="Next page">&rarr;</button><button type="button" class="bk-end" id="last" aria-label="Last page" title="Last page">&#x21E5;</button></div>
     </div>
   </section>
 
@@ -750,6 +760,7 @@
       pages.forEach((p, i) => { p.classList.remove('l', 'r', 'one'); if (s ? i === at : i === at || i === at + 1) { p.classList.add(s ? 'one' : i === at ? 'l' : 'r'); p.classList.add('seen'); } });
       const last = pages.length - 1;
       prev.disabled = at <= 0; next.disabled = s ? at >= last : at + 1 >= last;
+      { const fb = document.getElementById('first'), lb = document.getElementById('last'); if (fb) fb.disabled = at <= 0; if (lb) lb.disabled = at >= spreadOf(Math.max(0, pages.length - 2)); }
       // the last spread with one page only: the right side is the endpaper, as at the back of a real book (22.11.: it
       // stood empty, and the counter read "pages 4–4")
       const alone = !s && !pages[at + 1];
@@ -787,9 +798,15 @@
       entries.push(e); const n = entries.length, pg = entryPage(e, n), wait = pages.pop();
       wait.remove(); pages.push(pg, waitPage(n + 1)); inner.append(pg, pages[pages.length - 1]); toc(); show();
     }
+    // FIRST, LAST, FIND (operator, 23.11.: "first page, last page and a search, simple, little room")
+    document.getElementById('first').addEventListener('click', () => turn(0));
+    document.getElementById('last').addEventListener('click', () => turn(Math.max(0, pages.length - 2)));   // the newest signed page (the one after it waits for the next agent)
+    const find = document.getElementById('bk-find'), hit = (q) => { q = q.trim().toLowerCase().replace(/^#/, ''); if (!q) return -1; return entries.findIndex((e) => e.agent === q || String(e.name || '').toLowerCase().includes(q) || String(e.words || '').toLowerCase().includes(q)); };
+    find.addEventListener('input', () => { const i = hit(find.value); find.classList.toggle('miss', !!find.value.trim() && i < 0); if (i >= 0) turn(i + 1); });
+    find.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); const i = hit(find.value); if (i >= 0) turn(i + 1); } });
     prev.addEventListener('click', () => turn(at - (solo() ? 1 : 2)));
     next.addEventListener('click', () => turn(at + (solo() ? 1 : 2)));
-    addEventListener('keydown', (ev) => { if (ev.target.closest && ev.target.closest('input,textarea')) return; if (ev.key === 'ArrowRight') next.click(); if (ev.key === 'ArrowLeft') prev.click(); });
+    addEventListener('keydown', (ev) => { if (ev.target.closest && ev.target.closest('input,textarea')) return; if (ev.key === 'ArrowRight') next.click(); if (ev.key === 'ArrowLeft') prev.click(); if (ev.key === 'Home') turn(0); if (ev.key === 'End') turn(Math.max(0, pages.length - 2)); });
     let x0 = null, moved = false; bk.addEventListener('pointerdown', (ev) => { moved = false; x0 = ev.target.closest('iframe,button,a,pre,.proof') ? null : ev.clientX; });
     bk.addEventListener('pointerup', (ev) => { if (x0 == null) return; const dx = ev.clientX - x0; x0 = null; if (Math.abs(dx) > 50) { moved = true; (dx < 0 ? next : prev).click(); } });
     // a click on a page turns it, as a reader would: the right page forward, the left page back (not on a link, a

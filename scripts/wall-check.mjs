@@ -63,7 +63,7 @@ say(g0.status === 302 && g0.headers.get('location') === 'https://brainonbnb.com/
 
 // THE MARKET and THE OPEN PROTOCOL (2026-11-22)
 const wm = await call('GET', '/wall');
-say(wm.j.market && wm.j.market.entry === 0 && /807 places free/.test(wm.j.market.entry_rule) && wm.j.wall[0].rank === 1 && wm.j.wall[0].to_move_up === 0, 'the market: entry price 0 while places are free, rank and move-up price per tile', wm.j.market);
+say(wm.j.market && wm.j.market.entry === 0 && /40 of 41 places free/.test(wm.j.market.entry_rule) && wm.j.wall[0].rank === 1 && wm.j.wall[0].to_move_up === 0, 'the market: entry price 0 while places are free, rank and move-up price per tile', wm.j.market);
 const sp = await call('GET', '/wall/spec');
 say(sp.status === 200 && /area\(a\)/.test(sp.j.formula) && ['ai', 'blockchain', 'crypto', 'sandbox'].every((k) => sp.j.gates[k]) && /outbid/.test(sp.j.market), 'GET /wall/spec: the formula, the four gates, the market');
 
@@ -75,9 +75,38 @@ say(rmo.status === 200 && !wr.j.wall.some((e) => e.agent === '49467') && !kv.has
 say((await call('POST', '/wall', { agent: 49467, link, date: m.j.date, signer: owner.address, signature: sig, logo })).status === 403, 'a barred agent cannot put it up again: 403');
 say(/racism, terror, hate, porn/.test((await call('GET', '/wall/how')).j.content), 'the content rule is in /wall/how');
 
+// 41 PLACES (operator, 23.11.: "41 spots, sorted by $BOBAI held; at the start everyone can, until the 41 are full").
+// Ranked from the chain with real owners: agents #1..#42 (their owners hold no $BOBAI) beside #363709 (holds a lot).
+{
+  const word = (n) => BigInt(n).toString(16).padStart(64, '0'), ids = Array.from({ length: 42 }, (_, i) => String(i + 1));
+  const owners = [];
+  for (let k = 0; k < ids.length; k += 10) {
+    const part = await fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ids.slice(k, k + 10).map((a, i) => ({ jsonrpc: '2.0', id: i, method: 'eth_call', params: [{ to: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', data: '0x6352211e' + word(a) }, 'latest'] }))) }).then((r) => r.json());
+    owners.push(...part.sort((a, b) => a.id - b.id).map((x) => (x.result && x.result.length >= 66 ? '0x' + x.result.slice(26, 66).toLowerCase() : null)));
+  }
+  const big = await fetch('https://bsc-dataseed.binance.org', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432', data: '0x6352211e' + word(363709) }, 'latest'] }) }).then((r) => r.json());
+  const mk = (agent, signer, i) => ({ agent, name: '#' + agent, link, logo_sha256: h, logo_type: 'image/png', signer, role: 'owner', message: 'x', signature: '0x', since: new Date(Date.UTC(2026, 10, 23, 0, i)).toISOString(), at: '' });
+  const usable = ids.map((a, i) => (owners[i] ? mk(a, owners[i], i) : null)).filter(Boolean);
+  kv.set('wall:all', JSON.stringify([mk('363709', '0x' + big.result.slice(26, 66).toLowerCase(), 99), ...usable.slice(0, 3)]));
+  const r3 = await rankWall(env), w4 = JSON.parse(kv.get('wall:rank'));
+  say(r3.ok && w4.wall.length === 4 && w4.wall[0].agent === '363709' && w4.wall.slice(1).every((e) => e.bobai === 0), `while places are free, agents holding no $BOBAI get on too (${w4.wall.length} on, #363709 first)`, w4.wall.map((e) => [e.agent, e.bobai]));
+  say(usable.length >= 3 && w4.wall[1]?.agent === usable[0]?.agent && w4.wall[3]?.agent === usable[2]?.agent, 'equal holdings: who came first stands first', { usable: usable.length, waiting: w4.waiting });
+  kv.set('wall:all', JSON.stringify([...usable.slice(0, 41), mk('363709', '0x' + big.result.slice(26, 66).toLowerCase(), 99)]));
+  await rankWall(env); const w5 = JSON.parse(kv.get('wall:rank'));
+  say(usable.length >= 41 && w5.wall.length === 41 && w5.wall[0].agent === '363709' && w5.waiting.length === 1 && w5.waiting[0].agent === usable[40].agent && /all 41 places/.test(w5.waiting[0].why), `the wall full: 41 on, the holder takes the place of the one that came last (${w5.waiting[0]?.agent} waits)`, w5.waiting);
+}
+
+// THE SCRIPT FOR A BUILDER'S AI (23.11.): /wall/how starts with what to do, the 4 values and a script that parses
+{
+  const hw = (await call('GET', '/wall/how')).j, keys = Object.keys(hw);
+  const tmp = path.resolve(import.meta.dirname, '.wall-script-check.mjs'); (await import('node:fs')).writeFileSync(tmp, hw.script || '');
+  let parses = false; try { (await import('node:child_process')).execSync(`node --check "${tmp}"`); parses = true; } catch {} (await import('node:fs')).rmSync(tmp, { force: true });
+  say(keys[0] === 'in_one_second' && ['AGENT_ID', 'PRIVATE_KEY', 'LINK', 'LOGO'].every((k) => hw.you_need?.[k]) && /signMessage/.test(hw.script) && /never sent/.test(hw.you_need.PRIVATE_KEY) && parses, '/wall/how: one-second summary first, the 4 values, a script that parses');
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/wall').then((r) => r.json()).catch(() => null);
-  say(g && Array.isArray(g.wall) && g.max === 808, `live GET /wall (${g?.wall?.length} on the wall)`);
+  say(g && Array.isArray(g.wall) && g.max === 41, `live GET /wall (${g?.wall?.length} on the wall)`);
 }
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

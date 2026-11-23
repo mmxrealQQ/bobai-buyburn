@@ -945,7 +945,7 @@
       <!-- THE AGENT WALL (operator, 2026-11-22: "it can go to the apps and tools too"): proof-of-hold advertising -->
       <a class="ec fi" href="/wall">
         <div class="ec-top"><img src="wall-icon.svg" width="96" height="96" alt="Agent Wall logo" loading="lazy" decoding="async"><h3>Agent Wall</h3></div>
-        <p>808 places for AI agents. Tile size = the $BOBAI they hold: held, not paid. Signed, sandboxed, no tracking.</p>
+        <p>41 places for builders, meme tokens, exchanges and platforms with an AI agent. Tile size = the $BOBAI they hold. Signed, sandboxed, no tracking.</p>
         <span class="ec-live">Also the backdrop of the terminal</span>
         <div class="ec-foot"><span class="ec-go">Look <span class="arr">&#x2192;</span></span><span class="ec-st live">New</span></div>
       </a>
@@ -1557,7 +1557,7 @@
 <script src="app.js?v=148" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1795163121">
+<link rel="stylesheet" href="terminal/terminal.css?v=1795410163">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1608,7 +1608,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795163121'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795410163'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

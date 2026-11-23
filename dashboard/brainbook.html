@@ -356,6 +356,30 @@
     html.bp-embed .bk-nav > *{pointer-events:auto}
     html.bp-embed .bk-nav .pn{display:inline-block;padding:2px 10px;border-radius:999px;background:rgba(11,9,10,.82)}
   }
+  /* BIGGER PAGES, NOTHING CUT OFF (operator, 23.11.: "the pages must be bigger so nothing is cut off"): the open book is
+     taller (10:8.4 instead of 10:7) and each hemisphere keeps its words inside its outline — room under the crown and
+     over the base where the fissure dips, more at the outer curve; the page's content sits in the middle of it.
+     The insets follow the book's width (cqw of .bk), so they scale with it. Checked by qa/bbfit1123.mjs. */
+  @media (min-width:901px){
+    .bk{container-type:inline-size;aspect-ratio:10/8.4;width:min(100%,1120px)}
+    .bk .pg,.bk .pg.l,.bk .pg.r,.bk .pg.end.r{padding:9.5cqw 3.6cqw 8.6cqw 7.4cqw}
+    .bk .pg.r,.bk .pg.end.r{padding:9.5cqw 7.4cqw 8.6cqw 3.6cqw}
+    .bk-in > .pg.l,.bk-in > .pg.r{display:flex;flex-direction:column;justify-content:safe center}
+    .bk-in > .pg.l > *,.bk-in > .pg.r > *{flex:none}
+    .bk .pg-run{margin-bottom:8px}
+    .bk .pg-no{margin-top:10px}
+    .bk .pg.l .tp,.bk .pg .wait-pg{min-height:0}   /* the page centres them now; a 100 % height made the page scroll */
+    /* in the front page's window too (operator, 23.11.: "the Brainbook must be bigger so everything is visible"): the
+       book takes the window's width, its pages at full size; the window scrolls, nothing on a page is cut */
+    html.bp-embed{--bkw:min(100%,1120px)}
+    html.bp-embed .bk-nav{margin:18px auto 0;justify-content:center;pointer-events:auto}
+  }
+  @media (max-width:900px){
+    .bk .pg,.bk .pg.one{padding:98px 36px 116px}
+  }
+  @media (max-width:480px){
+    .bk .pg,.bk .pg.one{padding:98px 30px 116px}
+  }
 
   </style>
 </head>

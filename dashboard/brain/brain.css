@@ -685,6 +685,12 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 #bt .bp-wall{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity .9s ease}
 #bt .bp-wall.built{opacity:.6}   /* the same board as /wall, as a backdrop: everything in front stays readable */
 #bt .bp-wall.off,#bt .br-on .bp-wall,#bt .xm-on .bp-wall{display:none}
+/* with the wall on (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart; make the chart and the
+   brain.log a bit more transparent"): both turn to thin glass so the tiles behind them show; typing or hovering the log
+   brings its dark glass back, so what is read and written stays crisp */
+#bt .bw-on:not(.br-on):not(.xm-on) .tl{background:linear-gradient(180deg,rgba(14,11,12,.3),rgba(6,5,6,.46));backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}
+#bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within){background:linear-gradient(180deg,rgba(14,11,12,.34),rgba(10,8,9,.5));backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}
+#bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within) .bd{text-shadow:0 1px 3px #000,0 0 6px rgba(0,0,0,.8)}
 /* the same tiles as /wall: glass, a gold hairline, the logo, the name and what it holds */
 #bt .bp-wall .bw-t{position:absolute;box-sizing:border-box;padding:2px}
 #bt .bp-wall .bw-t>i{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border-radius:10px;overflow:hidden;font-style:normal;

@@ -198,3 +198,116 @@
     addEventListener('keydown', (e) => { if (e.key === 'Escape' && isBig() && !open && !$('#bt-shm.on')) set(false); });
   }
 })();
+
+// THE AGENT WALL BEHIND THE TERMINAL (2026-11-22, operator: "the background of the terminal, like the Million Dollar
+// Homepage: only agents, on the chain, holding $BOBAI, the bigger their share the bigger their logo"; 23.11.: 41 places).
+// The same wall as /wall, drawn between the 3D picture and everything else in the window, so it reads as the terminal's
+// own backdrop. It takes no click (taps go to BOBAI and the scene as before). Operator, later the same day: the WALL
+// switch sits beside LIVE and looks like it; it turns the backdrop on and off (remembered); the wall exists only in the
+// standard terminal, never with ROT or a Xmas theme; the clear view, with its explanation, is /wall (Apps & tools).
+// Only logos whose bytes hash to the hash the agent signed are drawn.
+(() => {
+  const win = document.getElementById('bt-win'), live = document.getElementById('bt-live');
+  if (!win || !live || !document.querySelector('.bp-center')) return;
+  const API = 'https://agent.brainonbnb.com/wall', MAX = 41, KEY = 'bp-wall';
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const sha256 = async (buf) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)), (x) => x.toString(16).padStart(2, '0')).join('');
+  // squarified treemap, the same as /wall
+  function squarify(items, x, y, w, h) {
+    const total = items.reduce((s, i) => s + i.w, 0), out = []; if (!total || w <= 0 || h <= 0) return out;
+    const scale = (w * h) / total; let rest = items.map((i) => ({ ...i, a: i.w * scale }));
+    while (rest.length) {
+      const short = Math.min(w, h); let row = [], best = Infinity;
+      for (const it of rest) { const r = [...row, it], s = r.reduce((t, k) => t + k.a, 0), mx = Math.max(...r.map((k) => k.a)), mn = Math.min(...r.map((k) => k.a)), worst = Math.max((short * short * mx) / (s * s), (s * s) / (short * short * mn)); if (worst > best && row.length) break; row = r; best = worst; }
+      const s = row.reduce((t, k) => t + k.a, 0), side = s / short; let off = 0;
+      for (const k of row) { const len = k.a / side; if (w >= h) out.push({ ...k, x, y: y + off, w: side, h: len }); else out.push({ ...k, x: x + off, y, w: len, h: side }); off += len; }
+      if (w >= h) { x += side; w -= side; } else { y += side; h -= side; }
+      rest = rest.slice(row.length);
+    }
+    return out;
+  }
+  const layer = document.createElement('div'); layer.className = 'bp-wall'; layer.setAttribute('aria-hidden', 'true');
+  const gl = document.getElementById('bt-gl'); if (gl) gl.after(layer); else win.prepend(layer);
+  // the switch: small and round like ROT, left of LIVE on the same line (a text pill pushed ROT off the line)
+  const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'bt-wall bw-abs'; // out of the flow from the start
+  sw.innerHTML = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M2 2h7v7H2zM10.5 2H14v4.5h-3.5zM10.5 8H14v6h-3.5zM2 10.5h7V14H2z" fill="currentColor"/></svg>';
+  live.before(sw);
+  // never on from the start (operator, 22.11.): the visitor turns it on; that choice is remembered
+  let on = false; try { on = localStorage.getItem(KEY) === 'on'; } catch {}
+  const set = (v) => {
+    on = v; layer.classList.toggle('off', !on); win.classList.toggle('bw-on', on); sw.setAttribute('aria-pressed', String(on));
+    sw.title = on ? 'The Agent Wall is behind the terminal: AI agents sized by the $BOBAI they hold. Click to turn it off' : 'Show the Agent Wall behind the terminal';
+    sw.setAttribute('aria-label', on ? 'Agent Wall backdrop: on' : 'Agent Wall backdrop: off');
+    try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
+    if (on && !DATA) load();
+  };
+  sw.onclick = () => set(!on);
+  // THE PLACE (operator: "on the same line as LIVE and ROT, and WALL and ROT must not cross"): the switch stays out of
+  // the bar's flow, so ROT keeps exactly the room it had; it takes a free gap on LIVE's line: left of LIVE when the
+  // title's text leaves room, else right of ROT (or of LIVE) when nothing stands there, else just under LIVE
+  const SZ = 24, GAP = 6;
+  const place = () => {
+    const hud = sw.parentElement; if (!hud) return;
+    const h = hud.getBoundingClientRect(), lv = live.getBoundingClientRect(); if (!lv.width) return;
+    const cy = (lv.top + lv.bottom) / 2, rot = document.getElementById('bt-br'), rr = rot && rot.getBoundingClientRect();
+    const rotOnLine = rr && rr.width && Math.abs((rr.top + rr.bottom) / 2 - cy) < 8;
+    // the title's text, as drawn (its box is wider than its words)
+    let textRight = -Infinity; const tt = hud.querySelector('.ttl');
+    if (tt) { const rg = document.createRange(); rg.selectNodeContents(tt); for (const q of rg.getClientRects()) if (q.width && q.bottom > cy - 14 && q.top < cy + 14) textRight = Math.max(textRight, q.right); }
+    const others = [...hud.children].filter((e) => e !== sw && e !== tt && e !== live && e !== rot && e.getBoundingClientRect().width && getComputedStyle(e).display !== 'none').map((e) => e.getBoundingClientRect());
+    const free = (x) => x >= h.left + 4 && x + SZ <= h.right - 4 && !others.some((q) => q.left < x + SZ + GAP && q.right > x - GAP && q.top < cy + SZ / 2 && q.bottom > cy - SZ / 2) && !(rotOnLine && rr.left < x + SZ + GAP && rr.right > x - GAP);
+    const left = lv.left - GAP - SZ, right = (rotOnLine ? rr.right : lv.right) + GAP;
+    let x, y = cy - SZ / 2;
+    if (left - GAP >= textRight && free(left)) x = left; else if (free(right)) x = right; else { x = lv.left; y = lv.bottom + 4; }
+    sw.classList.add('bw-abs'); sw.style.left = x - h.left + 'px'; sw.style.top = y - h.top + 'px';
+  };
+  new ResizeObserver(place).observe(win); new MutationObserver(place).observe(win, { attributes: true, attributeFilter: ['class'] });
+  { let n = 0; const t = setInterval(() => { place(); if (++n > 40) clearInterval(t); }, 500); } // ROT settles in its first seconds
+  addEventListener('resize', place);
+  let DATA = null; const LOGOS = {}, ADS = {};
+  function draw() {
+    if (!DATA) return;
+    // the board ends above the chart strip (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart"):
+    // no tile hides under it; the strip itself is thin glass while the wall is on
+    { const tl = win.querySelector('.tl'), tb = tl && getComputedStyle(tl).display !== 'none' ? tl.offsetHeight : 0; if (layer.style.bottom !== tb + 'px') layer.style.bottom = tb + 'px'; }
+    const W = layer.clientWidth, H = layer.clientHeight, list = DATA.wall || [];
+    if (!W || !H) return;
+    // the floor keeps a small holder (or one holding none, while places are free) visible and shrinks with the crowd (at most half the wall): all 41 fit
+    const sum = list.reduce((s, a) => s + a.bobai, 0), cap = Math.max(1e6, sum * 1.15), floor = cap * Math.min(.035, .5 / Math.max(1, list.length));
+    const items = list.map((a) => ({ w: Math.max(a.bobai, floor), e: a })).sort((p, q) => q.w - p.w);
+    const used = items.reduce((s, i) => s + i.w, 0), f = list.length >= MAX ? 1 : Math.min(1, used / cap);
+    let tiles;
+    if (!items.length) tiles = [{ free: true, x: 0, y: 0, w: W, h: H }];
+    else if (f >= .999) tiles = squarify(items, 0, 0, W, H);
+    else if (W >= H) { const aw = Math.max(W * f, Math.min(W * .4, 150)); tiles = [...squarify(items, 0, 0, aw, H), { free: true, x: aw, y: 0, w: W - aw, h: H }]; }
+    else { const ah = Math.max(H * f, Math.min(H * .4, 150)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
+    layer.innerHTML = tiles.map((t) => {
+      const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`;
+      // THE SAME BOARD AS /wall (operator: "in the terminal and on /wall it must look the same", "a huge marketing
+      // board"): the same tiles, and every free place one cell of a fine grid, so all 41 places can be seen
+      if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
+        return `<div class="bw-t free" style="${st}"><i style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"></i></div>`; }
+      const e = t.e, size = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '', ad = ADS[e.agent] && t.w >= 150 && t.h >= 120;
+      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">${Number(e.bobai).toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</span></i></div>`;
+    }).join('');
+    // a living ad plays in its tile as on /wall: its own frame, no network, storage, cookie or wallet (it can show, never track)
+    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+      f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[el.parentElement.dataset.agent]}</body></html>`; el.prepend(f); });
+  }
+  let loading = null;
+  function load() {
+    if (loading) return loading;
+    loading = fetch(API).then((r) => r.json()).then(async (j) => {
+      DATA = j; draw(); layer.classList.add('built');
+      await Promise.all((j.wall || []).filter((e) => e.ad_url && e.ad_sha256).map(async (e) => { try { const txt = await (await fetch(e.ad_url)).text(); const h = await sha256(new TextEncoder().encode(txt)); if (h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`)) ADS[e.agent] = txt; else delete ADS[e.agent]; } catch {} }));
+      await Promise.all((j.wall || []).map(async (e) => { if (LOGOS[e.agent + ':' + e.logo_sha256]) { LOGOS[e.agent] = LOGOS[e.agent + ':' + e.logo_sha256]; return; } try { const buf = await (await fetch(e.logo_url)).arrayBuffer(); const h = await sha256(buf); if (h === e.logo_sha256 && e.message.includes(`Logo sha256: ${h}\n`)) LOGOS[e.agent] = LOGOS[e.agent + ':' + h] = URL.createObjectURL(new Blob([buf], { type: e.logo_type })); else delete LOGOS[e.agent]; } catch {} }));
+      draw();
+    }).catch(() => { if (!DATA) setTimeout(load, 15e3); }).finally(() => { loading = null; });
+    return loading;
+  }
+  set(on);
+  // the terminal's own start comes first (not on 'load': the terminal's clips keep that event waiting for long)
+  if (on) setTimeout(load, 2500);
+  new ResizeObserver(() => { clearTimeout(draw.t); draw.t = setTimeout(draw, 150); }).observe(layer);
+  setInterval(() => { if (on && !document.hidden) load(); }, 10 * 60e3);
+})();

@@ -200,7 +200,7 @@
 })();
 
 // THE AGENT WALL BEHIND THE TERMINAL (2026-11-22, operator: "the background of the terminal, like the Million Dollar
-// Homepage: only agents, on the chain, holding $BOBAI, the bigger their share the bigger their logo, at most 808").
+// Homepage: only agents, on the chain, holding $BOBAI, the bigger their share the bigger their logo"; 23.11.: 41 places).
 // The same wall as /wall, drawn between the 3D picture and everything else in the window, so it reads as the terminal's
 // own backdrop. It takes no click (taps go to BOBAI and the scene as before). Operator, later the same day: the WALL
 // switch sits beside LIVE and looks like it; it turns the backdrop on and off (remembered); the wall exists only in the
@@ -209,7 +209,7 @@
 (() => {
   const win = document.getElementById('bt-win'), live = document.getElementById('bt-live');
   if (!win || !live || !document.querySelector('.bp-center')) return;
-  const API = 'https://agent.brainonbnb.com/wall', MAX = 808, KEY = 'bp-wall';
+  const API = 'https://agent.brainonbnb.com/wall', MAX = 41, KEY = 'bp-wall';
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const sha256 = async (buf) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', buf)), (x) => x.toString(16).padStart(2, '0')).join('');
   // squarified treemap, the same as /wall
@@ -235,7 +235,7 @@
   // never on from the start (operator, 22.11.): the visitor turns it on; that choice is remembered
   let on = false; try { on = localStorage.getItem(KEY) === 'on'; } catch {}
   const set = (v) => {
-    on = v; layer.classList.toggle('off', !on); sw.setAttribute('aria-pressed', String(on));
+    on = v; layer.classList.toggle('off', !on); win.classList.toggle('bw-on', on); sw.setAttribute('aria-pressed', String(on));
     sw.title = on ? 'The Agent Wall is behind the terminal: AI agents sized by the $BOBAI they hold. Click to turn it off' : 'Show the Agent Wall behind the terminal';
     sw.setAttribute('aria-label', on ? 'Agent Wall backdrop: on' : 'Agent Wall backdrop: off');
     try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch {}
@@ -267,10 +267,13 @@
   let DATA = null; const LOGOS = {}, ADS = {};
   function draw() {
     if (!DATA) return;
+    // the board ends above the chart strip (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart"):
+    // no tile hides under it; the strip itself is thin glass while the wall is on
+    { const tl = win.querySelector('.tl'), tb = tl && getComputedStyle(tl).display !== 'none' ? tl.offsetHeight : 0; if (layer.style.bottom !== tb + 'px') layer.style.bottom = tb + 'px'; }
     const W = layer.clientWidth, H = layer.clientHeight, list = DATA.wall || [];
     if (!W || !H) return;
-    // the floor keeps a small holder visible and shrinks with the crowd (at most 30 % of the wall): all 808 fit when it is full
-    const sum = list.reduce((s, a) => s + a.bobai, 0), cap = Math.max(1e6, sum * 1.15), floor = cap * Math.min(.035, .3 / Math.max(1, list.length));
+    // the floor keeps a small holder (or one holding none, while places are free) visible and shrinks with the crowd (at most half the wall): all 41 fit
+    const sum = list.reduce((s, a) => s + a.bobai, 0), cap = Math.max(1e6, sum * 1.15), floor = cap * Math.min(.035, .5 / Math.max(1, list.length));
     const items = list.map((a) => ({ w: Math.max(a.bobai, floor), e: a })).sort((p, q) => q.w - p.w);
     const used = items.reduce((s, i) => s + i.w, 0), f = list.length >= MAX ? 1 : Math.min(1, used / cap);
     let tiles;
@@ -281,7 +284,7 @@
     layer.innerHTML = tiles.map((t) => {
       const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`;
       // THE SAME BOARD AS /wall (operator: "in the terminal and on /wall it must look the same", "a huge marketing
-      // board"): the same tiles, and every free place one cell of a fine grid, so the whole 808 can be seen
+      // board"): the same tiles, and every free place one cell of a fine grid, so all 41 places can be seen
       if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
         return `<div class="bw-t free" style="${st}"><i style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"></i></div>`; }
       const e = t.e, size = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '', ad = ADS[e.agent] && t.w >= 150 && t.h >= 120;

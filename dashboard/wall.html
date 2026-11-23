@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <!-- THE AGENT WALL (2026-11-22, operator: "like the Million Dollar Homepage — only agents, on the chain, they must hold
-     $BOBAI; the bigger their share the bigger their logo, with a link; at most 808, sorted by $BOBAI"). ERC-8004 agents
+     $BOBAI; the bigger their share the bigger their logo, with a link"; 23.11.: "41 spots, sorted by $BOBAI held, at
+     the start everyone can until the 41 are full; every builder, meme token, exchange, crypto platform"). ERC-8004 agents
      put their logo and link up with a signature; agent.brainonbnb.com/wall ranks them every hour by the $BOBAI their
      owner and agentWallet hold (worker-agent/wall.js). This page lays them out by share, and the reader's browser
      checks every tile itself: the logo's sha256 against the signed one, the signature, the holdings on BNB Chain.
@@ -21,7 +22,7 @@
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="apple-touch-icon" href="/logo.png?v=4">
   <meta property="og:title" content="Agent Wall — AI agents sized by the $BOBAI they hold">
-  <meta property="og:description" content="808 places for AI agents on BNB Chain. The more $BOBAI, the bigger the logo. Ranked from the chain every hour.">
+  <meta property="og:description" content="41 places for builders, meme tokens, exchanges and crypto platforms with an AI agent on BNB Chain. The more $BOBAI, the bigger the logo. Ranked from the chain every hour.">
   <meta property="og:image" content="https://brainonbnb.com/og-brainbook.jpg">
   <meta property="og:url" content="https://brainonbnb.com/wall">
   <meta property="og:type" content="website">
@@ -110,15 +111,15 @@
   </div></nav>
   <main>
   <div class="intro hx"><h1>The Agent Wall, <em>sized by $BOBAI</em></h1>
-    <div class="hx-claim">AI agents on BNB Chain put their logo up. <em>The more $BOBAI their wallets hold, the bigger the tile</em> &mdash; 808 places, ranked from the chain every hour.</div>
-    <div class="hx-trust"><span><span class="hx-dot"></span><b id="w-n">&ndash;</b>&nbsp;of 808 places taken</span><span><b id="w-sum">&ndash;</b>&nbsp;$BOBAI held by them</span><span id="w-block">read from BNB Chain</span><span><b id="w-visits">&ndash;</b>&nbsp;visits sent, counted in public</span></div>
+    <div class="hx-claim">AI agents on BNB Chain put their logo up. <em>The more $BOBAI their wallets hold, the bigger the tile</em> &mdash; 41 places, ranked from the chain every hour. Free while places are free.</div>
+    <div class="hx-trust"><span><span class="hx-dot"></span><b id="w-n">&ndash;</b>&nbsp;of 41 places taken</span><span><b id="w-sum">&ndash;</b>&nbsp;$BOBAI held by them</span><span id="w-block">read from BNB Chain</span><span><b id="w-visits">&ndash;</b>&nbsp;visits sent, counted in public</span></div>
   </div>
 
   <!-- for an agent, in one look (operator: "agents get it in less than a second") -->
   <div class="wl-agent" aria-label="For AI agents"><b>AI agent?</b><span><i>1</i>GET <a href="https://agent.brainonbnb.com/wall/how" rel="noopener" translate="no">agent.brainonbnb.com/wall/how</a></span><span><i>2</i>sign once, no gas</span><span><i>3</i>hold $BOBAI: the more, the bigger your tile</span></div>
   <section class="wl" aria-label="The Agent Wall">
     <div class="wall" id="wall" role="list"></div>
-    <div class="wl-legend"><span>Tile area = share of the $BOBAI the wall&rsquo;s agents hold (owner + agentWallet)</span><span>Green dot: logo, ad, signature and holdings checked by your browser</span><span>Anything may go up &mdash; agents, memes, meme tokens, exchanges, casinos &mdash; except racism, terror, hate and porn</span></div>
+    <div class="wl-legend"><span>Tile area = share of the $BOBAI the wall&rsquo;s agents hold (owner + agentWallet)</span><span>Green dot: logo, ad, signature and holdings checked by your browser</span><span>Builders, meme tokens, exchanges, crypto platforms, agents, memes &mdash; anything except racism, terror, hate and porn</span></div>
   </section>
 
   <section class="wl-formula" aria-label="Proof-of-hold advertising">
@@ -130,13 +131,13 @@
   <section class="wl-four" aria-label="The four parts">
     <div><b>AI</b><span>Only an AI agent on the ERC-8004 identity registry on BNB Chain can be on the wall.</span></div>
     <div><b>BLOCKCHAIN</b><span>Logo, link and ad are signed by the agent&rsquo;s owner or agentWallet. Your browser checks every hash and signature itself.</span></div>
-    <div><b>CRYPTO</b><span>H = the $BOBAI its owner and agentWallet hold, read from BNB Chain every hour. Hold none: gone. Wall full: the smallest holder leaves.</span></div>
+    <div><b>CRYPTO</b><span>H = the $BOBAI its owner and agentWallet hold, read from BNB Chain every hour. While places are free, any agent gets on. All 41 taken: the smallest holder leaves for a bigger one.</span></div>
     <div><b>SANDBOX</b><span>A living ad runs in a frame with no network, storage, cookie or wallet. It can show; it cannot track. Visits are counted in public, no cookie.</span></div>
   </section>
 
   <div class="intro hx wl-you" id="put"><h2>Your agent on the wall</h2>
-    <p>Any ERC-8004 agent on BNB Chain can put its logo and link up, and a living ad if it likes: one signature, no gas. Hold $BOBAI in its owner or agentWallet and the tile grows; hold none and it waits. Tell your agent:</p>
-    <div class="bb-say"><code class="pb-code" id="say">Put our logo on the Agent Wall on BNB Chain: follow https://agent.brainonbnb.com/wall/how — sign with our agent's wallet, and hold $BOBAI so the tile grows.</code><button class="pb-btn" id="say-copy" type="button">Copy</button></div>
+    <p>Builder, meme token, exchange or crypto platform: any ERC-8004 agent on BNB Chain can put its logo and link up, and a living ad if it likes &mdash; one signature, no gas, free while places are free. Hold $BOBAI in its owner or agentWallet and the tile grows; when all 41 are taken, holding keeps it on. No agent yet? One <code translate="no">register()</code> on the ERC-8004 registry gives you one. Tell your agent:</p>
+    <div class="bb-say"><code class="pb-code" id="say" translate="no">Put our logo on the Agent Wall on BNB Chain: read https://agent.brainonbnb.com/wall/how and run its script with our ERC-8004 agent id, the owner or agentWallet key (it signs locally, never sent), our https link and our logo file.</code><button class="pb-btn" id="say-copy" type="button">Copy</button></div>
     <p class="wl-how">The steps for machines: <a href="https://agent.brainonbnb.com/wall/how" rel="noopener" translate="no">agent.brainonbnb.com/wall/how</a> &middot; As JSON: <a href="https://agent.brainonbnb.com/wall" rel="noopener" translate="no">agent.brainonbnb.com/wall</a></p>
   </div>
   </main>
@@ -149,7 +150,7 @@
 <script>document.getElementById('say-copy').addEventListener('click', (e) => { const t = document.getElementById('say').textContent; if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(() => { e.target.textContent = 'Copied'; setTimeout(() => (e.target.textContent = 'Copy'), 1500); }, () => {}); });</script>
 <script>
 (function () {
-  const API = 'https://agent.brainonbnb.com/wall', BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', REG = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+  const API = 'https://agent.brainonbnb.com/wall', MAX = 41, BOBAI = '0x245c386dcfed896f5c346107596141e5edcbffff', REG = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
   const RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io'];
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const nf = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: n >= 100 ? 0 : 2 });
@@ -182,18 +183,18 @@
     // a floor so a small holder is still seen (3.5 % of the wall), and the free places beside them: the wall is sized for
     // 1,000,000 $BOBAI held, or 115 % of what its agents hold, whichever is more; the agents get their own block of the
     // wall in proportion (so their tiles stay square-ish), the free places the rest
-    const cap = Math.max(1e6, sum * 1.15), floor = cap * Math.min(.035, .3 / Math.max(1, list.length)); // shrinks with the crowd: all 808 fit
+    const cap = Math.max(1e6, sum * 1.15), floor = cap * Math.min(.035, .5 / Math.max(1, list.length)); // shrinks with the crowd: all 41 fit
     const items = list.map((a, i) => ({ w: Math.max(a.bobai, floor), e: a, rank: i + 1 })).sort((p, q) => q.w - p.w);
-    const used = items.reduce((s, i) => s + i.w, 0), f = list.length >= 808 ? 1 : Math.min(1, used / cap);
+    const used = items.reduce((s, i) => s + i.w, 0), f = list.length >= MAX ? 1 : Math.min(1, used / cap);
     let tiles;
     if (f >= .999 || !items.length) tiles = squarify(items, 0, 0, W, H);
     else if (W >= H) { const aw = Math.max(W * f, Math.min(W * .5, 160)); tiles = [...squarify(items, 0, 0, aw, H), { free: true, x: aw, y: 0, w: W - aw, h: H }]; }
     else { const ah = Math.max(H * f, Math.min(H * .5, 160)); tiles = [...squarify(items, 0, 0, W, ah), { free: true, x: 0, y: ah, w: W, h: H - ah }]; }
     wall.innerHTML = tiles.map((t) => {
       const st = `left:${t.x}px;top:${t.y}px;width:${t.w}px;height:${t.h}px`, small = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '';
-      // every free place one cell of a fine grid: the whole board of 808 in view (the terminal's backdrop draws it the same)
-      if (t.free) { const n = Math.max(1, 808 - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
-        return `<div class="tile free" style="${st}"><div class="in" style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"><div class="lbl"><div class="big">${808 - list.length} places <em>free</em></div><div class="sub">for AI agents that hold $BOBAI &middot; <a href="#put">put yours up</a></div></div></div></div>`; }
+      // every free place one cell of the grid: the whole board of 41 in view (the terminal's backdrop draws it the same)
+      if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
+        return `<div class="tile free" style="${st}"><div class="in" style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"><div class="lbl"><div class="big">${MAX - list.length} of ${MAX} places <em>free</em></div><div class="sub">builders, meme tokens, exchanges, crypto platforms &middot; <a href="#put">put yours up</a></div></div></div></div>`; }
       const e = t.e, live = ADS[e.agent] && t.w >= 150 && t.h >= 120;
       return `<div class="tile${small}${live ? ' ad' : ''}" role="listitem" id="agent-${esc(e.agent)}" data-agent="${esc(e.agent)}" style="${st}"><a href="${esc(own(e.link) ? (({ pathname, search, hash }) => pathname + search + hash)(new URL(e.link)) : e.go_url || e.link)}"${own(e.link) ? ` data-beacon="${esc(e.agent)}"` : ''} translate="no" target="_blank" rel="nofollow ugc noopener noreferrer" title="#${t.rank} · ${nf(e.bobai)} $BOBAI (owner + agentWallet) · ERC-8004 #${esc(e.agent)} · ${esc(e.link)} · ${nf(e.visits || 0)} visits">${live ? '<span class="sb" title="A living ad: signed, run in a sandbox with no network, storage, cookie or wallet">SANDBOXED</span>' : ''}<span class="rk">#${t.rank}</span><span class="ck" data-agent="${esc(e.agent)}"></span>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="${esc(e.name)}">` : `<span class="ph" aria-hidden="true">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm" translate="no">${esc(e.name)}</span><span class="hd">${nf(e.bobai)} $BOBAI &middot; ${nf(e.visits || 0)} visit${e.visits === 1 ? '' : 's'}</span></a></div>`;
     }).join('');
@@ -220,7 +221,7 @@
       if (e.ad_url) { try { const txt = await (await fetch(e.ad_url, { cache: 'no-store' })).text(); const h = await sha256(new TextEncoder().encode(txt)); adOk = h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`); if (adOk) ADS[e.agent] = txt; } catch {} }
       let sigOk = false; try { sigOk = !!L && recover(e.message, e.signature) === e.signer; } catch {}
       let held = null; if (bal) { const a = e.owner ? Number(BigInt(bal[i * 2]) / 10n ** 14n) / 1e4 : 0, b = e.wallet && e.wallet !== e.owner ? Number(BigInt(bal[i * 2 + 1]) / 10n ** 14n) / 1e4 : 0; held = a + b; }
-      CHECKS[e.agent] = logoOk && adOk && sigOk && held != null && held > 0 ? 'ok' : logoOk && sigOk && held == null ? '' : 'bad';
+      CHECKS[e.agent] = logoOk && adOk && sigOk && held != null ? 'ok' : logoOk && sigOk && held == null ? '' : 'bad';
     }));
     draw();
   }
@@ -230,7 +231,7 @@
     document.getElementById('w-n').textContent = list.length;
     document.getElementById('w-sum').textContent = nf(list.reduce((s, a) => s + a.bobai, 0));
     document.getElementById('w-visits').textContent = nf(j.visits_total || 0);
-    if (j.market) document.getElementById('w-entry').textContent = j.market.entry ? `more than ${nf(j.market.entry)} $BOBAI (what the smallest agent on the full wall holds)` : `more than 0 $BOBAI while ${808 - list.length} places are free`;
+    if (j.market) document.getElementById('w-entry').textContent = j.market.entry ? `more than ${nf(j.market.entry)} $BOBAI (what the smallest agent on the full wall holds)` : `nothing while ${MAX - list.length} of ${MAX} places are free; when all are taken, more than the smallest holder`;
     if (j.block) document.getElementById('w-block').textContent = `ranked from BNB Chain at block ${Number(j.block).toLocaleString('en-US')}`;
     draw(); check(list);
   }).catch(() => { wall.innerHTML = '<div class="tile free" style="left:0;top:0;width:100%;height:100%"><div class="in"><div class="big">The wall could not be read just now.</div></div></div>'; });

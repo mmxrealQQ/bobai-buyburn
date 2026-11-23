@@ -567,7 +567,8 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .bp-buyline{height:34px;display:flex;align-items:center;gap:14px;padding:0 14px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;
   scrollbar-width:none;border-bottom:1px solid var(--bp-line);background:rgba(240,185,11,.05);font:600 12px/1 'Space Grotesk',Inter,sans-serif;color:var(--bp-text)}
 .bp-buyline::-webkit-scrollbar{display:none}
-.bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-right:5px}
+.bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-inline-end:5px}
+.bp-buyline .ar-p .k{margin-right:0;margin-left:5px} /* Arabic: the label stands right of its figure (plaintext bidi in an ltr box), the gap goes left of it (A-Z 23.11.: "$0.00016595السعر") */
 .bp-buyline .f{flex:0 0 auto}
 .bp-buyline .ca{flex:0 0 auto;font:600 11px var(--bp-mono);color:var(--bp-text);background:none;border:1px solid var(--bp-muted);border-radius:6px;padding:2px 7px;cursor:pointer}
 .bp-buyline .ca span{color:var(--bp-muted);margin-left:4px}

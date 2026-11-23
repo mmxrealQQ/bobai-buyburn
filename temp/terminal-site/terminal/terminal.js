@@ -603,6 +603,12 @@ function layout() {
   // wide screen: the hologram brain and its ring of bots sit a step left of him (operator, 2026-09-28), clear of the buyback ring
   // wide screen: at the left edge, clear of him (operator, 2026-09-28: "at the edge, not behind BOBAI")
   A.head.set(A.fig.x - (portrait ? 0 : viewW * 0.26), A.fig.y + A.figH * 0.29, -1.2);
+  // a short wide window (a phone held across, 844x390: the terminal ~826x518) put the brain's ring of bots on the title
+  // and the mood chip (A-Z 23.11.: DEFI AGENT, DEV BOT, AGENT SERVER over "BRAIN TERMINAL"): the ring's top stays under
+  // the title row; a tall window never reaches this limit, so nothing moves there
+  // (the mood chip joins the title row later, hidden at the first layout: its row is kept free all the same)
+  if (!portrait) { const tt = win.querySelector('.ttl'), mc = win.querySelector('.mdc'), hb = tt ? tt.getBoundingClientRect().bottom - r.top + (!mc || mc.hidden ? 30 : 0) : 0;
+    if (hb > 0) { const lim = viewH / 2 - (hb + 62) / (r.height / viewH) - 0.25 - A.figH * 0.084; if (A.head.y > lim) A.head.y = lim; } }
   if (portrait) A.core.set(A.fig.x, A.fig.y - A.figH * 0.54, 0.8);
   else A.core.set(A.fig.x + viewW * 0.145, A.fig.y + A.figH * 0.06, 0.8);
   // wide screen: the trades sit bottom left, just above the log box (its tallest: 128 px from the bottom + 176 px)
@@ -1081,7 +1087,12 @@ function placeLabels() {
     // kept inside the window at the top too (A-Z 2026-11-21: a phone held across cut BUYBACK BOT's name off at the top edge);
     // the label (two lines, ~24 px) is centred on its point (translate -50%): its centre stays 16 px down at least — a fixed
     // figure, no layout read in the frame loop
-    w.el.style.left = (ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x) + 'px'; w.el.style.top = Math.max(p.y - 16, 16) + 'px';
+    // wide screen: the ring's near side passes in front of him — a name there sat on his head or chest (A-Z 23.11.:
+    // BUYBACK BOT on his face at 1920, on his chest at 844x390): it stops beside him, on the brain's side, until its
+    // satellite has passed (his body is about the middle 60% of the figure's box)
+    let lx = ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x;
+    if (!portrait && ww && p.y > fs.y - A.figHpx * 0.5 && p.y < fs.y + A.figHpx * 0.46) lx = Math.min(lx, fs.x - A.figW * 0.3 - ww / 2 - 6);
+    w.el.style.left = lx + 'px'; w.el.style.top = Math.max(p.y - 16, 16) + 'px';
     w.el.style.zIndex = w.pos.z > A.head.z ? 3 : 1; w.el.style.opacity = labs.querySelector('.show') ? (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 1 : 0.45) : 0;
     w.el.lastChild.textContent = w.last ? 'beat ' + ago(w.last) : w.every;
   }

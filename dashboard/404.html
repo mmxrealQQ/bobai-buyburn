@@ -18,7 +18,8 @@
   <link rel="stylesheet" href="/home.css?v=1">
   <style>
     body.np{min-height:100vh} /* the page glow ran out under the cards at 590 px (2026-10-28) */
-    .nf{max-width:640px;margin:0 auto;padding:8px 0 40px;text-align:center}
+    .nf{max-width:640px;margin:0 auto;padding:8px 16px 40px;text-align:center} /* 16 px at the sides: on a phone the cards ran edge to edge (A-Z 23.11.) */
+    .nf-a:last-child:nth-child(odd){grid-column:1/-1} /* nine links: the last one spans the row instead of standing alone */
     .nf-code{font:800 4.2rem/1 'Space Grotesk',sans-serif;color:var(--gold);letter-spacing:-.02em;margin-bottom:6px}
     .nf-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:26px;text-align:left}
     .nf-a{display:flex;flex-direction:column;gap:3px;padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text);text-decoration:none;transition:border-color .2s}

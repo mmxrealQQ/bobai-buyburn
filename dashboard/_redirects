@@ -4,6 +4,9 @@
 # the agent chart (Brain Plaza phase 2): one page draws any id from agent.brainonbnb.com/chart/<id>
 /agent/* /agent 200
 /agents /defi 301
+# Brain Plaza lives at /registry; the name typed as a path finds it (A-Z 23.11.: /plaza was a 404)
+/plaza /registry 301
+/ar/plaza /ar/registry 301
 # the Brain Guestbook is the Brainbook (operator, 2026-11-22: "nenn es brainbook")
 /guestbook /brainbook 301
 /guestbook.html /brainbook 301

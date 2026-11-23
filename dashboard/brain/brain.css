@@ -719,7 +719,6 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 #bt .bw-on:not(.br-on):not(.xm-on) .ttl small,#bt .bw-on:not(.br-on):not(.xm-on) .wk i,#bt .bw-on:not(.br-on):not(.xm-on) .src .s{visibility:hidden}
 #bt .bw-on:not(.br-on):not(.xm-on) .ttl,#bt .bw-on:not(.br-on):not(.xm-on) .lab{text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.9)}
 /* the bots' names stand on the ads now: each on its own small dark pill, so no word runs into an ad's words */
-#bt .bw-on:not(.br-on):not(.xm-on) .src .n{display:inline-block;padding:2px 7px;border-radius:999px;background:rgba(8,6,8,.72)}
 #bt .bw-on:not(.br-on):not(.xm-on) .wk b{display:inline-block;padding:2px 7px;border-radius:999px;background:rgba(8,6,8,.72);box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 35%,transparent)}
 #bt .bw-on:not(.br-on):not(.xm-on) .tl{background:linear-gradient(180deg,rgba(14,11,12,.16),rgba(6,5,6,.3));backdrop-filter:blur(9px) saturate(1.2);-webkit-backdrop-filter:blur(9px) saturate(1.2)}
 #bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within){background:linear-gradient(180deg,rgba(14,11,12,.2),rgba(10,8,9,.34));backdrop-filter:blur(9px) saturate(1.2);-webkit-backdrop-filter:blur(9px) saturate(1.2)}

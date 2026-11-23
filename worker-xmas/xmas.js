@@ -112,6 +112,10 @@ async function builderOf(request, env) {
 export async function handleXmas(request, env, url, path) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (!env.XMAS) return out({ error: 'storage is not bound' }, 503);
+  // AFTER THE SEASON (operator, 2026-11-23: "when it is not current any more: everything can still be seen, but no more
+  // uploading at the Xmas Terminal"): the workshop closes; every theme stays readable, a visitor's /use count stays harmless
+  if (request.method === 'POST' && path !== '/use' && Date.now() >= Date.parse(XMAS_SEASON.to))
+    return out({ error: 'the Xmas season is over: the workshop is closed. Every theme stays to look at.', season: XMAS_SEASON }, 410);
 
   // a file of a theme, sandboxed
   const fm = path.match(/^\/t\/([a-z0-9_-]{2,24})\/(\d{1,6})\/(.+)$/);

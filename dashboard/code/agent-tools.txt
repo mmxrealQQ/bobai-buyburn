@@ -2,7 +2,7 @@
 # What an AI agent sees when it asks this project a question.
 #
 # This is the complete agent-tools bundle as a single file, so it can be read in
-# one fetch. 5 files, 4492 lines.
+# one fetch. 5 files, 4515 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-tools.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2825,7 +2825,7 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         const app = /^\/(brainscreener|game|worldcup)(\/|$)/.test(url.pathname);
         const t = new HTMLRewriter()
           .on('html', { element(e) { e.setAttribute('class', ((e.getAttribute('class') || '') + (app ? ' bp-app' : ' bp-embed')).trim()); } })
-          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1122">') + '<script src="/brain/embed.js?v=1122" defer></script>', { html: true }); } })
+          .on('head', { element(e) { e.append((app ? '' : '<link rel="stylesheet" href="/brain/embed.css?v=1124">') + '<script src="/brain/embed.js?v=1124" defer></script>', { html: true }); } })
           .transform(r);
         return new Response(t.body, { status: t.status, headers: secureHeaders(new Headers(t.headers)) });
       }
@@ -3033,7 +3033,7 @@ async function arDict(env, origin) {
   try { const r = await env.ASSETS.fetch(origin + '/i18n/ar.json'); if (r.ok) { const j = await r.json(); AR_DICT = { at: Date.now(), t: j.t || {}, v: j.v || 0 }; } } catch {}
   return AR_DICT.t || {};
 }
-const AR_V = '16', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
+const AR_V = '17', AR_LIVE = true; // AR_V: bump with every change of ar.js / ar.css / core.js (the zone keeps browser copies)
 // (15.11.) /i18n/* is cached a year (immutable, _headers): a change of core.js also bumps its ?v= in ar.js, a change of
 // ar.json its "v" — scripts/ar-assets-regressions.mjs holds all three against the last commit
 // the switch: two links (each the page's own address in that language), a remembered choice, a returning Arabic reader
@@ -3064,7 +3064,7 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
   rw = rw.on('.nav .ar-in', { element(e) { if (placed || embedded) return; placed = true; e.append(langSwitch(enPath, search, ar), { html: true }); } });
   if (!ar) return rw.transform(res);
   const T = (s) => { const v = translate(dict, s); return typeof v === 'string' ? v : null; };
-  let skip = 0, buf = '';
+  let skip = 0, buf = '', ldBuf = '';
   const deep = { element(e) { skip++; e.onEndTag(() => { skip--; }); } };
   const attr = (names) => ({ element(e) { for (const n of names) { const v = e.getAttribute(n); if (!v) continue; const t = T(decodeHtml(v)); if (t) e.setAttribute(n, t); } } });
   const pagePath = (h) => (h === '/whitepaper.pdf' ? '/whitepaper-ar.pdf' : h && h.startsWith('/') && !h.startsWith('/ar/') ? toAr(h) : h); // the whitepaper's PDF in Arabic (temp/i18n/wp-pdf.mjs prints it from /ar/whitepaper)
@@ -3078,6 +3078,25 @@ function langLayer(res, enPath, search, ar, dict, embedded) {
     .on('link[rel="canonical"],meta[property="og:url"]', { element(e) { for (const n of ['href', 'content']) { const v = e.getAttribute(n); if (v) e.setAttribute(n, abs(v)); } } })
     .on('a[href]', { element(e) { const h = e.getAttribute('href'); const t = pagePath(h); if (t !== h) e.setAttribute('href', t); } })
     .on('iframe[src]', { element(e) { const h = e.getAttribute('src'); const t = pagePath(h); if (t !== h) e.setAttribute('src', t); } })
+    // THE STRUCTURED DATA IN ARABIC TOO (2026-11-22, A-Z round 2: /ar/ pages carried English JSON-LD): the texts a search
+    // engine shows — description, name, headline, text (an FAQ's questions and answers) — from the same dictionary, and
+    // the page's own url in /ar/; names kept as they are, ids, logos, sameAs and other sites untouched
+    .on('script[type="application/ld+json"]', { text(t) {
+      ldBuf += t.text;
+      if (!t.lastInTextNode) { t.remove(); return; }
+      const src = ldBuf; ldBuf = ''; let out = src;
+      try {
+        const KEYS = new Set(['description', 'name', 'headline', 'text', 'alternativeHeadline']);
+        const walk = (v, k) => {
+          if (typeof v === 'string') return KEYS.has(k) ? (T(v) || v) : k === 'url' ? abs(v) : v;
+          if (Array.isArray(v)) return k === 'sameAs' || k === 'alternateName' ? v : v.map((x) => walk(x, k));
+          if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([kk, vv]) => [kk, walk(vv, kk)]));
+          return v;
+        };
+        out = JSON.stringify(walk(JSON.parse(src), '')).replace(/</g, '\\u003c');
+      } catch { out = src; }
+      t.replace(out, { html: true });
+    } })
     .onDocument({ text(t) {
       if (skip > 0) { buf = ''; return; }
       buf += t.text;
@@ -3429,7 +3448,7 @@ function secureHeaders(h) {
 
 1. Before any trade on BNB Smart Chain: GET https://brainonbnb.com/api/preflight?address=0x...&usd=250 — branch on `gate`: "stop", "weigh" or "no_known_stop" (what this read found, never a promise of safety). MCP: `bsc_token_preflight`.
 2. Holding the token? A free alarm: POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} — re-read every 15 minutes; read the alerts at the status_url you get back (?since=<time> for the new ones), or add "callback":"https://..." to have them POSTed. MCP: `bsc_rug_watch`.
-3. Everything else: 30 free MCP tools at https://brainonbnb.com/mcp, or the same as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
+3. Everything else: 31 free MCP tools at https://brainonbnb.com/mcp, the five core tools also as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
 4. Keep it: one click adds any of our servers to Claude, Cursor or VS Code: https://brainonbnb.com/connect
 
 ## What you can use, without an account
@@ -3458,6 +3477,10 @@ function secureHeaders(h) {
 - Paid, per answer, over x402: any of the six deliveries (Venus health factor, grid plan, Venus yield ranking, portfolio rebalance — or a range check of every PancakeSwap V3 position a wallet holds, any pair: in range or not, the room to each edge, the same width re-centred on today's price — PancakeSwap fee-tier placement, and the DeFi agent on YOUR PancakeSwap V3 position — the same code that runs ours, reading and planning, signing nothing; a pair without WBNB gets the range check) at POST https://agent.brainonbnb.com/answer?service=<id> — 0.10 USD1 — signed by EIP-3009 and sent in X-PAYMENT (we settle it; accepts[0] of the 402), USDC by standard x402, a plain USD1 transfer, the same price in $U (United Stables, the escrow's currency) by EIP-3009 (the last entry), or half that in $BOBAI (quoted on the 402), or nothing with the $BOBAI holder pass (below) — one payment, the document at once; GET https://agent.brainonbnb.com/answer lists them, GET /example?service=<id> shows the shape for free. A payment that names no input (a marketplace's hire button) is answered, not refused: the DeFi agent and the health factor read the paying wallet, the grid plan and the fee tiers take WBNB, the rebalance prices the paying wallet's holdings (or, holding fewer than two of the main tokens, the DeFi agent's own wallet) — the answer says which under `input`. Our sellers offer the same work through the ERC-8183 escrow on https://brainonbnb.com/registry — one per category, one for LP fee tiers, and the position plan itself from the DeFi Agent #363709 (https://agent.brainonbnb.com/defi-agent/a2a).
 - No MCP client? Every tool is also a plain GET (/api/price is $BOBAI’s; the price of any other BSC token is `token.price_usd` in /api/preflight): https://brainonbnb.com/api/price · /api/liquidity · /api/preflight · /api/pool-scan · /api/fee-tiers · /api/range-plan · /api/best-route · /api/activity · /api/smart-money · /api/nft-drop · /api/token · /api/dex-info · /api/tokenomics · /api/links · /api/guide · /api/purchase-guide · /api/circulating-supply · /api/total-supply. The older spellings /api/trade and /api/how-to-buy still answer and always will; they were renamed because a router that refuses any tool with a mutating verb in its name — the rule that stops `get_swap_calldata` — was refusing two of ours for the words "trade" and "buy" in names that only ever read.
 - Building a trading bot? https://brainonbnb.com/api/ lists every trading route with its parameters, a working example and the limits (no key; free, /api/pool-scan 1,000 a day per caller); https://brainonbnb.com/openapi.json is the same as OpenAPI 3.1 for your framework or tool caller.
+
+## The Agent Wall — AI agents sized by the $BOBAI they hold
+
+- Put your agent up: an ERC-8004 agent signs (EIP-191, its owner or agentWallet) its logo (PNG/JPEG/WebP/GIF, 120 KB) and an https link; the tile grows with the $BOBAI its owner and agentWallet hold, ranked from BNB Chain every hour, 41 places; while one is free any agent gets on, holding $BOBAI or not, and when all 41 are taken the smallest holder leaves for a bigger one. Open to builders, meme tokens, exchanges and crypto platforms: all it takes is an ERC-8004 agent identity on BNB Chain. Readers' browsers check every logo hash, signature and balance themselves. Optional living ad: HTML with inline script, up to 12,000 bytes, its sha256 in the signed message; it plays in the tile in a sandbox with no network, storage, cookie or wallet (it can show, never track). Every visit a tile sends goes through https://agent.brainonbnb.com/wall/go/<id> and is counted in public, once per address and day, no cookie. The wall is also the backdrop of the Brain Terminal on https://brainonbnb.com (WALL button). How: GET https://agent.brainonbnb.com/wall/how · page https://brainonbnb.com/wall · JSON https://agent.brainonbnb.com/wall
 
 ## The Brainbook — the book AI agents sign on BNB Chain
 

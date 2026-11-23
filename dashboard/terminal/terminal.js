@@ -3017,7 +3017,7 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
 const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
-  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
+  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['today'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
@@ -3049,7 +3049,7 @@ const CMDS = {
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot: last run ', [ago(W.buyback.last)], ' · dev wallet: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
-CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
+CMDS.follow = () => followTrade(S.hist.filter(e => e.kind === 'trade' && !e.ours && !e.taxSwap).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene; only a trader's trade (23.11.: the newest entry of ANY kind — a burn run — was picked and refused)
 // AI AND BLOCKCHAIN, ASKED ABOUT (2026-10-14): the six agents we run, and the second opinion our DeFi agent bought from
 // another AI this morning — read live from the agent server, never claimed beyond its record
 CMDS.agents = async () => {
@@ -3428,7 +3428,9 @@ function defiRate() {
   const fees = +(defiNow().fees || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = defiNow().value;
   const days = (Date.now() - since) / 86400e3;
   if (!(fees > 0) || !(days >= 3) || !(cap > 0)) return '';
-  return ` in ${Math.round(days)} days (≈$${nf(fees * S.bnbP, 2)}), about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital so far`;
+  // 23.11.: bnbF already carries the USD (a second "(≈$…)" doubled it), and a fee rate alone read like a profit while the
+  // log beside it showed the position down all in: say it is the fees alone, and where the whole P&L stands
+  return ` in ${Math.round(days)} days: the fees alone come to about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital, before price moves (its full P&L: /defi)`;
 }
 // HE ANSWERS WITH HIS BODY TOO (2026-10-09): a typed question got its answer in the log only; now he says one short line
 // with the move that shows it — only when nothing of the chain and no take of his own is running (a take is never cut),

@@ -922,19 +922,6 @@
         <div class="ec-foot"><span class="ec-go">Open <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
       </a>
       <!-- BRAIN POP (operator, 2026-11-06: the daily game, then "the ecosystem, number one"): in the terminal's brainrot season only -->
-      <a class="ec fi" href="/?pop=play" data-pop data-until="2026-12-01T00:00:00Z">
-        <div class="ec-top"><img src="terminal/br/mini.webp" width="96" height="96" alt="Brain Pop logo" loading="lazy" decoding="async"><h3>Brain Pop</h3></div>
-        <p>60 seconds, the same creatures for all. Top 10 daily to 30 Nov.</p>
-        <span class="ec-live" data-eclive="pop">Overall #1 on 30 Nov takes the pool</span>
-        <div class="ec-foot"><span class="ec-go">Play <span class="arr">&#x2192;</span></span><span class="ec-st live">Live</span></div>
-      </a>
-      <!-- XMAS TERMINAL (operator, 2026-11-17: "put Xmas in the ecosystem, beside Brain Pop"): anyone builds a look for the terminal -->
-      <a class="ec fi" href="/xmas" data-until="2027-01-01T00:00:00Z">
-        <div class="ec-top"><img src="xmas/icon.webp" width="96" height="96" alt="Xmas Terminal logo" loading="lazy" decoding="async"><h3>Xmas Terminal</h3></div>
-        <p>Build your own Xmas look for this terminal. One command, your AI agent.</p>
-        <span class="ec-live" data-from="2026-12-01T00:00:00Z" data-from-text="On the terminal now, under your name">On the terminal from 1 Dec, under your name</span>
-        <div class="ec-foot"><span class="ec-go">Build <span class="arr">&#x2192;</span></span><span class="ec-st live">New</span></div>
-      </a>
       <!-- THE BRAINBOOK (operator, 2026-11-22: "it must be in the apps and tools too"; "nenn es brainbook"): the book AI agents sign -->
       <a class="ec fi" href="/brainbook">
         <div class="ec-top"><img src="brainbook-icon.svg" width="96" height="96" alt="Brainbook logo" loading="lazy" decoding="async"><h3>Brainbook</h3></div>
@@ -952,6 +939,9 @@
     </div>
     <p class="ec-more fi"><span>Also built here</span>
       <a class="ec-also" href="brainscreener/" title="13 anonymous self-tests, free"><span class="ec-top"><img src="ico-brainscreener.png" alt="" loading="lazy" decoding="async"></span>brainScreener</a>
+      <!-- the seasons stay here for good (operator, 2026-11-23: "Brainbook and the Agent Wall stay for ever, Brain Pop and the Xmas Terminal are temporary: take them out of the main row, put them beside brainScreener; they can stay there for good") -->
+      <a class="ec-also" href="/pop" title="The 60-second game of Brain Pop: its boards and the season’s result"><span class="ec-top"><img src="terminal/br/mini.webp" alt="" loading="lazy" decoding="async"></span>Brain Pop</a>
+      <a class="ec-also" href="/xmas" title="Xmas looks for this terminal, built by anyone with an AI agent"><span class="ec-top"><img src="xmas/icon.webp" alt="" loading="lazy" decoding="async"></span>Xmas Terminal</a>
       <a class="ec-also" href="game/" title="A browser game with a public highscore board"><span class="ec-top"><img src="game/score-96.webp" alt="" loading="lazy" decoding="async"></span>Burn &amp; Add Liq</a>
       <a class="ec-also" href="worldcup/" title="The 2026 World Cup tip game, paid out 8.94M $BOBAI"><span class="ec-top"><img src="worldcup/wclogo-96.webp" alt="" loading="lazy" decoding="async"></span>Worldcup '26 <em>archive</em></a>
     </p>
@@ -1302,7 +1292,7 @@
             <span class="lib-t">Xmas Terminal — the community builds the terminal's look</span>
             <span class="lib-s">One npx command, your own AI agent, a sandboxed theme on the live terminal.</span>
           </span>
-          <span class="lib-m">13 files &middot; 1,410 lines &middot; 45 KB</span>
+          <span class="lib-m">13 files &middot; 1,414 lines &middot; 45 KB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1348,7 +1338,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 4,492 lines &middot; 0.2 MB</span>
+          <span class="lib-m">5 files &middot; 4,515 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1371,7 +1361,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">77 files &middot; 25,268 lines &middot; 0.6 MB</span>
+          <span class="lib-m">78 files &middot; 25,545 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1631,7 +1621,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795410163'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795415200'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

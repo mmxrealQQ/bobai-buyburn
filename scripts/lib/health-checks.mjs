@@ -685,6 +685,13 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     const pc = inSeason ? await getJson(`${AGENT}/pop/chain?day=${y}`) : null, rec = pc?.json;
     ok('Ecosystem', 'yesterday\'s Brain Pop result is written on BNB Chain', !inSeason || (!!rec && (/^0x[0-9a-f]{64}$/.test(rec.tx || '') || rec.players === 0)), !inSeason ? 'outside the season' : rec ? (rec.tx ? `${y}: ${rec.champion} · tx ${rec.tx.slice(0, 10)}…` : `${y}: nobody played`) : `${y}: not written — ${pc?.error || 'see /pop/chain last_run'}`);
   }
+  // THE AGENT WALL (A-Z 2026-11-23: "a dead rank looks the same as an unchanged one"): the board answers, it was ranked
+  // within the last 2 h (hourly rankWall) at a recent block, and the page loads
+  {
+    const w = await getJson(`${AGENT}/wall`), at = Date.parse(w?.json?.at || ''), age = (Date.now() - at) / 3600e3;
+    ok('Ecosystem', 'the Agent Wall was ranked within 2 h', at > 0 && age < 2 && (w?.json?.block || 0) > 0, at > 0 ? `${age.toFixed(1)} h ago, block ${w.json.block}, ${(w.json.wall || []).length} of ${w.json.max} places` : 'no answer');
+    const pg = await page('/wall'); ok('Ecosystem', '/wall, the page, answers', pg?.status === 200 && /Agent Wall/.test(pg.text || ''), pg ? `HTTP ${pg.status}` : 'no answer');
+  }
   // THE BRAINBOOK (2026-11-22): the book answers with its pages, the page loads, the latest anchor on BNB Chain holds
   // every page (or the newest ones came after the day's 06:00 UTC run), and the Brain Board wallet keeps gas for it
   {

@@ -367,8 +367,8 @@
    "files": 10,
    "lines": 1391,
    "zipBytes": 30762,
-   "txtBytes": 81452,
-   "sha256": "a9a00a3347285845",
+   "txtBytes": 81458,
+   "sha256": "58e8a34cd95fb80f",
    "reqs": [
     {
      "what": "A wallet with gas for the deployment",
@@ -555,10 +555,10 @@
    "title": "Xmas Terminal — the community builds the terminal's look",
    "tagline": "One npx command, your own AI agent, a sandboxed theme on the live terminal.",
    "files": 13,
-   "lines": 1410,
-   "zipBytes": 46004,
-   "txtBytes": 111959,
-   "sha256": "ad5adb37341426bc",
+   "lines": 1414,
+   "zipBytes": 46169,
+   "txtBytes": 112437,
+   "sha256": "ba55208c80048a13",
    "reqs": [
     {
      "what": "A worker and a key-value store of their own",
@@ -669,10 +669,10 @@
    "title": "Agent Tools — MCP & llms.txt",
    "tagline": "What an AI agent sees when it asks this project a question.",
    "files": 5,
-   "lines": 4492,
-   "zipBytes": 168067,
-   "txtBytes": 499689,
-   "sha256": "bde442890dc83f5e",
+   "lines": 4515,
+   "zipBytes": 168933,
+   "txtBytes": 502119,
+   "sha256": "87a5f5ce07aa1af3",
    "reqs": [
     {
      "what": "A machine that can run Node 18+",
@@ -703,11 +703,11 @@
    "group": "apps",
    "title": "The Agent Service — x402, Broker & Census",
    "tagline": "An agent that sells something, and gets paid without a human in the loop.",
-   "files": 77,
-   "lines": 25268,
-   "zipBytes": 650261,
-   "txtBytes": 1839326,
-   "sha256": "a2e7aadd5dbaeac7",
+   "files": 78,
+   "lines": 25545,
+   "zipBytes": 660583,
+   "txtBytes": 1869090,
+   "sha256": "fee0a6917ca2bb55",
    "reqs": [
     {
      "what": "A wallet to be paid into",
@@ -813,6 +813,7 @@
     "worker-agent/v3-depth.js",
     "worker-agent/venus-work.js",
     "worker-agent/venus.js",
+    "worker-agent/wall.js",
     "worker-agent/wrangler.toml",
     "worker-agent/x402-catalog.js",
     "worker-agent/x402-eip3009.js",

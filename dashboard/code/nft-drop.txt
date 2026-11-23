@@ -41,13 +41,13 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="BOBAI Buy Drops — auto-minted NFTs for every $BOBAI buy ≥ $100">
 <meta property="og:description" content="6 buy-tier motifs · 7 rarities · 1,925 total, on BNB Chain. NFTs land in the buyer's wallet automatically.">
-<meta property="og:image" content="https://brainonbnb.com/nft/og-banner.jpg">
+<meta property="og:image" content="https://brainonbnb.com/nft/og-banner-v2.jpg">
 <meta property="og:url" content="https://brainonbnb.com/nft/">
 <meta property="og:site_name" content="brainonbnb">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BOBAI Buy Drops — auto-minted NFTs for every $BOBAI buy ≥ $100">
 <meta name="twitter:description" content="6 buy-tier motifs · 7 rarities · 1,925 total, on BNB Chain.">
-<meta name="twitter:image" content="https://brainonbnb.com/nft/og-banner.jpg">
+<meta name="twitter:image" content="https://brainonbnb.com/nft/og-banner-v2.jpg">
 <style>
 
 :root{

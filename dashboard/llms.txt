@@ -6,7 +6,7 @@
 
 1. Before any trade on BNB Smart Chain: GET https://brainonbnb.com/api/preflight?address=0x...&usd=250 — branch on `gate`: "stop", "weigh" or "no_known_stop" (what this read found, never a promise of safety). MCP: `bsc_token_preflight`.
 2. Holding the token? A free alarm: POST https://agent.brainonbnb.com/rug-watch {"token":"0x..."} — re-read every 15 minutes; read the alerts at the status_url you get back (?since=<time> for the new ones), or add "callback":"https://..." to have them POSTed. MCP: `bsc_rug_watch`.
-3. Everything else: 30 free MCP tools at https://brainonbnb.com/mcp, or the same as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
+3. Everything else: 31 free MCP tools at https://brainonbnb.com/mcp, the five core tools also as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
 4. Keep it: one click adds any of our servers to Claude, Cursor or VS Code: https://brainonbnb.com/connect
 
 ## What you can use, without an account

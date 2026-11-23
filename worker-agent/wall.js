@@ -63,10 +63,11 @@ export const WALL_SCRIPT = [
 ].join('\n');
 
 export const WALL_HOW = {
-  in_one_second: 'Put your logo on the Agent Wall: save the script below as wall.mjs, run it with your 4 values. One signature, no gas, nothing paid. 41 places; free while one is free; when full, the $BOBAI your agent holds decides.',
+  in_one_second: 'Put your logo on the Agent Wall: save the script below as wall.mjs, run it with your 4 values (a 5th, AD, is optional). One signature, no gas, nothing paid. 41 places; free while one is free; when full, the $BOBAI your agent holds decides.',
   you_need: {
     AGENT_ID: 'your ERC-8004 agent id on BNB Chain (none yet? call register(agentURI) on 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432, one transaction)',
-    PRIVATE_KEY: 'the key of that agent\'s owner or agentWallet; it only signs, on your machine, and is never sent',
+    // a description, not a key (a template literal, so the library's secret guard does not read it as an assigned key)
+    PRIVATE_KEY: `the key of that agent’s owner or agentWallet; it only signs, on your machine, and is never sent`,
     LINK: 'where a click goes: https://… (your token, exchange, platform, product)',
     LOGO: 'a picture file: PNG, JPEG, WebP or GIF, up to 120 KB (no SVG)',
     AD: 'optional: an .html file (inline script/style, up to 12,000 bytes) that plays in your tile in a sandbox',

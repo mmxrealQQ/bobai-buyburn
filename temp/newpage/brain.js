@@ -270,6 +270,13 @@
     // the board ends above the chart strip (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart"):
     // no tile hides under it; the strip itself is thin glass while the wall is on
     { const tl = win.querySelector('.tl'), tb = tl && getComputedStyle(tl).display !== 'none' ? tl.offsetHeight : 0; if (layer.style.bottom !== tb + 'px') layer.style.bottom = tb + 'px'; }
+    // on a phone the board starts under the top bar (operator, 23.11.: "texts and symbols cut over each other", on phones
+    // too): title, LIVE, WALL and MOMENTS stood on the ad's own words; on a wide window the bar has room beside the tiles
+    { let tp = 0; if (win.classList.contains('portrait')) { const y0 = win.getBoundingClientRect().top;
+        // the title counts by its own line (its box keeps room for the mood chip, invisible with the wall on)
+        for (const e of win.querySelectorAll('.hud > :not(.ttl), .hud .bt-wall, .hud .ttl > b')) { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); if (r.width && r.height && cs.visibility !== 'hidden' && cs.display !== 'none') tp = Math.max(tp, r.bottom - y0); }
+        tp = Math.ceil(tp + 6); }
+      if (layer.style.top !== tp + 'px') layer.style.top = tp + 'px'; }
     const W = layer.clientWidth, H = layer.clientHeight, list = DATA.wall || [];
     if (!W || !H) return;
     // the floor keeps a small holder (or one holding none, while places are free) visible and shrinks with the crowd (at most half the wall): all 41 fit

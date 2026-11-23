@@ -161,6 +161,10 @@ async function askPeer(peer) {
 // distance on our marketing page because it made the demo better is not a
 // trade this project makes.
 const SELF_ACCOUNT = '0x73809F69916FcF7Ddc5BB1315fBdf96A569a5963';
+// A-Z 23.11.: since 21.10. the keeper (#302257) holds its own small USDT loan from its agentWallet (venus-work.js), so the
+// probe reads THAT position: a real health factor, cross-checked with Venus every 15 min. Our own empty wallet stays the
+// fallback should the keeper ever close its loan.
+const KEEPER_ACCOUNT = '0xeac21928de023677a25eb925d1cb1b0786faf946';
 
 // WBNB. The reference pool for the grid probe: the deepest pair on the chain,
 // so the break-even spacing it yields is the floor — no BNB Chain grid costs
@@ -284,7 +288,8 @@ async function probeHealthFactor(lastJob) {
   const started = Date.now();
   const attempt = {};
   try {
-    const hf = await withSecondChance(() => healthFactor(SELF_ACCOUNT), attempt);
+    let hf = await withSecondChance(() => healthFactor(KEEPER_ACCOUNT), attempt);
+    if (!hf.has_position) hf = await withSecondChance(() => healthFactor(SELF_ACCOUNT), attempt);
     return {
       ready: true,
       checked_at: at,
@@ -302,7 +307,7 @@ async function probeHealthFactor(lastJob) {
       // caveats both are — a template in the HTML would have to re-derive when
       // a figure is meaningful, and would get it wrong the first time a probe
       // came back empty.
-      headline: `Comptroller answering in ${Date.now() - started} ms`,
+      headline: hf.has_position && Number.isFinite(hf.health_factor) ? `health factor ${hf.health_factor.toFixed(2)} on its own Venus loan, read in ${Date.now() - started} ms` : `Comptroller answering in ${Date.now() - started} ms`,
       measures: 'health factor, liquidation distance and a collateral stress table for any Venus position, market by market',
       // The cross-check is the thing worth trusting this agent for, and the
       // readiness probe cannot demonstrate it on an empty account. The last
@@ -310,7 +315,7 @@ async function probeHealthFactor(lastJob) {
       proven_by: lastJob && lastJob.service === 'health_factor'
         ? { job_id: lastJob.job_id, agreed_with_protocol: lastJob.agrees, at: lastJob.at }
         : null,
-      note: 'This agent holds no position of its own; it is hired per job. The probe runs the full pipeline against our own wallet, which has entered no Venus market — so it shows the machinery answering, not a health factor. The arithmetic itself is checked against Venus\'s own getAccountLiquidity on every real job.',
+      note: hf.has_position ? 'The probe reads the keeper\x27s own small USDT loan on Venus (its agentWallet, kept near a health factor of 2.2 once a day): a real position, so the figure and the cross-check below are live.' : 'The probe runs the full pipeline against our own wallet, which has entered no Venus market — so it shows the machinery answering, not a health factor. The arithmetic itself is checked against Venus\'s own getAccountLiquidity on every real job.',
       not_ready_because: null,
       chain_needed_a_second_attempt: attempt.retried === true,
       last_error: null,

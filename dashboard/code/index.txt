@@ -271,7 +271,7 @@ txt: https://brainonbnb.com/code/brain-pop.txt
 Xmas Terminal — the community builds the terminal's look
 --------------------------------------------------------
 One npx command, your own AI agent, a sandboxed theme on the live terminal.
-13 files, 1410 lines
+13 files, 1414 lines
 needs:
   - A worker and a key-value store of their own
       ours: Cloudflare Workers + KV (bobai-xmas on workers.dev)
@@ -299,7 +299,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 4492 lines
+5 files, 4515 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -316,7 +316,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-77 files, 25268 lines
+78 files, 25545 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots

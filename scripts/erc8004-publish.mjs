@@ -1486,6 +1486,8 @@ const page = `<!doctype html>
   @media(max-width:720px){.aw-tiles{grid-template-columns:1fr 1fr;gap:8px}}
   /* three tiles are three columns (2026-10-26): the board's three stood in a grid of four on an iPad, 2+1 on a Fold */
   .aw-tiles:has(> :nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+  /* a phone: three columns of ~100 px broke each line into five or six (A-Z 23.11.) — one tile per row */
+  @media(max-width:480px){.aw-tiles.n3,.aw-tiles:has(> :nth-child(3):last-child){grid-template-columns:1fr!important}}
   .aw-box{display:flex;flex-direction:column;gap:14px}
   .aw-sec{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;align-items:start}
   /* 'Show the 8 newest' under its own list, on one line — in the 150 px label column it broke in two (26.10.) */
@@ -1725,6 +1727,10 @@ const page = `<!doctype html>
   details.rg-fold[open] summary::after{content:'\\2212'}
   details.rg-fold summary h2{margin:0;display:inline}
   details.rg-fold summary .rg-peek{color:var(--muted);font-size:.72rem;font-weight:400;margin-left:auto;padding-right:12px}
+  /* the peek and the +/- shared the free space (two auto margins), so the peeks floated mid-row at a different place in
+     each row (A-Z 23.11.): the peek takes it alone and the sign follows it; on a phone the peek goes under the title */
+  details.rg-fold summary:has(.rg-peek)::after{margin-left:0}
+  @media (max-width:560px){details.rg-fold summary:has(.rg-peek){flex-wrap:wrap;row-gap:2px}details.rg-fold summary:has(.rg-peek) h2{flex:1 1 0;min-width:0}details.rg-fold summary .rg-peek{order:3;flex-basis:100%;margin-left:0;padding-right:0}}
   details.rg-fold[open] summary{margin-bottom:14px}
   details.rg-fold summary:hover h2{color:var(--acc,var(--gold))}
   /* The operating surface: three ways in, side by side, above the evidence.

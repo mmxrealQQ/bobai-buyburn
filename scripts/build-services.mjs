@@ -350,6 +350,7 @@ function page() {
   .sv-curl{margin:6px 0 0;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;font-size:.72rem;line-height:1.5;max-width:100%}
   .sv-cost code{overflow-wrap:anywhere;word-break:break-all}
   .sv-buy-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .sv-buy-h h3{flex-basis:100%} /* the title has its own row: a short one ("The DeFi agent, on your position") pulled $0.10 up beside it and split the price row (A-Z 23.11.) */
   .sv-price{color:var(--gold);font-weight:600;font-size:.82rem;white-space:nowrap;font-variant-numeric:tabular-nums}
   .sv-bobai{font-size:.7rem;font-weight:500;opacity:.85}
   /* A price is one short figure and stays on one line. The x402 line carries a
@@ -399,6 +400,7 @@ function page() {
   /* A count that stands still needs its date next to it, or a reader cannot
      tell a quiet chain from a stale file. */
   .sv-num i{display:block;font-style:normal;opacity:.7;font-size:.68rem;margin-top:2px}
+  .sv-not{padding-left:1.2em;margin-left:0} /* the bullets hung 8 px into the page margin (A-Z 23.11.) */
   .sv-not li{color:var(--muted);font-size:.84rem;line-height:1.65;margin-bottom:8px}
   .sv-not b{color:var(--text)}
 </style>
@@ -744,6 +746,32 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
 <script>
   // a sale ends by itself (2026-10-28): its words go the moment it is over, without a rebuild (worker-agent/sell.js SALE_UNTIL)
   document.querySelectorAll('.sv-sale[data-until]').forEach(function (s) { if (Date.now() >= Date.parse(s.dataset.until)) s.remove(); });
+</script>
+<script>
+  // A REAL ANSWER, READABLE (2026-11-20, A-Z: "See a real answer, free" opened a wall of raw JSON for a person): the answer
+  // opens under the link — what was asked, when, how long it took, then the JSON indented in its own scroll box, and the
+  // raw link for an agent. Without JavaScript the link still opens the JSON itself.
+  document.querySelectorAll('a.sv-example').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+      e.preventDefault();
+      var box = a.nextElementSibling && a.nextElementSibling.classList.contains('sv-ex-box') ? a.nextElementSibling : null;
+      if (box) { box.remove(); return; }
+      box = document.createElement('div'); box.className = 'sv-ex-box';
+      box.style.cssText = 'margin:10px 14px 0;border:1px solid rgba(240,185,11,.3);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.25);font-size:.8rem';
+      box.textContent = 'Reading the answer…'; a.after(box);
+      fetch(a.href).then(function (r) { return r.json(); }).then(function (j) {
+        box.textContent = '';
+        var head = document.createElement('p'); head.style.margin = '0 0 8px';
+        var when = j.produced_at ? new Date(j.produced_at).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : '';
+        head.textContent = (j.task ? j.task : (j.name || j.service || '')) + (when ? ' · answered ' + when : '') + (j.took_ms ? ' · in ' + (j.took_ms / 1000).toFixed(1) + ' s' : '');
+        var pre = document.createElement('pre'); pre.style.cssText = 'margin:0;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.45';
+        pre.textContent = JSON.stringify(j.result || j, null, 2);
+        var raw = document.createElement('a'); raw.href = a.href; raw.target = '_blank'; raw.rel = 'noopener'; raw.textContent = 'the raw JSON, as an agent gets it ↗'; raw.style.cssText = 'display:inline-block;margin-top:8px;color:var(--gold,#f0b90b)';
+        box.append(head, pre, raw);
+      }).catch(function () { box.textContent = 'The answer could not be read just now — '; var r = document.createElement('a'); r.href = a.href; r.textContent = 'open it directly'; box.append(r); });
+    });
+  });
 </script>
 </body>
 </html>

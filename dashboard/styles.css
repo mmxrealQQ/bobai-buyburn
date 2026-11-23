@@ -427,6 +427,7 @@
 
     /* FLOW STEPS */
     .fl{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .fl + .tax{margin-top:24px} /* the step cards stood on the tax box with no gap (A-Z 23.11.) */
     /* overflow stays visible so the chain link between cards isn't clipped —
        the cover image gets its own clipping wrapper instead. */
     .fs{background:var(--card);backdrop-filter:blur(16px);border:1px solid var(--border);border-radius:22px;padding:0 0 22px;text-align:center;position:relative;transition:transform .35s cubic-bezier(.34,1.56,.64,1),border-color .25s,box-shadow .35s}

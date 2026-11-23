@@ -162,7 +162,8 @@ export function ecoNav(html, rel = '', ecoV = '1') {
   // Every link carries a class: the site-wide rule for bare links (a:not([class])) would underline them in gold.
   const links = () => ECO_APPS.map(([h, t]) => `<a ${h === href ? 'class="eco-a on" aria-current="page"' : 'class="eco-a"'} href="${h}">${t}</a>`).join('');
   const bar = `<div class="eco-l"><a class="eco-logo" href="/" title="Back to the Brain Terminal"><img src="/logo-sm.webp" width="26" height="26" alt=""><span>BOBAI</span></a>`
-    + `<span class="eco-here${here ? ' is-app' : ''}">${name.trim()}</span>`
+    // an app shows its short menu name (23.11.: "BOBAI Pool Scanner" was cut to "BOBAI …" beside EN | ع on a phone)
+    + `<span class="eco-here${here ? ' is-app' : ''}"${here ? ` title="${name.trim().replace(/"/g, '&quot;')}"` : ''}>${here ? here[1] : name.trim()}</span>`
     + `<div class="eco-links" aria-label="BOBAI apps">${links()}</div>`
     + `<details class="eco-m"><summary>Apps</summary><div class="eco-menu"><a class="eco-a" href="/">Brain Terminal</a>${links()}</div></details></div>`;
   // The gold "Brain Plaza" button five pages carried was the only way to the Plaza from there; the bar has it now.
@@ -192,7 +193,7 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
     const head = '<link rel="stylesheet" href="styles.css?v=1">';
     const nav = (href, name) => `${head}<nav><div class="nav">\n    <a class="back-btn" href="/" title="x"><span>&larr;</span> Home</a>\n    <a class="brand-link" href="${href}">${name}</a>\n    <a class="nb" href="/buy">Buy $BOBAI</a>\n  </div></nav>`;
     const s = ecoNav(nav('/scanner', 'BOBAI Pool Scanner')), t = ecoNav(nav('/token', 'The Token'));
-    is('the app bar replaces back + name: all six apps, the open one lit once, the Buy button untouched', !/back-btn|brand-link/.test(s) && ECO_APPS.every(([h]) => s.includes(`href="${h}"`)) && s.split('aria-current="page"').length === 3 && s.includes('<a class="nb" href="/buy">Buy $BOBAI</a>') && s.includes('eco-here is-app">BOBAI Pool Scanner<'));
+    is('the app bar replaces back + name: all six apps, the open one lit once, the Buy button untouched', !/back-btn|brand-link/.test(s) && ECO_APPS.every(([h]) => s.includes(`href="${h}"`)) && s.split('aria-current="page"').length === 3 && s.includes('<a class="nb" href="/buy">Buy $BOBAI</a>') && s.includes('eco-here is-app" title="BOBAI Pool Scanner">Scanner<'));
     const p = ecoNav(nav('/services', 'Services').replace('<a class="nb" href="/buy">', '<a class="nb" href="/registry">Brain Plaza</a>\n    <a class="nb" href="/buy">'));
     is('the doubled Brain Plaza button goes, Buy stays, and no bar link is a bare <a> the gold underline rule would catch', !p.includes('>Brain Plaza</a>') && p.includes('>Buy $BOBAI</a>') && !/<a href=/.test(p.slice(p.indexOf('eco-l'), p.indexOf('</details>'))));
     // 2026-11-20: a page whose only button was Brain Plaza (/list, /session, /advantage) gets Buy $BOBAI, once

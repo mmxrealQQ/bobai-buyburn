@@ -8334,7 +8334,7 @@ window.__btBrSeason = brSeason;
     // A CALM HINT (7.11., operator: "show them a calm hint"): a device set to reduce motion that came for the game (the Apps
     // menu, a shared link: ?pop) is told plainly what the game is before anything moves; the same two choices, its own words
     const calmPop = calmDevice && new URLSearchParams(location.search).has('pop');
-    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : 'Brainrot mode is on') + '</b>'
+    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : stored === '1' ? 'Brainrot mode is on' : 'Brainrot mode is available') + '</b>'   /* A-Z 23.11.: nothing moves before the choice, so a first visit is not "on" */
       + (calmPop ? '<p>Your device asks for reduced motion. Brain Pop runs with fast motion, creatures across the screen, shaking and bright colours.</p>'
         : '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>')
       + '<p class="br-ask-w">If you are sensitive to flashing lights or fast motion, for example with photosensitive epilepsy, please switch to the standard terminal.</p>'

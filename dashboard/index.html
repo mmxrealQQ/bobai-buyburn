@@ -299,7 +299,7 @@
   <section class="liq-boost fi" id="liq-boost-bobai-3">
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
-      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% (0.5% from Sep 20, 06:00 UTC) of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">running now</span></div>
+      <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% (0.5% from Sep 20, 06:00 UTC) of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">ended Nov 20, 2026</span></div>
       <div class="lb-countdown">
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-days">--</div><div class="lb-cd-lbl">Days</div></div>
         <div class="lb-cd-unit"><div class="lb-cd-val" id="bb3-hours">--</div><div class="lb-cd-lbl">Hours</div></div>
@@ -1338,7 +1338,7 @@
             <span class="lib-t">Agent Tools — MCP &amp; llms.txt</span>
             <span class="lib-s">What an AI agent sees when it asks this project a question.</span>
           </span>
-          <span class="lib-m">5 files &middot; 4,528 lines &middot; 0.2 MB</span>
+          <span class="lib-m">5 files &middot; 4,533 lines &middot; 0.2 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1361,7 +1361,7 @@
             <span class="lib-t">The Agent Service — x402, Broker &amp; Census</span>
             <span class="lib-s">An agent that sells something, and gets paid without a human in the loop.</span>
           </span>
-          <span class="lib-m">79 files &middot; 25,596 lines &middot; 0.6 MB</span>
+          <span class="lib-m">80 files &middot; 25,691 lines &middot; 0.6 MB</span>
           <span class="lib-a">&#x25BE;</span>
         </summary>
         <div class="lib-b">
@@ -1621,7 +1621,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795415200'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795439295'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

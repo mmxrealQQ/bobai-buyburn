@@ -149,6 +149,10 @@
       /* 2026-11-20 (A-Z): with the EN | ع switch in the row, "Buy $BOBAI" ran 39 px past a 390 px screen (to 429) and 69 px
          past a 344 px Fold; up to 440 px the terminal button says "Terminal" (the dot keeps it the live one) */
       @media (max-width:440px){.nb{padding:7px 10px}.nb-group{gap:6px}.nbt{font-size:0!important;gap:6px}.nbt::after{content:'Terminal';font-size:.72rem}}
+      /* 2026-11-23 (A-Z): the group still ended 1 px past a 390 px screen, "Buy $BOBAI" touching the edge: 14 px sides */
+      @media (max-width:440px){.nav{padding:0 14px}}
+      /* a 344 px Fold: logo, EN | ع, Terminal and Buy are wider than the screen ("Buy $BOBAI" cut 47 px): the logo alone */
+      @media (max-width:380px){.nl span{display:none}}
       .nav{gap:8px}
       .brand-link{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     }
@@ -244,7 +248,7 @@
       .hero-cta{justify-content:center}
       .hero::after{display:none}
       .hero::before{display:none}
-      .hero picture{position:relative}
+      .hero picture{position:relative;overflow:hidden} /* 641-900 px: the zoomed wide art (scale 1.136) hung 27 px under its fade as a bright strip (A-Z 23.11.) */
       .hero picture::after{content:'';position:absolute;inset:0;pointer-events:none;
         background:linear-gradient(to bottom,rgba(12,11,12,0) 66%,var(--bg) 97%)}
     }

@@ -57,6 +57,14 @@ const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixe
 // The figure of a stop/caution item (2026-10-09): only where there is a number.
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
 export const gateOf = (stop, caution) => (stop.length ? 'stop' : caution.length ? 'weigh' : 'no_known_stop');
+// the established tokens whose formal points are info, not caution (A-Z 24.11.), and the points that are formal
+export const ESTABLISHED = new Map([
+  ['0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c', 'WBNB'], ['0x55d398326f99059ff775485246999027b3197955', 'USDT (Binance-Peg)'],
+  ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', 'USDC (Binance-Peg)'], ['0xe9e7cea3dedca5984780bafc599bd69add087d56', 'BUSD (Binance-Peg)'],
+  ['0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', 'USD1'], ['0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 'CAKE'],
+  ['0x2170ed0880ac9a755fd29b2688956bd959f933f8', 'ETH (Binance-Peg)'], ['0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c', 'BTCB (Binance-Peg)'],
+]);
+export const FORMAL = new Set(['contract_flags', 'owner_is_eoa', 'holders_concentrated', 'holders_unknown']);   // holders_unknown: USDT's list is too long to read — a gap, not a risk, on these
 
 // The cost of a size the ladder does not carry, read between the two rungs
 // around it. Used only when the route check could not answer (a venue outside
@@ -95,7 +103,17 @@ export function shape(s, r, usd, routeError = null, control = null) {
     block: s.block ?? (control?.read ? control.block : null) ?? null, measured_at: s.measuredAt ?? new Date().toISOString() };
   const ctl = controlBlock(control);
   // The verdict word sits next to stop/caution, worked out once both are final.
-  const out = (o) => ({ ...head, gate: gateOf(o.stop, o.caution), ...o });
+  // AN ESTABLISHED TOKEN'S FORMAL POINTS ARE INFO (A-Z 24.11., operator: "formale Punkte als info"): CAKE, ETH, BTCB, WBNB and
+  // the dollar coins all read "weigh" — GoPlus mint labels, the Binance-Peg owner, exchange and staking wallets — so the verdict
+  // never told them apart from a meme minted an hour ago. On those tokens the three formal points move to info[] (shown, not
+  // weighed); anything measured (tax, depth, sellability, the round trip) stays where it was.
+  const out = (o) => {
+    if (ESTABLISHED.has(String(s.address || '').toLowerCase()) && Array.isArray(o.caution)) {
+      const formal = o.caution.filter((c) => FORMAL.has(c.code));
+      if (formal.length) o = { ...o, caution: o.caution.filter((c) => !FORMAL.has(c.code)), info: [...(o.info || []), ...formal.map((c) => ({ ...c, established: ESTABLISHED.get(String(s.address).toLowerCase()) }))] };
+    }
+    return { ...head, gate: gateOf(o.stop, o.caution), ...o };
+  };
 
   // Still on its four.meme curve: no pool, no route — the curve's own figures.
   if (!s.quotable && s.curve) {

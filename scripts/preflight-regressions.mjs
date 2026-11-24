@@ -409,5 +409,16 @@ ok('through the pool that was read, a refused sell still STOPS', codes(o.stop).i
   ok('… and the preflight does not stop WBNB', !/not_sellable|not_buyable/.test(codes(o.stop)) && o.gate !== 'stop', codes(o.stop));
 }
 
+// AN ESTABLISHED TOKEN'S FORMAL POINTS ARE INFO (A-Z 24.11., operator): CAKE, ETH, BTCB, WBNB, the dollar coins read "weigh"
+// on GoPlus labels, a Binance-Peg owner and exchange wallets; there the three formal points are info[], and the verdict is
+// no_known_stop — while the same points on any other token stay a caution, and a measured risk on CAKE stays one
+{ const formalScan = { contract: { openSource: true, properties: { is_open_source: true, is_mintable: true } }, holders: { count: 9000, wallets: 10, top10PctOfCirculating: 72, largestPct: 31, largestSellTakesPctOfPool: 40, top: [{}] } };
+  const cake = shape(scan({ ...formalScan, address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' }), route(), 250);
+  const other = shape(scan(formalScan), route(), 250);
+  ok('CAKE with only formal points: no_known_stop, the points kept in info[] and named as an established token', cake.gate === 'no_known_stop' && cake.caution.length === 0 && codes(cake.info || []).includes('contract_flags') && codes(cake.info).includes('holders_concentrated') && cake.info.every((x) => x.established === 'CAKE'), JSON.stringify({ gate: cake.gate, c: codes(cake.caution), i: codes(cake.info || []) }));
+  ok('… the same points on an unknown token stay a caution: weigh', other.gate === 'weigh' && codes(other.caution).includes('contract_flags') && !other.info, JSON.stringify({ gate: other.gate, c: codes(other.caution) }));
+  const taxed = shape(scan({ ...formalScan, address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', tax: { buyPct: 12, sellPct: 12, measured: true, source: 'measured from executed trades on-chain' } }), route({ transfer_tax: { buy_pct: 12, sell_pct: 12, source: 'measured from executed trades on-chain' } }), 250);
+  ok('… and a measured risk on an established token is still weighed', taxed.gate !== 'no_known_stop' && taxed.caution.length > 0, JSON.stringify({ gate: taxed.gate, c: codes(taxed.caution) })); }
+
 console.log(fails ? `\n${fails} FAILED` : '\npreflight: all pins hold');
 process.exit(fails ? 1 : 0);

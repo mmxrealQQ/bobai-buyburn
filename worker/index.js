@@ -10,6 +10,7 @@
 import { createPublicClient, createWalletClient, http, fallback, parseAbi, formatEther, parseEther } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { planSplit, stillOwed, readOwed, writeOwed, OWED_KEY } from '../shared/tax-owed.js';
 
 const BOB_TOKEN = '0x51363f073b1e4920fda7aa9e9d84ba97ede1560e';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -695,16 +696,20 @@ async function runBot(env) {
 
   // Step 2: Compute BNB amounts per bucket.
   // BOBAI burn = residual so all wei are accounted for (no dust left on wallet).
-  const creatorAmount     = (available * BigInt(creatorBps))   / BigInt(TAX_BPS);
-  const bobBurnAmount     = (available * BigInt(bobBurnBps))   / BigInt(TAX_BPS);
-  const bobLiqAddAmount   = (available * BigInt(bobLiqBps))    / BigInt(TAX_BPS);
-  const bobaiLiqAddAmount = (available * BigInt(bobaiLiqBps))  / BigInt(TAX_BPS);
-  const wc26PoolAmount    = (available * BigInt(wc26PoolBps))  / BigInt(TAX_BPS);
-  const lpAgentAmount     = (available * BigInt(lpAgentBps))   / BigInt(TAX_BPS);
-  const giggleAmount      = (available * BigInt(giggleBps))    / BigInt(TAX_BPS);
-  const bobaiBurnAmount   = available - creatorAmount - bobBurnAmount
-                                      - bobLiqAddAmount - bobaiLiqAddAmount - wc26PoolAmount
-                                      - lpAgentAmount - giggleAmount;
+  // WHAT IS STILL OWED COMES FIRST (2026-11-24, Liste B 1, shared/tax-owed.js): a leg whose BNB stayed on the wallet in an
+  // earlier run is paid that BNB now, to the same leg; only the rest is split by the shares. The creator is never owed.
+  const owedIn = readOwed(JSON.parse((await env.LOGS.get(OWED_KEY)) || '{}'));
+  const plan = planSplit(available, { creator: creatorBps, bobBurn: bobBurnBps, bobaiBurn: bobaiBurnBps, bobLiq: bobLiqBps, bobaiLiq: bobaiLiqBps, wc26: wc26PoolBps, lpAgent: lpAgentBps, giggle: giggleBps }, owedIn, TAX_BPS);
+  if (plan.owedTotal > 0n) console.log(`Owed from earlier runs: ${formatEther(plan.owedTotal)} BNB (${Object.entries(plan.owed).map(([k, v]) => k + ' ' + formatEther(v)).join(', ')})`);
+  if (plan.wait) { console.log('Not enough to pay what is still owed — waiting for more tax.'); return; }
+  const creatorAmount     = plan.amount.creator;
+  const bobBurnAmount     = plan.amount.bobBurn;
+  const bobLiqAddAmount   = plan.amount.bobLiq;
+  const bobaiLiqAddAmount = plan.amount.bobaiLiq;
+  const wc26PoolAmount    = plan.amount.wc26;
+  const lpAgentAmount     = plan.amount.lpAgent;
+  const giggleAmount      = plan.amount.giggle;
+  const bobaiBurnAmount   = plan.amount.bobaiBurn;
 
   console.log(`Creator:     ${formatEther(creatorAmount)} BNB (${creatorBps} bps)`);
   console.log(`BOB burn:    ${formatEther(bobBurnAmount)} BNB (${bobBurnBps} bps)`);
@@ -731,6 +736,11 @@ async function runBot(env) {
     return;
   }
 
+  // after each leg: owed again only when it did not do its work and its BNB is still here (stillOwed)
+  const owedOut = {}, bal = () => publicClient.getBalance({ address: account.address });
+  let b0 = await bal();
+  const settle = async (leg, amount, done) => { const b1 = await bal(); owedOut[leg] = stillOwed(amount, done, b0, b1); b0 = b1; };
+
   // Step 3b: BOB Liq Add (only during BOB Liq Boost window)
   let bobLiqResult = null;
   const MIN_LIQ = parseEther('0.0003');
@@ -744,6 +754,8 @@ async function runBot(env) {
     }
   }
 
+  await settle('bobLiq', bobLiqAddAmount, !!bobLiqResult);
+
   // Step 3c: BOBAI Liq Add (only during BOBAI Liq Boost window)
   let bobaiLiqResult = null;
   if (bobaiLiqAddAmount > MIN_LIQ) {
@@ -756,6 +768,8 @@ async function runBot(env) {
     }
   }
 
+  await settle('bobaiLiq', bobaiLiqAddAmount, !!bobaiLiqResult);
+
   // Step 4: Buy & burn $BOB (none from Dec 1: the slice is BOBAI liquidity then; a zero swap is not attempted)
   let bobResult = null;
   if (bobBurnAmount > 0n) {
@@ -763,9 +777,13 @@ async function runBot(env) {
     bobResult = await swapAndBurn(walletClient, publicClient, account, bobBurnAmount, BOB_TOKEN, 'BOB');
   }
 
+  await settle('bobBurn', bobBurnAmount, !!bobResult);
+
   // Step 5: Buy & burn $BOBAI
   console.log(`\n--- Buying & Burning $BOBAI (${formatEther(bobaiBurnAmount)} BNB) ---`);
   const bobaiResult = await swapAndBurn(walletClient, publicClient, account, bobaiBurnAmount, BOBAI_TOKEN, 'BOBAI');
+
+  await settle('bobaiBurn', bobaiBurnAmount, !!bobaiResult);
 
   // Step 5a: the LP agent's share and the Giggle pot, plain BNB transfers.
   // A failed send is logged and the BNB stays on the wallet for the next
@@ -783,6 +801,7 @@ async function runBot(env) {
       lpAgentTxHash = null;
     }
   }
+  await settle('lpAgent', lpAgentAmount, !!lpAgentTxHash);
   let giggleTxHash = null;
   if (giggleAmount > 0n) {
     console.log(`\n--- Sending ${formatEther(giggleAmount)} BNB to the Giggle Academy pot ---`);
@@ -796,6 +815,8 @@ async function runBot(env) {
       giggleTxHash = null;
     }
   }
+
+  await settle('giggle', giggleAmount, !!giggleTxHash);
 
   // Step 5b: Send WC26 Prize Pool share LAST (only during WC26 window).
   let wc26TxHash = null;
@@ -823,10 +844,17 @@ async function runBot(env) {
     }
   }
 
+  await settle('wc26', wc26PoolAmount, !!wc26TxHash);
+  // kept for the next run: what stayed here, per leg (a leg that went through, or whose BNB left, owes nothing)
+  try { await env.LOGS.put(OWED_KEY, JSON.stringify(writeOwed(owedOut))); } catch (e) { console.log(`  Could not keep what is owed: ${say(e)}`); }
+  { const left = Object.entries(owedOut).filter(([, v]) => v > 0n); if (left.length) console.log(`Owed to the next run: ${left.map(([k, v]) => k + ' ' + formatEther(v)).join(', ')}`); }
+
   // Step 6: Log to burns.json (KV)
   const entry = {
     time: new Date().toISOString(),
     totalBnb: formatEther(available),
+    ...(plan.owedTotal > 0n ? { owedPaidBnb: formatEther(plan.owedTotal), owedPaid: writeOwed(plan.owed) } : {}),
+    ...(Object.values(owedOut).some((v) => v > 0n) ? { owedNext: writeOwed(owedOut) } : {}),
     creatorBnb: formatEther(creatorAmount),
     creatorTx: creatorTxHash,
   };

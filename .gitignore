@@ -74,3 +74,6 @@ dashboard/builder/
 
 # headless Chrome profiles left by QA runs
 prof-*/
+
+# the local buyback fallback's owed shares (shared/tax-owed.js, 24.11.)
+buyback-owed.json

@@ -291,6 +291,45 @@ console.log('\nthe run on Dec 1, 2026 (BOBAI liquidity for good)');
   ok('$BOBAI is still bought and burned', /^0x[0-9a-f]{64}$/.test(e2.bobaiBurnTx || '') && (await tok(BOBAI, DEAD)) > deadBobai0);
 }
 
+// ── WHAT IS OWED (Liste B 1, 2026-11-24): a run whose legs fail after the creator is paid, then the next run ─────────
+// The router is made to refuse everything for the first run (its code replaced by a bare revert): the creator is paid its
+// third, the BOBAI burn and the BOBAI liquidity fail before any BNB leaves, and both are written down as owed. Then the
+// router is back and new tax arrives: the creator gets a third of the NEW tax only, the owed BNB goes to its own legs, and
+// nothing is owed after. Before this, the second run split the stranded BNB again and the creator was paid twice.
+console.log('\nwhat is owed (a run whose legs failed, then the next one)');
+{
+  const ROUTER = addr('PANCAKE_ROUTER_V2');
+  const key4 = generatePrivateKey(), bot4 = privateKeyToAccount(key4).address;
+  await test.setBalance({ address: bot4, value: parseEther('0.1') });
+  const kv4 = new Map();
+  const env4 = { ...env, BUYBACK_PRIVATE_KEY: key4, LOGS: { get: async (k) => (kv4.has(k) ? kv4.get(k) : null), put: async (k, v) => { kv4.set(k, v); }, delete: async (k) => { kv4.delete(k); }, list: async ({ prefix }) => ({ keys: [...kv4.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }) } };
+  const code = await pub.getCode({ address: ROUTER });
+  const realNow = Date.now, dec1 = () => Date.parse('2026-12-01T00:02:00Z');
+  const run = async () => { const o = []; Date.now = dec1; console.log = (...a) => o.push(a.join(' ')); try { await worker.scheduled({}, env4, {}); } finally { console.log = log; Date.now = realNow; } return o.join('\n'); };
+  // run 1: the router refuses
+  await test.setCode({ address: ROUTER, bytecode: '0x60006000fd' });
+  const c0 = await bal(CREATOR);
+  const said1 = await run();
+  const avail1 = parseEther('0.1') - parseEther('0.003'), toCreator1 = (await bal(CREATOR)) - c0;
+  const owed1 = JSON.parse(kv4.get('buyback-owed') || '{}'), owedSum1 = Object.values(owed1).reduce((a, v) => a + BigInt(v), 0n);
+  ok('run 1, the router refusing: the creator is paid its third', toCreator1 === (avail1 * 100n) / 300n, formatEther(toCreator1));
+  ok('and the two legs that failed before spending are owed exactly what they did not get', Object.keys(owed1).sort().join() === 'bobaiBurn,bobaiLiq' && owedSum1 === avail1 - (avail1 * 100n) / 300n, JSON.stringify(owed1));
+  ok('the run says what is owed to the next one', /Owed to the next run: .*bobaiLiq/.test(said1));
+  // run 2: the router is back, new tax has arrived
+  await test.setCode({ address: ROUTER, bytecode: code });
+  const newTax = parseEther('0.03');
+  await test.setBalance({ address: bot4, value: (await bal(bot4)) + newTax });
+  const b2 = await bal(bot4), c1 = await bal(CREATOR), deadBobai1 = await tok(BOBAI, DEAD);
+  const said2 = await run();
+  const avail2 = b2 - parseEther('0.003'), base2 = avail2 - owedSum1, toCreator2 = (await bal(CREATOR)) - c1;
+  ok('run 2: the creator gets a third of what is NOT owed — not a third of the stranded BNB again', toCreator2 === (base2 * 100n) / 300n && toCreator2 < (avail2 * 100n) / 300n, `${formatEther(toCreator2)} (a plain third of all would be ${formatEther((avail2 * 100n) / 300n)})`);
+  ok('it names the owed BNB it pays first', /Owed from earlier runs: /.test(said2));
+  const e4 = JSON.parse(kv4.get('burns.json') || '[]').at(-1) || {}, liq4 = JSON.parse(kv4.get('bobai-liq-log.json') || '[]').at(-1) || {};
+  ok('the owed BNB went to its legs: $BOBAI bought and burned, BOBAI liquidity added', /^0x[0-9a-f]{64}$/.test(e4.bobaiBurnTx || '') && (await tok(BOBAI, DEAD)) > deadBobai1 && Number(liq4.bnb) > Number(formatEther(owed1.bobaiLiq ? BigInt(owed1.bobaiLiq) : 0n)), JSON.stringify({ liq: liq4.bnb, owedLiq: owed1.bobaiLiq }));
+  ok('the log entry carries what it paid of the owed', e4.owedPaidBnb === formatEther(owedSum1), e4.owedPaidBnb);
+  ok('and nothing is owed after', JSON.stringify(JSON.parse(kv4.get('buyback-owed') || '{}')) === '{}', kv4.get('buyback-owed'));
+}
+
 // ── the liquidity add, which rests between boosts, same fork ────────────────
 console.log('\nthe liquidity add (dormant path, called by name)');
 {

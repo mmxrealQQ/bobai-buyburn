@@ -50,5 +50,11 @@ for (const q of ['grid', 'plan a grid for a token', 'grid trading bot']) {
 const ek = await find('q=' + encodeURIComponent('Pancake: K'));
 const tk = await find('q=' + encodeURIComponent('plan a grid for a token'));
 is('FC7 a query that reads like an error points first at the library (/learn/<the words>); a task does not', Object.keys(ek)[0] === 'looking_for_a_fix' && ek.looking_for_a_fix.learn === 'https://brainonbnb.com/learn/Pancake%3A%20K' && !tk.looking_for_a_fix, JSON.stringify(ek.looking_for_a_fix || Object.keys(ek)).slice(0, 200));
+// FC8 (A-Z 2026-11-24): a hire link only where the last ask to quote was answered — #49467 and #421197 sell nothing and
+// their hire answered "seller declined", dead deployments had one too — and our own ids say so
+{ const r = (await find('q=pancakeswap&limit=25')).results || [];
+  const bad = r.filter((x) => x.next?.hire && !['quotes', 'input'].includes(x.escrow?.answer)).map((x) => x.id);
+  const own = r.filter((x) => [49467, 421197, 391841].includes(Number(x.id)));
+  is('FC8 no hire link without an answered quote ask; the reason instead; our ids marked ours', r.length > 0 && bad.length === 0 && r.some((x) => x.hire_not_offered || x.next?.hire_not_offered) && own.every((x) => x.ours === true), `hire on ${bad.join(',')} · ours ${own.map((x) => x.id + ':' + x.ours).join(',')}`); }
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

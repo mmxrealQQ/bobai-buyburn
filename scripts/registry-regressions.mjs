@@ -176,6 +176,15 @@ check('page has the four categories', boxes.length === 4, `${boxes.length} categ
     /m\.category === cat\.id && m\.source === 'derived' && !m\.weak/.test(pub) && /label: m\.name \|\| `#\$\{m\.id\}`, sub: o\.operator/.test(pub) && /agentId: m\.id/.test(pub), 'erc8004-publish.mjs');
 }
 
+// 7 dead (A-Z 2026-11-24): a deployment that answers with Vercel's 404 page, or a JSON-RPC "Method not found", did not
+//   answer — #336622, #303779, #341565 had a Hire button as "Answers, no price"
+{
+  const pub = fs.readFileSync(path.join(ROOT, 'scripts', 'erc8004-publish.mjs'), 'utf8');
+  const src = (pub.match(/const NO_ANSWER = (\/.+\/i);/) || [])[1];
+  const re = src ? new Function(`return ${src}`)() : null;
+  check('dead: Vercel 404 and Method not found read as no answer; a real worded reply stays an answer', !!re && re.test('The deployment could not be found on Vercel.') && re.test('DEPLOYMENT_NOT_FOUND') && re.test('Method not found') && !re.test('seller answered, but its reply carries no price') && !re.test('Provide yield-floor-report skill, owner and minimumAprPercent'), String(src).slice(0, 80));
+}
+
 for (const n of ok) console.log(`  ok    ${n}`);
 for (const f of fails) console.log(`  FAIL  ${f}`);
 if (fails.length) {

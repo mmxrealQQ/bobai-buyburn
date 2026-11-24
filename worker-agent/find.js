@@ -17,7 +17,8 @@
 
 import { classifyAgent, CATEGORY_IDS, categoryOf } from './categories.js';
 import { OWN_AGENT_IDS } from '../shared/agent-registrations.js';
-const OWN = new Set([...OWN_AGENT_IDS].map(Number));
+// ours too: the read-only identity #49467, the operator's Binance Agentic Wallet agent #421197, the Brain Board #391841 (A-Z 24.11.)
+const OWN = new Set([...OWN_AGENT_IDS, 49467, 421197, 391841].map(Number));
 
 const AGENTS_URL = 'https://brainonbnb.com/api-agents.json';
 const CACHE_MS = 10 * 60 * 1000;
@@ -286,13 +287,16 @@ export async function handleFind(url, env = null) {
         // the escrow answer the Plaza page shows, so an agent can choose from /find alone (2026-10-27)
         ...(a.escrow ? { escrow: a.escrow } : { escrow: { answer: 'not asked' } }),
         match: Math.round(s * 10) / 10,
+        ...(OWN.has(Number(a.id)) ? { ours: true } : {}),
         ...((fleets.get(fleetKey(a)) || []).length ? { fleet: { size: fleets.get(fleetKey(a)).length + 1, other_ids: fleets.get(fleetKey(a)), note: 'the same name on the same host: one operator, counted once here' } } : {}),
         ...(listedRec.has(String(a.id)) ? { listed: listedRec.get(String(a.id)) } : {}),
         // The next step, per result (2026-09-18): a hit that stops at a score
         // leaves the caller to guess the URL pattern the dispatcher already emits.
         next: {
           dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`,
-          hire: `https://agent.brainonbnb.com/hire?agent=${a.id}&task=${encodeURIComponent(q || '')}`,
+          // a hire only where the last ask was answered (A-Z 24.11.: #49467 and #421197, which sell nothing, carried a hire link
+          // that answered 'seller declined'; dead deployments too): quotes or input, else why not
+          ...(['quotes', 'input'].includes(a.escrow?.answer) ? { hire: `https://agent.brainonbnb.com/hire?agent=${a.id}&task=${encodeURIComponent(q || '')}` } : { hire_not_offered: a.escrow?.answer === 'none' ? 'it did not answer the last time it was asked to quote' : 'it was not asked to quote, or it sells nothing' }),
         },
       })),
       next: { dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`, sessions: 'https://agent.brainonbnb.com/sessions' },

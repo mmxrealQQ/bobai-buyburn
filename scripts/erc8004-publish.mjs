@@ -104,7 +104,7 @@ const quoteOf = (id, cat = null) => {
 //   'none'    did not answer: HTTP error, unreadable card, auth wall, timeout
 // Unknown reasons count as 'none' only when they read like a transport
 // failure; anything else that came back in words was an answer.
-const NO_ANSWER = /HTTP \d{3}|could not be read|not an A2A reply|Unauthori[sz]ed|Authentication|Forbidden|timed? ?out|timeout|fetch failed|ECONN|ENOTFOUND|EAI_AGAIN|certificate|no A2A endpoint|did not answer/i;
+const NO_ANSWER = /HTTP \d{3}|could not be read|not an A2A reply|Unauthori[sz]ed|Authentication|Forbidden|timed? ?out|timeout|fetch failed|ECONN|ENOTFOUND|EAI_AGAIN|certificate|no A2A endpoint|did not answer|could not be found on Vercel|DEPLOYMENT_NOT_FOUND|Method not found/i;   // Vercel's 404 page and a JSON-RPC -32601 are no answer (A-Z 24.11.: three dead deployments carried a Hire button)
 const quoteState = (q) => {
   if (!q) return null;
   if (q.quotes) return 'quotes';

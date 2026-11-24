@@ -64,6 +64,16 @@ console.log('the helpers (offline)');
   const at = Date.parse('2026-09-18T12:45:00Z');
   ok('the fallback script refuses while the worker\'s heartbeat is fresh, and runs when there is none', hb({ buyback: '2026-09-18T12:40:57Z' }, at) === true && hb({ buyback: '2026-09-18T12:20:00Z' }, at) === false && hb(null, at) === false && hb({ buyback: 'x' }, at) === false && hb({ buyback: '2026-09-18T14:00:00Z' }, at) === false);
   ok('and it asks before it reads the key', fallbackSrc.indexOf('heartbeatIsFresh(health)') < fallbackSrc.indexOf('process.env.BUYBACK_PRIVATE_KEY ||'));
+  // The dev sweep's local twin (Liste B 5, 2026-11-24): the same refusal, an hour's rhythm, and the worker's own books
+  {
+    const devLocal = fs.readFileSync(path.join(ROOT, 'dev-buyback.js'), 'utf8');
+    const dhb = new Function(`${devLocal.slice(devLocal.indexOf('function devHeartbeatIsFresh('), devLocal.indexOf('async function workerHeartbeat('))}; return devHeartbeatIsFresh;`)();
+    const at2 = Date.parse('2026-11-24T08:30:00Z');
+    ok('the dev twin refuses while the dev worker\'s heartbeat is under 75 min old, and runs when it is older or missing', dhb({ devBuyback: '2026-11-24T08:00:47Z' }, at2) === true && dhb({ devBuyback: '2026-11-24T07:00:47Z' }, at2) === false && dhb(null, at2) === false && dhb({ buyback: '2026-11-24T08:20:00Z' }, at2) === false);
+    ok('and it asks before it reads the key', devLocal.indexOf('devHeartbeatIsFresh(health)') > 0 && devLocal.indexOf('devHeartbeatIsFresh(health)') < devLocal.indexOf('process.env.PRIVATE_KEY'));
+    const kvId = (fs.readFileSync(path.join(ROOT, 'worker-dev-buyback', 'wrangler.toml'), 'utf8').match(/id = "([0-9a-f]{32})"/) || [])[1];
+    ok('it keeps owed, pending and the liquidity hold in the dev worker\'s own KV, files only when that cannot be reached, a hold it cannot read is a hold', !!kvId && devLocal.includes(`const LOGS_KV = '${kvId}';`) && /loadBook\('dev-owed'/.test(devLocal) && /loadBook\('dev-pending'/.test(devLocal) && /kvGet\('liq-hold'\)/.test(devLocal) && /\(hold \|\| !kvOk\)/.test(devLocal));
+  }
   // The liquidity hand script: its wallet, its receipts, its hour.
   const liqSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe.js'), 'utf8');
   const liq = new Function(`${liqSrc.slice(liqSrc.indexOf('function mustSucceed('), liqSrc.indexOf('function sleep('))}; return { mustSucceed, inSweepWindow };`)();

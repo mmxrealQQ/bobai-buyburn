@@ -1,7 +1,7 @@
 // Dev Buyback Bot
 // Created autonomously by Claude Opus 4.6
 //
-// Runs every 1 hour via Cloudflare Worker + GitHub Actions:
+// The fallback for a day Cloudflare is down; the worker (worker-dev-buyback) does this every full hour:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
 // 3. Splits: 80% personal (Binance), 4% builder #1-#4, 2% builder #5 + #6 (#5 out 2026-10-10, back 2026-11-09 on the operator's word)
@@ -66,7 +66,53 @@ function say(e) {
   return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
 }
 
+// THE WORKER RUNS — THEN THIS DOES NOT (Liste B 5, 2026-11-24), as buyback-bot.js does for the tax bot. This script is
+// the fallback for a day Cloudflare is down; nothing kept it from running beside the worker (worker-dev-buyback), two
+// processes splitting one balance. The worker sweeps at every full hour and writes its heartbeat; while that is under
+// 75 minutes old this script refuses. No answer from the heartbeat (Cloudflare down — the day this is for) lets it run;
+// --force overrides.
+const WORKER_HEALTH_URL = 'https://logs.brainonbnb.com/health';
+function devHeartbeatIsFresh(health, now = Date.now()) {
+  const t = Date.parse(health && health.devBuyback);
+  return Number.isFinite(t) && now - t < 75 * 60 * 1000 && now - t > -60 * 1000;
+}
+async function workerHeartbeat() {
+  try { const r = await fetch(WORKER_HEALTH_URL, { signal: AbortSignal.timeout(10000) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+// THE WORKER'S OWN BOOKS (Liste B 5): what a builder is owed, the transfers still pending and the liquidity hold live in
+// the logs KV the worker reads and writes; this script used files of its own and saw none of it. Now it reads and writes
+// the same keys (wrangler, logged in on this machine). When the KV cannot be reached — Cloudflare down — it falls back to
+// the files beside it and says so, and a liquidity hold it cannot read counts as a hold (--force sweeps anyway).
+const LOGS_KV = '630df426f6d84503b40460f13ab4b9f3';
+function kvRun(words) {
+  const { spawnSync } = require('child_process');
+  return spawnSync(['npx', 'wrangler', 'kv', 'key', ...words, '--namespace-id', LOGS_KV, '--remote'].join(' '), { cwd: __dirname, encoding: 'utf8', shell: true, timeout: 120000 });
+}
+// the value, null when the key is not there; throws when the KV cannot be reached
+function kvGet(key) {
+  const r = kvRun(['get', key]);
+  if (r.status === 0) return String(r.stdout || '').trim();
+  if (/404: Not Found/.test(`${r.stdout || ''}${r.stderr || ''}`)) return null;
+  throw new Error(`the KV could not be read (${key})`);
+}
+function kvSet(key, obj) {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  if (!Object.keys(obj).length) { const r = kvRun(['delete', key]); if (r.status !== 0 && !/404/.test(`${r.stdout || ''}${r.stderr || ''}`)) throw new Error(`the KV could not be written (${key})`); return; }
+  const f = path.join(os.tmpdir(), `dev-${key}-${process.pid}.json`);
+  fs.writeFileSync(f, JSON.stringify(obj));
+  try { const r = kvRun(['put', key, '--path', `"${f}"`]); if (r.status !== 0) throw new Error(`the KV could not be written (${key})`); } finally { fs.rmSync(f, { force: true }); }
+}
+
 async function main() {
+  if (!process.argv.includes('--force')) {
+    const health = await workerHeartbeat();
+    if (devHeartbeatIsFresh(health)) {
+      console.error('[REFUSED] The Cloudflare worker is alive (heartbeat ' + health.devBuyback + ') and sweeps this wallet every full hour.');
+      console.error('  This script is the fallback for a day it is down. Nothing was read, nothing was sent. (--force overrides.)');
+      process.exitCode = 1;   // not process.exit(): on Windows it trips a libuv assertion while the fetch handle closes
+      return;
+    }
+  }
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) {
     console.log('[ERROR] No PRIVATE_KEY set');
@@ -119,11 +165,24 @@ async function main() {
     }
   }
 
-  // the owed shares (see the split below), kept in dev-owed.json beside the log (the worker keeps them in KV)
-  const loadPending = async () => { try { return fs.existsSync('dev-pending.json') ? JSON.parse(fs.readFileSync('dev-pending.json', 'utf8')) : {}; } catch { return {}; } };
-  const savePending = async (o) => { try { if (Object.keys(o).length) fs.writeFileSync('dev-pending.json', JSON.stringify(o, null, 2)); else if (fs.existsSync('dev-pending.json')) fs.unlinkSync('dev-pending.json'); } catch (e) { console.log(`pending transfers not kept: ${say(e)}`); } };
-  const loadOwed = async () => { try { return fs.existsSync('dev-owed.json') ? JSON.parse(fs.readFileSync('dev-owed.json', 'utf8')) : {}; } catch { return {}; } };
-  const saveOwed = async (o) => { try { if (Object.keys(o).length) fs.writeFileSync('dev-owed.json', JSON.stringify(o, null, 2)); else if (fs.existsSync('dev-owed.json')) fs.unlinkSync('dev-owed.json'); } catch (e) { console.log(`owed shares not saved (${e.message}): ${JSON.stringify(o)}`); } };
+  // THE WORKER'S BOOKS FIRST (Liste B 5): the liquidity hold, the owed shares and the pending transfers come from the logs
+  // KV the worker uses; the files beside this script only when the KV cannot be reached (and that is said)
+  let kvOk = true;
+  const fileGet = (f) => { try { return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {}; } catch { return {}; } };
+  const fileSet = (f, o) => { try { if (Object.keys(o).length) fs.writeFileSync(f, JSON.stringify(o, null, 2)); else if (fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { console.log(`${f} not kept (${e.message}): ${JSON.stringify(o)}`); } };
+  const offKv = (e) => { if (kvOk) console.log(`[WARN] The logs KV cannot be reached (${say(e)}): what the worker wrote down as owed or pending is NOT seen — the files beside this script are used.`); kvOk = false; };
+  let hold = null;
+  try { hold = kvGet('liq-hold'); } catch (e) { offKv(e); }
+  if (!process.argv.includes('--force') && (hold || !kvOk)) {
+    console.log(hold ? `A liquidity run was announced (${hold.slice(0, 40)}) — not swept (--force to sweep anyway).` : 'The liquidity hold cannot be read — not swept (--force to sweep anyway).');
+    return;
+  }
+  const loadBook = async (key, file) => { if (kvOk) { try { const v = kvGet(key); return v ? JSON.parse(v) : {}; } catch (e) { offKv(e); } } return fileGet(file); };
+  const saveBook = async (key, file, o) => { if (kvOk) { try { kvSet(key, o); return; } catch (e) { console.log(`[WARN] ${key} not kept in the KV (${say(e)}) — written to ${file}: ${JSON.stringify(o)}`); } } fileSet(file, o); };
+  const loadPending = () => loadBook('dev-pending', 'dev-pending.json');
+  const savePending = (o) => saveBook('dev-pending', 'dev-pending.json', o);
+  const loadOwed = () => loadBook('dev-owed', 'dev-owed.json');
+  const saveOwed = (o) => saveBook('dev-owed', 'dev-owed.json', o);
 
   // A liquidity run on this wallet is not swept away (the worker waits up to 6 h; by hand: --force sweeps anyway)
   const bobaiHere = await publicClient.readContract({ address: BOBAI_TOKEN, abi: WBNB_ABI, functionName: 'balanceOf', args: [account.address] }).catch(() => null);

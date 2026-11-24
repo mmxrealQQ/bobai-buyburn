@@ -42,6 +42,14 @@ const is = (what, ok, more = '') => { console.log((ok ? 'PASS  ' : 'FAIL  ') + w
   const nn = (q) => R.filterHeads(N.slice(0, 12), { q }).map((t) => t.id).join(',');
   is('search: "nonce too low" with no thread naming a nonce finds nothing ("low" inside "below" and "allow" is no word)', nn('nonce too low') === '', nn('nonce too low'));
   is('search: the other way, the thread that names it answers', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id)[0] === 200 && R.filterHeads(N, { q: 'nonce zzqx gas' }).map((t) => t.id).join(',') === '', R.filterHeads(N, { q: 'nonce too low' }).map((t) => t.id).join(',')); }
+// A SHORT WORD IS A WHOLE WORD (A-Z 2026-11-24, bnb_fix_lookup "nonce too low" answered #144, #112, #69 live): "too" met
+// "tool", "low" met "lowest" (near) and "below" (all) — a thread about MCP listings and one about the gas floor came back as fixes
+{ const W = [{ id: 144, updated: 3, title: 'MCP server listing: score counts your weakest tool', body: 'the lowest-scoring tools first' },
+  { id: 100, updated: 2, title: "the gas floor: below it the node refuses", body: 'send again with the same nonce' },
+  { id: 9, updated: 1, title: 'other', body: 'nothing' }].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
+  const w = (q) => R.filterHeads(W, { q }).map((t) => t.id).join(',');
+  is('search: "nonce too low" meets neither "tool"/"lowest" nor "below": nothing found, no stranger thread as a fix', w('nonce too low') === '', w('nonce too low'));
+  is('search: a short word still finds its plural and stands alone ("tool" finds "tools", "low" not "below")', w('tool') === '144' && w('floor') === '100' && w('low') === '', `${w('tool')} | ${w('low')}`); }
 // A WORD AND ITS FORMS (2026-10-27): "remove liquidity" finds "Removing liquidity"; short words and phrases stay as typed
 { const S0 = [{ id: 104, updated: 1, title: 'Removing liquidity from a V3 position', body: 'decreaseLiquidity books it' }, { id: 7, updated: 2, title: 'other', body: 'nothing here' }].map((t) => ({ ...t, search: R.searchText(t.title, t.body) }));
   const f = (q) => R.filterHeads(S0, { q }).map((t) => t.id).join(',');

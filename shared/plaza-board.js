@@ -175,7 +175,7 @@ export function filterThreads(threads, q = {}) {
 // found nothing — "my" and "on" had to stand in a thread — and "how do I set agentWallet" matched a thread for "how",
 // "do" and "i". The small words of a sentence are left out (a query of only small words keeps them), and when no thread
 // holds every word, the threads holding most of them (at least half, at least two) answer, marked `near`.
-const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells many much after before there here into about any some just still also then than so if'.split(' '));
+const SMALL = new Set('a an the my our your their i we you it its is are am was were be been being do does did how what why when where which who whom can could should would will shall may might must to of on in at for with from and or by as this that these those me us them please help hi hey get got say says said tell tells many much after before there here into about any some just still also then than so if too very'.split(' '));   // too, very: A-Z 24.11. ("nonce too low" met "tool")
 export const searchTerms = (s) => {
   const str = String(s || '').toLowerCase().slice(0, 160), out = [];
   // ONE DOOR, ONE READING (2026-11-16, the seventh stranger test: board.md?q=x402-tx-from found nothing, /learn/x402-tx-from
@@ -188,7 +188,12 @@ export const searchTerms = (s) => {
   const big = out.filter((w) => w.includes(' ') || !SMALL.has(w));
   return (big.length ? big : out).slice(0, 8);
 };
-const hasAll = (text, terms) => terms.every((w) => text.includes(w));
+// a word of four letters or fewer stands alone (A-Z 2026-11-24: "low" inside "below" put the gas-floor entry #100 up as the
+// answer to "nonce too low"); a longer word may sit inside a longer one ("link" finds "links", stems do the rest)
+const whole = (text, w) => new RegExp('(^|[^\\p{L}\\p{N}$])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:e?s)?(?![\\p{L}\\p{N}])', 'u').test(text);   // its plural too: link -> links
+const hasAll = (text, terms, short = new Set()) => terms.every((w) => (short.has(w) ? whole(text, w) : text.includes(w)));
+// the words typed short (four letters or fewer, not a past form whose stem is meant to reach further: paid -> pay -> payment)
+const shortTyped = (terms0) => new Set(terms0.filter((w) => w.length <= 4 && !IRREGULAR[w] && /^[\p{L}\p{N}]+$/u.test(w)).map(stemOf));
 // A WORD AND ITS FORMS (2026-10-27): "remove liquidity v3" missed "Removing liquidity …" (#104) — "remove" is not inside
 // "removing". A single word of five letters or more is matched by its stem: -ing, -ed, -es, -e and -s come off, as long
 // as four letters stay ("remov" finds remove, removed, removing; "token" finds tokens). Quoted phrases stay as typed.
@@ -200,13 +205,16 @@ const matchTerms = (list, textOf0, terms0) => {
   // "erc8004" finds "erc-8004": the text is read also with its hyphens taken out (the seventh stranger test)
   const textOf = (t) => { const s = textOf0(t); return s.includes('-') ? s + '\n' + s.replace(/-/g, '') : s; };
   const terms = terms0.map(stemOf);
-  const all = list.filter((t) => hasAll(textOf(t), terms));
+  const short = shortTyped(terms0);
+  const all = list.filter((t) => hasAll(textOf(t), terms, short));
   if (all.length || terms.length < 2) return byTitleHits(all, terms, terms0, textOf, list);
   // NEAR NEEDS A WORD THAT SAYS SOMETHING (2026-10-27, the second stranger test: "nonce too low" answered #69 and #59 —
   // "low" inside "below" and "allow", "too" in half the board, "nonce" nowhere). Near counts a word only at the start of a
   // word, and a thread must hold at least one of the query's rare words (in at most a quarter of the threads, or two); a query
   // whose rare words stand nowhere finds nothing, and says so.
-  const starts = (s, w) => new RegExp('(^|[^\\p{L}\\p{N}$])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u').test(s);
+  // A SHORT WORD IS A WHOLE WORD (A-Z 2026-11-24: "nonce too low" answered #144 — "too" met "tool", "low" met "lowest", and
+  // the thread holds no "nonce"): a word of four letters or fewer counts only where it stands alone
+  const starts = (s, w) => new RegExp('(^|[^\\p{L}\\p{N}$])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + (short.has(w) ? '(?:e?s)?(?![\\p{L}\\p{N}])' : ''), 'u').test(s);
   const texts = new Map(list.map((t) => [t, textOf(t)]));
   const rare = new Set(terms.filter((w) => [...texts.values()].filter((s) => starts(s, w)).length <= Math.max(2, list.length / 4)));
   const need = Math.max(2, Math.ceil(terms.length / 2)), n = new Map();

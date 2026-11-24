@@ -26,6 +26,7 @@ import zlib from 'node:zlib';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import esbuild from 'esbuild';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 // BESIDE dashboard/, not under temp/: _worker.js imports '../shared/...', and a
@@ -236,6 +237,7 @@ if (process.argv.includes('--self-test') && process.argv[1] && path.resolve(proc
 // importing it to try a function built the copy and went on towards the deploy
 // (2026-09-19; nothing went out, the process ended first). A script that can
 // publish the site must not do it because another file wanted its exports.
+const MINIFY = new Set(['terminal/terminal.js', 'app.js', 'scanner.js', 'brain/cards.js', 'brain/brain.js', 'brain/check.js', 'brain/hero.js', 'i18n/ar.js']);
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain && !process.argv.includes('--self-test')) main().catch((e) => { console.error(e); process.exit(1); });
 
@@ -245,6 +247,7 @@ async function main() {
   const dry = process.argv.includes('--dry');
   fs.rmSync(OUT, { recursive: true, force: true });
   let pages = 0, linked = 0, copied = 0, before = 0, after = 0;
+  const minified = [];
   const problems = [];
   const walk = (dir) => {
     const rel = path.relative(SRC, dir);
@@ -260,6 +263,17 @@ async function main() {
         continue;
       }
       if (/\.(css|js|mjs|svg|txt)$/i.test(e.name)) { const t = fs.readFileSync(from, 'utf8'); problems.push(...wrongNamespace(path.join(rel, e.name), t), ...buyLinkWithoutChain(path.join(rel, e.name), t)); }
+      // THE BROWSER'S SCRIPTS WITHOUT THEIR COMMENTS (C40, A-Z 24.11.: terminal.js was 858 KB, most of it the history in its
+      // comments, 238 KB brotli to every visitor): whitespace and comments out, syntax shortened, names kept - the repo and the
+      // source mirror keep every comment. Only files the browser alone runs; the worker's own imports go as they are.
+      const relName = path.join(rel, e.name).split(path.sep).join('/');
+      if (MINIFY.has(relName)) {
+        const src = fs.readFileSync(from, 'utf8');
+        try {
+          const code = esbuild.transformSync(src, { loader: 'js', format: /^\s*(import|export)\s/m.test(src) ? 'esm' : undefined, minifyWhitespace: true, minifySyntax: true, legalComments: 'none', charset: 'utf8', target: 'es2020' }).code;
+          fs.writeFileSync(to, code); minified.push([relName, zlib.brotliCompressSync(Buffer.from(src)).length, zlib.brotliCompressSync(Buffer.from(code)).length]); copied++; continue;
+        } catch (err) { problems.push(`${relName} could not be minified: ${String(err.message).slice(0, 200)}`); }
+      }
       try { fs.linkSync(from, to); linked++; } catch { fs.copyFileSync(from, to); copied++; }
     }
   };
@@ -311,6 +325,7 @@ async function main() {
     } else console.log(`  ${n}: the live log did not answer as it should — the copy in dashboard/ goes out (${old.length} entries)`);
   }
   console.log(`built .dashboard-build: ${pages} pages without their comments (brotli ${before} -> ${after} B, −${((1 - after / before) * 100).toFixed(1)}%), ${linked} files linked${copied ? `, ${copied} copied` : ''}`);
+  if (minified.length) { const a = minified.reduce((s, m) => s + m[1], 0), b = minified.reduce((s, m) => s + m[2], 0); console.log(`  ${minified.length} scripts minified for the browser: brotli ${a} -> ${b} B, −${((1 - b / a) * 100).toFixed(1)}%`); }
   if (problems.length) {
     for (const p of problems) console.log(`  x ${p}`);
     console.log(`\n${problems.length} problem(s) — nothing was deployed.`);

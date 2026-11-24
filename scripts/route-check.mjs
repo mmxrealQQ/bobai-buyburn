@@ -146,7 +146,9 @@ const skip = (name, why) => {
     const big = await swapRoute(BOBAI, { usd: 2000 });
     // the tax shown is rounded to 0.01% (1 bps) and the figure is taken from the exact measured one (30.10.: a measured
     // 3.00x% buy gave 601 against the shown 3 -> 600): within that bps, never more
-    const want = (p) => Math.ceil(((p || 0) + 1) * 100) + 200, near = (bps, p) => bps === want(p) || bps === want(p) + 1;
+    // ±1 bps either way (24.11.: a shown 3.48% gave want 649 by float - ceil(448.00000000000006) - against a right 648 from
+    // the exact 3.4795%): the shown tax is rounded, so the bps may sit one under as well as one over
+    const want = (p) => Math.ceil(Math.round(((p || 0) + 1) * 1e6) / 1e4) + 200, near = (bps, p) => Math.abs(bps - want(p)) <= 1;
     ok('BOBAI: the slippage is the tax + 100 + 200 bps whatever the size ($100 and $2,000 alike)',
       near(sb, t.buy_pct) && near(ss, t.sell_pct) && Math.abs(big.slippage_bps_needed_buy - sb) <= 1 && Math.abs(big.slippage_bps_needed_sell - ss) <= 1, // two calls, two measurements of the tax: the same within that bps (17.11.: 601 against 600)
       `$100: buy ${sb}, sell ${ss} · $2,000: buy ${big.slippage_bps_needed_buy}, sell ${big.slippage_bps_needed_sell} · tax ${t.buy_pct}/${t.sell_pct}`);

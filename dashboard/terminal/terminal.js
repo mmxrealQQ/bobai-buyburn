@@ -3025,7 +3025,12 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 // ================= the prompt: ask BOBAI, or have it check any token — free =================
 // Answers come from the same live numbers the scene shows; a token check runs the site's own
 // pre-trade scanner (/api/preflight): tax measured from real trades, sellability, depth, LP.
-const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
+// SCREEN READERS HEAR THE ANSWER (C37, A-Z 24.11.: the log had no live region, only the bubble): a hidden polite region
+// carries BRAIN's answers for 20 s after a typed question - the live lines (trades, burns) are not read out
+const srEl = Object.assign(document.createElement('div'), { className: 'bt-sr' }); srEl.setAttribute('aria-live', 'polite'); srEl.setAttribute('role', 'status');
+srEl.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap';
+(document.body || document.documentElement).append(srEl); let srAsked = 0;
+const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); if (Date.now() - srAsked < 20000) srEl.textContent = ((l.querySelector('.m') || l).textContent || '').trim(); return l; };
 // A LATE ANSWER STANDS UNDER ITS OWN QUESTION (A-Z 2026-11-24): a token check's result came in under the next question asked
 // meanwhile — USDT's figures under BOBAI's "checking" — and "board" answered under "follow". A command that waits for data takes
 // its place in the log at once; whatever it says when the data comes stands there, in order, wherever the log has moved on.
@@ -3787,6 +3792,7 @@ cmdForm.addEventListener('submit', e => {
   e.preventDefault();
   const q = cmdIn.value.trim(); if (!q) return; cmdIn.value = '';
   logFollow = true;   // a question asked is an answer wanted: the log follows it to its last line (A-Z 24.11.: 'help' stopped mid-answer)
+  srAsked = Date.now();
   logLine('YOU', '#eceaf5', [q]).classList.add('wrap');
   const h = q.match(TXHASH);
   if (h) { const x = S.hist.find(e => e.tx.toLowerCase() === h[0].toLowerCase() && !e.taxSwap) || S.hist.find(e => e.tx.toLowerCase() === h[0].toLowerCase()); if (x) return followTrade(x);

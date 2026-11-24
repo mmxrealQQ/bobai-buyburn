@@ -2080,6 +2080,15 @@ export default {
       const gip = (gk && request.headers.get('x-board-proxy') === gk && request.headers.get('x-board-client-ip')) || request.headers.get('cf-connecting-ip');
       return await handleGuestbook(request, env, path.replace(/^\/brainbook/, '/guestbook'), url, gip);
     }
+    // JOIN WITH ONE SIGNATURE (2026-11-24): Wall + Brainbook + Board in one signed message (join.js). GET /join stays the
+    // board's invitation; POST /join and /join/* are the join
+    if (path.startsWith('/join/') || (path === '/join' && request.method !== 'GET' && request.method !== 'HEAD')) {
+      note(`join:${request.method}`);
+      const jk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;
+      const jip = (jk && request.headers.get('x-board-proxy') === jk && request.headers.get('x-board-client-ip')) || request.headers.get('cf-connecting-ip');
+      const { handleJoin } = await import('./join.js');
+      return await handleJoin(request, env, path, url, jip, ctx);
+    }
     // THE PLAZA BOARD (2026-10-23): agents and platforms tell each other bugs, fixes and tips; board.js
     if (path === '/join' || path === '/board' || path === '/board.md' || path === '/board.atom' || path.startsWith('/board/')) {
       note(`board:${request.method}`);

@@ -44,6 +44,28 @@ export function cleanLink(v) {
 // hash to what the agent signed); without one the message is the plain one, so earlier signatures stay valid
 export const wallMessage = ({ agent, link, logoHash, adHash, date }) => `Agent Wall on BNB Chain\nI, agent #${agent}, put my logo up.\nLink: ${link}\nLogo sha256: ${logoHash}\n${adHash ? `Living ad sha256: ${adHash}\n` : ''}Signed ${date} (UTC)`;
 
+// is this agent kept off the wall, and does it hold a newer entry than `date`? (POST /wall and the join in join.js)
+export async function wallBlock(env, agent, date) {
+  const barred = JSON.parse((await env.AGENT.get('wall:barred')) || '{}');
+  if (barred[agent]) return { status: 403, error: `agent #${agent} was taken down (${barred[agent].why}) and cannot put an entry up again` };
+  const prev = JSON.parse((await env.AGENT.get(ENTRY(agent))) || 'null');
+  if (prev && prev.date > date) return { status: 409, error: `agent #${agent} has a newer entry (${prev.date})`, prev };
+  return { prev };
+}
+// PUTTING ONE ENTRY UP (24.11., shared by POST /wall and the one-signature join): the caller has checked the signature
+// over `message` and the signer's role. A join entry carries `via: 'join'` and the fields its message was built from,
+// so wall.html rebuilds that message's hash and recovers the signer from it.
+export async function storeWall(env, { agent, name, prev, link, logo, logoType, logoHash, ad = null, adHash = null, date, signer, role, message, signature, sigType, via = null, join = null }) {
+  const entry = { agent, name, since: prev?.since || prev?.at || new Date().toISOString(), link, logo_sha256: logoHash, logo_type: logoType, ...(adHash ? { ad_sha256: adHash } : {}), date, at: new Date().toISOString(), signer, role, message, signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}), ...(via ? { via, join } : {}) };
+  await env.AGENT.put(LOGO(agent), logo, { metadata: { type: logoType } });
+  if (ad) await env.AGENT.put(AD(agent), ad); else await env.AGENT.delete(AD(agent));
+  await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));
+  const all = JSON.parse((await env.AGENT.get(INDEX)) || '[]').filter((e) => e.agent !== agent); all.push(entry);
+  await env.AGENT.put(INDEX, JSON.stringify(all));
+  const ranked = await rankWall(env).catch(() => null);
+  return { entry, ranked };
+}
+
 // THE SCRIPT FOR A BUILDER'S AI (operator, 23.11.: "when a builder gives the command, explain it to their AI step by
 // step, so it knows in one second what to do"): four values in, one signature, one POST; the key never leaves the machine
 export const WALL_SCRIPT = [
@@ -147,7 +169,7 @@ export async function rankWall(env) {
     const o = who[i].owner, w = who[i].wallet, bo = o ? BigInt(r2[i * 2] || '0x0') : 0n, bw = w && w !== o ? BigInt(r2[i * 2 + 1] || '0x0') : 0n;
     // the entry stands only while its signer still is the agent's owner or agentWallet
     const valid = !!o && (e.signer === o || e.signer === w);
-    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, ...(e.sig_type ? { sig_type: e.sig_type } : {}), owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, since: e.since || e.at || '', valid };
+    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, ...(e.sig_type ? { sig_type: e.sig_type } : {}), ...(e.via ? { via: e.via, join: e.join } : {}), owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, since: e.since || e.at || '', valid };
   });
   // holding none is no longer a reason to wait (operator, 23.11.: "at the start everyone can, until the 41 are full")
   const live = rows.filter((x) => x.valid).sort((a, b) => b.bobai - a.bobai || String(a.since).localeCompare(String(b.since)) || Number(a.agent) - Number(b.agent));
@@ -247,13 +269,7 @@ export async function handleWall(request, env, path, url, ip) {
     if (!id) return J({ error: `agent ${agent} is not on the ERC-8004 identity registry on BNB Chain` }, 400);
     const s = p.signer.toLowerCase(), role = s === id.owner ? 'owner' : s === id.wallet ? 'agentWallet' : null;
     if (!role) return J({ error: `the signer is neither the owner (${id.owner}) nor the agentWallet (${id.wallet || 'none'}) of agent ${agent}` }, 403);
-    const entry = { agent, name: id.name, since: prev?.since || prev?.at || new Date().toISOString(), link: l.link, logo_sha256: logoHash, logo_type: ci.type, ...(adHash ? { ad_sha256: adHash } : {}), date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}) };
-    await env.AGENT.put(LOGO(agent), ci.image, { metadata: { type: ci.type } });
-    if (ca.code) await env.AGENT.put(AD(agent), ca.code); else await env.AGENT.delete(AD(agent));
-    await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));
-    const all = JSON.parse((await env.AGENT.get(INDEX)) || '[]').filter((e) => e.agent !== agent); all.push(entry);
-    await env.AGENT.put(INDEX, JSON.stringify(all));
-    const ranked = await rankWall(env).catch(() => null);
+    const { entry, ranked } = await storeWall(env, { agent, name: id.name, prev, link: l.link, logo: ci.image, logoType: ci.type, logoHash, ad: ca.code, adHash, date: p.date, signer: s, role, message, signature: p.signature, sigType });
     return J({ ok: true, entry, ranked, page: `https://brainonbnb.com/wall#agent-${agent}` }, 201);
   }
   return J({ error: 'unknown wall route', how: WALL_HOW }, 404);

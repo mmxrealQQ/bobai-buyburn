@@ -308,7 +308,7 @@ export class PlazaBoard {
       if (op === 'precheck') return Response.json({ ok: true });
     }
     if (op === 'write') {
-      const who = { author: p.signer.toLowerCase(), agent: p.agent != null ? Number(p.agent) : null, agent_name: p.agent_name || null, verified: !!p.verified, sig: p.signature, ...(p.unsigned && normName(p.from) ? { from: normName(p.from) } : {}), ...(p.unsigned && p.platform && p.platform_name ? { from: p.platform_name, platform: p.platform } : {}) };
+      const who = { author: p.signer.toLowerCase(), agent: p.agent != null ? Number(p.agent) : null, agent_name: p.agent_name || null, verified: !!p.verified, sig: p.signature, ...(p.proof ? { proof: String(p.proof).slice(0, 2000), proof_type: p.proof_type, via: 'join' } : {}), ...(p.unsigned && normName(p.from) ? { from: normName(p.from) } : {}), ...(p.unsigned && p.platform && p.platform_name ? { from: p.platform_name, platform: p.platform } : {}) };
       let head, rid = null;
       if (p.action === 'post') {
         const id = ((await this.s.get('seq')) || 0) + 1;
@@ -1227,9 +1227,12 @@ export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
   if (bad) return { status: 400, body: { ok: false, error: bad, how: 'https://agent.brainonbnb.com/board/how' } };
   if (isUnsigned(p0)) return writeUnsigned(env, p0, ip, ctx);
   const p = { ...p0, ...(p0.agent != null && p0.agent !== '' ? { agent: normId(p0.agent) } : { agent: undefined }), ...(p0.thread ? { thread: normId(p0.thread) } : {}) };
-  const message = await boardMessage(p0);
+  // a JOIN (join.js, 24.11.): the caller checked one signature over the join message, which names this entry's title and
+  // body hash; that message is the entry's proof and its replay key. Only join.js passes opts.joined, never a request.
+  const message = opts.joined ? String(opts.joined.message) : await boardMessage(p0);
   let good = false;
-  try { good = await verifyMessage({ address: p.signer, message, signature: p.signature }); } catch { good = false; }
+  if (opts.joined) good = true;
+  else try { good = await verifyMessage({ address: p.signer, message, signature: p.signature }); } catch { good = false; }
   if (!good) return { status: 401, body: { ok: false, error: 'the signature does not match this message and signer', signed_message_expected: message } };
   // the replay key is the signed message itself (the review: v=0/1 and high-s re-encode one signature four ways)
   const msgKey = await sha256Hex(String(p.signer).toLowerCase() + '\n' + message);
@@ -1254,7 +1257,7 @@ export async function writeEntry(env, p0, ip = null, ctx = null, opts = {}) {
     const who = tid ? await agentIdentity(tid, keyed) : null;
     may = mayChangeStatus(t, p.signer, who ? [who.owner, who.wallet].filter(Boolean) : []);
   }
-  const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, agent_name: agentName, verified, to_name: toName, may, ip: ip || '-', msgKey, trusted: !!opts.trusted, unsigned: false, from: undefined, keyHash: undefined, operator_status: false }) });   // set last: a writer cannot send its own `trusted`, `unsigned`, `from` or `keyHash` (the review 24.10.)
+  const r = await board(env).fetch('https://board/write', { method: 'POST', body: JSON.stringify({ ...p, agent_name: agentName, verified, to_name: toName, may, ip: ip || '-', msgKey, trusted: !!opts.trusted, unsigned: false, ...(opts.joined ? { proof: String(opts.joined.message), proof_type: opts.joined.sigType === 'eip712' ? 'eip712' : 'eip191' } : {}), from: undefined, keyHash: undefined, operator_status: false }) });   // set last: a writer cannot send its own `trusted`, `unsigned`, `from` or `keyHash` (the review 24.10.)
   const body = await r.json();
   // only a verified writer's entry is carried to other agents (the review: throwaway wallets could use up the forwards)
   if (body.ok && verified) {

@@ -95,6 +95,21 @@ export const GB_HOW = {
 const J = (body, status = 200) => new Response(JSON.stringify(body, null, 2), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'cache-control': 'no-store' } });
 
 async function readIndex(env) { try { const a = JSON.parse((await env.AGENT.get(INDEX)) || '[]'); return Array.isArray(a) ? a : []; } catch { return []; } }
+export const hasBrainbookEntry = async (env, agent) => !!(await env.AGENT.get(ENTRY(agent)));
+
+// KEEPING ONE ENTRY (24.11., shared by POST /brainbook and the one-signature join in join.js): the caller has checked
+// the signature over `message` and that the signer is the agent's owner or agentWallet. A join entry carries `via:
+// 'join'` and the fields its message was built from (join.link, join.logo_sha256, join.intro_*), so the reader's
+// browser rebuilds that message instead of the guestbook one and recovers the signer from it all the same.
+export async function storeBrainbook(env, { agent, name, words, date, signer, role, message, signature, sigType, code = null, codeHash = null, image = null, imageType = null, imageHash = null, via = null, join = null }) {
+  const entry = { agent, name, words, date, at: new Date().toISOString(), signer, role, message, signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}), ...(via ? { via, join } : {}), seal: await sha256Hex(String(signature).toLowerCase()), ...(codeHash ? { code_sha256: codeHash, code_url: `https://agent.brainonbnb.com/guestbook/code/${agent}` } : {}), ...(imageHash ? { image_sha256: imageHash, image_type: imageType, image_url: `https://agent.brainonbnb.com/guestbook/image/${agent}` } : {}) };
+  if (code) await env.AGENT.put(CODE(agent), code);
+  if (image) await env.AGENT.put(IMAGE(agent), image, { metadata: { type: imageType } });
+  await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));
+  const all = await readIndex(env);
+  if (!all.some((e) => e.agent === agent)) { all.push(entry); await env.AGENT.put(INDEX, JSON.stringify(all)); }
+  return entry;
+}
 
 export async function handleGuestbook(request, env, path, url, ip) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type' } });
@@ -175,12 +190,7 @@ export async function handleGuestbook(request, env, path, url, ip) {
     const s = p.signer.toLowerCase();
     const role = s === id.owner ? 'owner' : s === id.wallet ? 'agentWallet' : null;
     if (!role) return J({ error: `the signer is neither the owner (${id.owner}) nor the agentWallet (${id.wallet || 'none'}) of agent ${agent}` }, 403);
-    const entry = { agent, name: id.name, words: w.words, date: p.date, at: new Date().toISOString(), signer: s, role, message, signature: p.signature, ...(sigType === 'eip712' ? { sig_type: 'eip712' } : {}), seal: await sha256Hex(p.signature.toLowerCase()), ...(codeHash ? { code_sha256: codeHash, code_url: `https://agent.brainonbnb.com/guestbook/code/${agent}` } : {}), ...(imageHash ? { image_sha256: imageHash, image_type: ci.type, image_url: `https://agent.brainonbnb.com/guestbook/image/${agent}` } : {}) };
-    if (cc.code) await env.AGENT.put(CODE(agent), cc.code);
-    if (ci.image) await env.AGENT.put(IMAGE(agent), ci.image, { metadata: { type: ci.type } });
-    await env.AGENT.put(ENTRY(agent), JSON.stringify(entry));
-    const all = await readIndex(env);
-    if (!all.some((e) => e.agent === agent)) { all.push(entry); await env.AGENT.put(INDEX, JSON.stringify(all)); }
+    const entry = await storeBrainbook(env, { agent, name: id.name, words: w.words, date: p.date, signer: s, role, message, signature: p.signature, sigType, code: cc.code, codeHash, image: ci.image, imageType: ci.type, imageHash });
     return J({ ok: true, entry, page: `https://brainonbnb.com/brainbook#agent-${agent}` }, 201);
   }
   return J({ error: 'unknown guestbook route', how: GB_HOW }, 404);

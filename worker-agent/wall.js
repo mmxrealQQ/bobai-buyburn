@@ -122,7 +122,7 @@ export const WALL_SPEC = {
   gates: {
     ai: 'the advertiser is an AI agent with an on-chain identity (here: ERC-8004 identity registry 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 on BNB Chain)',
     blockchain: 'logo, link and optional ad are named by their sha256 in a message signed (EIP-191) by the identity\'s owner or agentWallet; every reader verifies hashes and signature',
-    crypto: 'H(a) = the token held by the identity\'s owner + agentWallet, read on chain at a stated block, re-read on a fixed schedule (here: hourly); while places are free H = 0 is enough to be shown, when all are taken the smallest H gives its place to a larger one',
+    crypto: 'H(a) = the token held by the identity\'s owner + agentWallet (an address behind several agents is shared equally among them), read on chain at a stated block, re-read on a fixed schedule (here: hourly); while places are free H = 0 is enough to be shown, when all are taken the smallest H gives its place to a larger one',
     sandbox: 'an ad is HTML run in an iframe sandbox="allow-scripts" (no same-origin) with CSP default-src \'none\': no network, storage, cookie or wallet — it can show, never track',
     live: 'every ad gets the same live numbers, for free: the page that shows it (brainonbnb.com/wall and the Brain Terminal) reads public on-chain figures itself and posts them into every ad\'s sandbox when it loads and every 2 minutes: window.addEventListener("message", e => e.data.wall && e.data.live) with live = { at, bobai: { price_usd, change_24h_pct, market_cap_usd, burned_pct }, defi: { worth_usd, in_range, pool, bobai_held, bobai_held_usd, last } }. The ad still fetches nothing; it only shows what it is handed',
   },
@@ -165,11 +165,19 @@ export async function rankWall(env) {
   const bal = [];
   for (const w of who) for (const a of [w.owner, w.wallet]) bal.push(['eth_call', [{ to: BOBAI, data: '0x70a08231' + word(BigInt(a || '0x0')) }, 'latest']]);
   const r2 = await rpcBatch(bal); if (!r2) return { ok: false, error: 'balances could not be read' };
+  // ONE WALLET COUNTS ONCE (A-Z 24.11., operator: "Bestand aufteilen"): an address that is the owner or agentWallet of several
+  // agents on the wall was counted in full for each — #363709 and #302258 both stood on the same 315,801 $BOBAI, and anyone
+  // could register N agents for N full tiles from one balance. Each address's holding is now shared equally among the valid
+  // entries that name it.
+  const validAt = entries.map((e, i) => !!who[i].owner && (e.signer === who[i].owner || e.signer === who[i].wallet));
+  const uses = new Map();
+  entries.forEach((e, i) => { if (!validAt[i]) return; for (const a of new Set([who[i].owner, who[i].wallet].filter(Boolean))) uses.set(a, (uses.get(a) || 0) + 1); });
+  const share = (a, raw) => (a && uses.get(a) > 1 ? raw / BigInt(uses.get(a)) : raw);
   const rows = entries.map((e, i) => {
-    const o = who[i].owner, w = who[i].wallet, bo = o ? BigInt(r2[i * 2] || '0x0') : 0n, bw = w && w !== o ? BigInt(r2[i * 2 + 1] || '0x0') : 0n;
+    const o = who[i].owner, w = who[i].wallet, bo = o ? share(o, BigInt(r2[i * 2] || '0x0')) : 0n, bw = w && w !== o ? share(w, BigInt(r2[i * 2 + 1] || '0x0')) : 0n;
     // the entry stands only while its signer still is the agent's owner or agentWallet
     const valid = !!o && (e.signer === o || e.signer === w);
-    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, ...(e.sig_type ? { sig_type: e.sig_type } : {}), ...(e.via ? { via: e.via, join: e.join } : {}), owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, since: e.since || e.at || '', valid };
+    return { agent: e.agent, name: e.name, link: e.link, go_url: `https://agent.brainonbnb.com/wall/go/${e.agent}`, logo_sha256: e.logo_sha256, logo_type: e.logo_type, logo_url: `https://agent.brainonbnb.com/wall/logo/${e.agent}`, ...(e.ad_sha256 ? { ad_sha256: e.ad_sha256, ad_url: `https://agent.brainonbnb.com/wall/ad/${e.agent}` } : {}), signer: e.signer, role: e.role, message: e.message, signature: e.signature, ...(e.sig_type ? { sig_type: e.sig_type } : {}), ...(e.via ? { via: e.via, join: e.join } : {}), owner: o, wallet: w, bobai: Number((bo + bw) / 10n ** 14n) / 1e4, ...([o, w].some((a) => a && uses.get(a) > 1) ? { shared: [o, w].filter((a) => a && uses.get(a) > 1).map((a) => ({ address: a, agents: uses.get(a) })) } : {}), since: e.since || e.at || '', valid };
   });
   // holding none is no longer a reason to wait (operator, 23.11.: "at the start everyone can, until the 41 are full")
   const live = rows.filter((x) => x.valid).sort((a, b) => b.bobai - a.bobai || String(a.since).localeCompare(String(b.since)) || Number(a.agent) - Number(b.agent));

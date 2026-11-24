@@ -117,6 +117,19 @@ say(/racism, terror, hate, porn/.test((await call('GET', '/wall/how')).j.content
   say(ok7.status === 201 && ok7.j.entry?.sig_type === 'eip712', 'signed as EIP-712 typed data by the owner: 201, kept as sig_type eip712', ok7);
 }
 
+// ONE WALLET COUNTS ONCE (A-Z 24.11., operator: share it): #363709 and #302258 have the same owner and agentWallet on the
+// registry; on the wall each stood on the full holding of both. Two entries naming the same addresses: each gets half.
+{
+  const { agentIdentity } = await import('../worker-agent/board.js');
+  const [x, y] = await Promise.all([agentIdentity('363709', process.env.BSC_RPC_KEYED_URL_2), agentIdentity('302258', process.env.BSC_RPC_KEYED_URL_2)]);
+  const same = x && y && x.owner === y.owner && x.wallet === y.wallet;
+  const balOf = async (a) => { const r = await fetch('https://bsc-dataseed.binance.org/', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: '0x245c386dcfed896f5c346107596141e5edcbffff', data: '0x70a08231' + a.slice(2).padStart(64, '0') }, 'latest'] }) }).then((r) => r.json()); return Number(BigInt(r.result) / 10n ** 14n) / 1e4; };
+  const total = same ? (await balOf(x.owner)) + (x.wallet && x.wallet !== x.owner ? await balOf(x.wallet) : 0) : 0;
+  kv.set('wall:all', JSON.stringify([{ agent: '363709', name: 'a', signer: x.owner, date: dayOf(), since: '2026-11-23T00:00:00Z' }, { agent: '302258', name: 'b', signer: y.owner, date: dayOf(), since: '2026-11-24T00:00:00Z' }]));
+  const rr = await rankWall(env), rk = JSON.parse(kv.get('wall:rank') || '{}'), a = rk.wall?.find((e) => e.agent === '363709'), b = rk.wall?.find((e) => e.agent === '302258');
+  say(same && rr.ok && a && b && Math.abs(a.bobai - b.bobai) < 0.01 && Math.abs(a.bobai + b.bobai - total) < 0.01 && a.shared?.length && b.shared?.length, `one wallet behind two agents is shared: ${a?.bobai} + ${b?.bobai} = ${total} $BOBAI, not twice`, { a, b, total });
+}
+
 if (process.argv.includes('--live')) {
   const g = await fetch('https://agent.brainonbnb.com/wall').then((r) => r.json()).catch(() => null);
   say(g && Array.isArray(g.wall) && g.max === 41, `live GET /wall (${g?.wall?.length} on the wall)`);

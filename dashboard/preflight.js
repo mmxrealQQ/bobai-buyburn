@@ -58,6 +58,7 @@ const round = (n, d = 2) => (n == null || !Number.isFinite(n) ? null : +n.toFixe
 const fig = (value, line, unit) => (value == null || !Number.isFinite(Number(value)) ? {} : { value: Number(value), line: line ?? null, unit });
 export const gateOf = (stop, caution) => (stop.length ? 'stop' : caution.length ? 'weigh' : 'no_known_stop');
 // the established tokens whose formal points are info, not caution (A-Z 24.11.), and the points that are formal
+export const shortWhy = (w) => { const t = String(w || '').replace(/\s*\([^()]*\)/g, '').split(/(?<=[.!?])\s+|\s+—\s+|;\s+/)[0].trim(); return t.length <= 120 ? t : t.slice(0, 117).replace(/\s+\S*$/, '') + '…'; };
 export const ESTABLISHED = new Map([
   ['0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c', 'WBNB'], ['0x55d398326f99059ff775485246999027b3197955', 'USDT (Binance-Peg)'],
   ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', 'USDC (Binance-Peg)'], ['0xe9e7cea3dedca5984780bafc599bd69add087d56', 'BUSD (Binance-Peg)'],
@@ -112,6 +113,9 @@ export function shape(s, r, usd, routeError = null, control = null) {
       const formal = o.caution.filter((c) => FORMAL.has(c.code));
       if (formal.length) o = { ...o, caution: o.caution.filter((c) => !FORMAL.has(c.code)), info: [...(o.info || []), ...formal.map((c) => ({ ...c, established: ESTABLISHED.get(String(s.address).toLowerCase()) }))] };
     }
+    // SHORT FIRST (C25, A-Z 24.11.: CAKE's holders_concentrated 'why' ran ~450 characters with nested asides): each point
+    // carries 'short', its first sentence within 120 characters; 'why' stays whole for the bots that read it
+    for (const k of ['stop', 'caution', 'info']) if (Array.isArray(o[k])) o = { ...o, [k]: o[k].map((c) => (c && c.why && !c.short ? { code: c.code, short: shortWhy(c.why), ...c } : c)) };
     return { ...head, gate: gateOf(o.stop, o.caution), ...o };
   };
 

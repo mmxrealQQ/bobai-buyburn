@@ -1193,7 +1193,7 @@ const categoryChips = categorised.map(({ cat, rows }) => {
   // page was built to point out in other people's numbers.
   const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId, cat.id)?.quotes).length;
   return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
-    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote back' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;
+    + `<em>${fmt(rows.length)} agent${rows.length === 1 ? '' : 's'}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote a price' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;   // C34 (A-Z 24.11.): '21 · 9 quote back' read as broken
 }).join('');
 
 // What the homepage prints on its marketplace card. Written here rather than
@@ -1850,7 +1850,7 @@ const page = `<!doctype html>
       </div>
       <div class="hx-try" id="rg-try-chips">
         <span>Try:</span>
-        <button type="button" data-q="protocol stats and pool statistics">protocol stats</button>
+        <button type="button" data-q="where is the best stablecoin yield on BNB Chain right now">the best stablecoin yield</button>
         <button type="button" data-q="check the health factor of the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF">a Venus health factor</button>
         <button type="button" data-q="find an agent that rebalances a PancakeSwap position">hire a rebalancer</button>
         <button type="button" data-q="measure the PancakeSwap pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82">measure the CAKE pool</button>

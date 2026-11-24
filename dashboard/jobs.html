@@ -30,6 +30,7 @@
 @media (min-width:641px){.jb-figs{display:grid;grid-template-columns:60px 80px 98px 136px;justify-items:end}}
 .np .intro{width:min(820px,calc(100% - 40px))}
 .rc-row[hidden]{display:none}.rc-more{display:block;margin:12px auto 18px;padding:8px 16px;border-radius:999px;border:1px solid rgba(240,185,11,.4);background:rgba(240,185,11,.08);color:var(--gold,#f0b90b);font:600 13px Inter,sans-serif;cursor:pointer}
+    .jb-name{color:inherit;text-decoration:none}.jb-name:hover b,.jb-name:focus-visible b{text-decoration:underline}
     /* "escrow ↗" and "checkup ↗" wrap as one word: on an iPad the arrow fell to a line of its own (2026-10-26) */
     .jb-chk{white-space:nowrap}</style>
 </head>
@@ -93,7 +94,9 @@
     const name = r.ours ? 'Brain on BNB' : n.length ? n[0] + (n.length > 1 ? ' +' + (n.length - 1) : '') : '';
     // each agent's checkup on the Plaza Board (2026-10-23): what marketplaces grade, with the fixes — and its inbox
     const id = (r.agents || [])[0] && r.agents[0].id;
-    return (name ? '<b>' + esc(name) + '</b> ' : '') + addr(r.provider) + (r.ours ? '<span class="jb-tag">ours</span>' : '')
+    // C32 (A-Z 24.11.): who is paid here could not be hired from here - the name opens its profile, a hire link beside it
+    return (name ? (id ? '<a class="jb-name" href="/agent/' + encodeURIComponent(id) + '"><b>' + esc(name) + '</b></a> ' : '<b>' + esc(name) + '</b> ') : '') + addr(r.provider) + (r.ours ? '<span class="jb-tag">ours</span>' : '')
+      + (id ? ' <a class="jb-chk" href="/registry?hire=' + encodeURIComponent(id) + '" title="hire it through the ERC-8183 escrow">hire &#x2197;</a>' : '')
       + (id ? ' <a class="jb-chk" href="/board?agent=' + encodeURIComponent(id) + '#check" title="its checkup and inbox on the Brain Board">checkup &#x2197;</a>' : '')
       // and every provider's escrow (2026-10-23): each job with what happens next, pay waiting release, money waiting refund
       + ' <a class="jb-chk" href="https://agent.brainonbnb.com/escrow/for/' + esc(r.provider) + '" target="_blank" rel="noopener" title="every escrow job of this wallet and what waits">escrow &#x2197;</a>';

@@ -106,7 +106,7 @@
   Promise.all([fetch('https://agent.brainonbnb.com/settle/public').then((r) => r.json()), price]).then(([j, usd]) => {
     const t = j.totals || {}, l = j.last_run;
     $('n-jobs').textContent = nf(t.jobs || 0);
-    $('n-u').textContent = '$' + nf(t.released_u || 0, 2);
+    $('n-u').textContent = nf(t.released_u || 0, 2) + ' $U';   // C35 (A-Z 24.11.): the unit /jobs and /registry use, not '$'
     $('n-prov').textContent = nf((t.providers || []).length);
     $('n-wait').textContent = nf(j.waiting || 0);
     $('rc-last').innerHTML = l
@@ -115,7 +115,7 @@
       : 'No run yet. The first runs at 21:15 UTC.';
     const rows = (j.log || []);
     $('rc-rows').innerHTML = rows.length ? rows.map((d) => d.settled
-      ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · $' + nf(d.released_u, 2) + ' to ' + addr(d.provider) + ' <i>from ' + addr(d.client) + '</i></span>'
+      ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · ' + nf(d.released_u, 2) + ' $U to ' + addr(d.provider) + ' <i>from ' + addr(d.client) + '</i></span>'
         + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a> · gas ' + bnb(d.gas_wei, usd) + '</span></div>'
       : '<div class="rc-row rc-muted"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · not settled: ' + esc(d.why || 'sent, not done') + '</span>'
         + (d.tx ? '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a></span>' : '') + '</div>').join('')
@@ -123,12 +123,12 @@
     // the refunds (public-refund.js): same record, served beside the settles
     const rf = j.refunds || {}, rt = rf.totals || {}, rl = rf.last_run;
     $('r-jobs').textContent = nf(rt.jobs || 0);
-    $('r-u').textContent = '$' + nf(rt.returned_u || 0, 2);
+    $('r-u').textContent = nf(rt.returned_u || 0, 2) + ' $U';
     $('r-cl').textContent = nf((rt.clients || []).length);
     const rrows = (rf.log || []);
-    $('rf-rows').innerHTML = (rl ? '<div class="rc-row rc-muted"><span class="rc-what">Last run <b>' + when(rl.at) + '</b> · ' + (rl.refunded ? nf(rl.refunded) + ' refunded, $' + nf(rl.returned_u || 0, 2) + ' back' : 'no refund was due') + (rl.refused ? ', ' + nf(rl.refused) + ' not sent (the simulation said no: refunded by someone else, or a read error)' : '') + (rl.failed ? ', <span class="no">' + nf(rl.failed) + ' failed</span>' : '') + (Number(rl.gas_bnb) > 0 ? ' · gas ' + bnb(Number(rl.gas_bnb) * 1e18, usd) : ', no gas spent') + (rl.stopped ? '<br><span class="no">Stopped: ' + esc(rl.stopped) + '</span>' : '') + '</span></div>' : '')
+    $('rf-rows').innerHTML = (rl ? '<div class="rc-row rc-muted"><span class="rc-what">Last run <b>' + when(rl.at) + '</b> · ' + (rl.refunded ? nf(rl.refunded) + ' refunded, ' + nf(rl.returned_u || 0, 2) + ' $U back' : 'no refund was due') + (rl.refused ? ', ' + nf(rl.refused) + ' not sent (the simulation said no: refunded by someone else, or a read error)' : '') + (rl.failed ? ', <span class="no">' + nf(rl.failed) + ' failed</span>' : '') + (Number(rl.gas_bnb) > 0 ? ' · gas ' + bnb(Number(rl.gas_bnb) * 1e18, usd) : ', no gas spent') + (rl.stopped ? '<br><span class="no">Stopped: ' + esc(rl.stopped) + '</span>' : '') + '</span></div>' : '')
       + (rrows.length ? rrows.map((d) => d.refunded
-        ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · $' + nf(d.returned_u, 2) + ' back to ' + addr(d.client) + ' <i>never delivered by ' + addr(d.provider) + '</i></span>'
+        ? '<div class="rc-row"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · ' + nf(d.returned_u, 2) + ' $U back to ' + addr(d.client) + ' <i>never delivered by ' + addr(d.provider) + '</i></span>'
           + '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a> · gas ' + bnb(d.gas_wei, usd) + '</span></div>'
         : '<div class="rc-row rc-muted"><span class="rc-t">' + when(d.at) + '</span><span class="rc-what"><b>Job ' + esc(d.id) + '</b> · ' + (d.unconfirmed ? 'sent, its receipt not seen yet: ' : 'not refunded: ') + esc(d.why || 'sent, not done') + '</span>'
           + (d.tx ? '<span class="rc-tx"><a href="https://bscscan.com/tx/' + esc(d.tx) + '" target="_blank" rel="noopener">tx ' + esc(String(d.tx).slice(0, 10)) + '…</a></span>' : '') + '</div>').join('')

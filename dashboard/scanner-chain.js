@@ -194,10 +194,10 @@ const throttled=e=>{
   return e&&e.code===-32005||/rate|limit|capacity|too many|quota|busy|exceed/.test(m);
 };
 let postRefusal='';
-async function tryPost(url,body){
+async function tryPost(url,body,ms=12000){
   try{
     const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body),signal:AbortSignal.timeout(12000)});
+      body:JSON.stringify(body),signal:AbortSignal.timeout(ms)});
     if(!r.ok){postRefusal='HTTP '+r.status;return null}
     return await r.json();
   }catch(e){postRefusal=String(e?.message||e).slice(0,100);return null}
@@ -232,7 +232,9 @@ export async function rpcBatch(calls,url,block='latest'){
 export async function rpc(method,params,url){
   const pool=url?[url]:RPCS;
   for(let n=0;n<pool.length;n++){
-    const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params});
+    // a log read that has not answered in 6 s moves on (C22, A-Z 24.11.: one silent log node held CAKE's tax read 15 s of a
+    // 19.6 s scan; a window's logs come back in about a second where a node answers at all)
+    const j=await tryPost(pool[url?0:(epi+n)%pool.length],{jsonrpc:'2.0',id:1,method,params},method==='eth_getLogs'?6000:12000);
     if(j&&!j.error)return j.result;
     if(j&&j.error&&url)throw new Error(j.error.message);
     // A REVERT IS AN ANSWER HERE TOO (2026-11-15), as in rpcBatch above: every node gives the same one. A multicall whose
@@ -2433,19 +2435,20 @@ export async function readActivity(token,pair,tokenIs0,kind,tax,quoteUsd){
   let logs=tax.swapLogs,blocks=tax.windowBlocks||0;
   const range=b=>({fromBlock:'0x'+(head-(b-1)).toString(16),toBlock:'0x'+head.toString(16)});
   const topic=kind==='v3'?[[SWAP_V3_T,SWAP_V3_UNI]]:[SWAP_T];
-  if(blocks<WINDOW_BLOCKS&&logs.length<300){
-    for(const url of LOGS_RPCS){
-      try{const l=await rpc('eth_getLogs',[{address:pair,topics:topic,...range(WINDOW_BLOCKS)}],url);if(l){logs=l;blocks=WINDOW_BLOCKS;break}}
-      catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))break}
-    }
-  }
+  // the swaps over the whole window and the token's transfers into the pool, side by side (C22, A-Z 24.11.: one after the
+  // other they were 3-4 s of every scan); the transfers are asked over the window the swaps will cover
+  const wantWide=blocks<WINDOW_BLOCKS&&logs.length<300, xferBlocks=wantWide?WINDOW_BLOCKS:blocks;
+  const swapsP=wantWide?(async()=>{for(const url of LOGS_RPCS){
+      try{const l=await rpc('eth_getLogs',[{address:pair,topics:topic,...range(WINDOW_BLOCKS)}],url);if(l)return l}
+      catch(e){if(/max results|exceeds|too (large|many)/i.test(String(e&&e.message)))return null}
+    }return null})():Promise.resolve(null);
+  const xferP=(async()=>{for(const url of LOGS_RPCS){
+      try{const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(xferBlocks)}],url);if(l)return l}catch(e){}
+    }return null})();
+  const [wide,xfer]=await Promise.all([swapsP,xferP]);
+  if(wide){logs=wide;blocks=WINDOW_BLOCKS}
   let sellers=null,toPair=null;
-  for(const url of LOGS_RPCS){
-    try{
-      const l=await rpc('eth_getLogs',[{address:token,topics:[XFER_T,null,'0x'+pad(pair)],...range(blocks)}],url);
-      if(l){toPair=l;sellers=new Map();for(const x of l)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase());break}
-    }catch(e){}
-  }
+  if(xfer){toPair=xfer;sellers=new Map();for(const x of xfer)if(!sellers.has(x.transactionHash)&&x.topics[1])sellers.set(x.transactionHash,('0x'+x.topics[1].slice(26)).toLowerCase())}
   const out={...activityFromSwaps(logs,{kind,tokenIs0,sellers,quoteUsd}),
     window:{blocks,minutes:Math.round(blocks*0.45/60),toBlock:head}};
   // The raw logs ride along for readFlow (2026-09-27), NOT enumerable: the answer's JSON stays what it was, and

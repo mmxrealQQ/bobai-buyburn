@@ -1531,6 +1531,32 @@ const at=s=>{stage=s;step(s)};
 // then raced, the slower one drew the page last and set ?token= to an address
 // the input field no longer showed. A scan in flight finishes first.
 let scanning=false;
+// THE ANSWER BEFORE THE MEASUREMENT (C22, A-Z 24.11.: a scan took 15 s on a desktop and 28 s on a phone before anything
+// stood on the page, while /api/preflight answers the same token in 4-6 s): the preflight is asked beside the in-browser
+// read, and its short answer stands until the full measurement replaces it (every full render clears #sc-out first)
+let scanSeq=0;
+function quickCard(p,seq){
+  if(seq!==scanSeq||!p||!p.gate)return;
+  const o=$('sc-out');if(!o.hidden&&o.children.length)return;   // the full answer (or a curve's) is there already
+  const c=el('section','cd vd-card sc-quick'),h=el('div','cd-h');
+  h.appendChild(el('h3',null,'The short answer'+(p.token&&p.token.symbol?' · '+p.token.symbol:'')));
+  h.appendChild(el('p',null,'A first reading from our pre-trade check at block '+(p.block?nf(+p.block):'—')+'. The full measurement, every figure and its source, is still reading and replaces this in a moment.'));
+  c.appendChild(h);const list=el('div','vd');
+  const line=(tone,head,body)=>{const r=el('div','vd-r vd-'+tone);r.appendChild(el('b',null,head));if(body)r.appendChild(el('span',null,body));list.appendChild(r)};
+  if(p.gate==='stop')line('bad','Something here stops an automated trade.',null);
+  for(const x of (p.stop||[]))line('bad',x.short||x.why,null);
+  const en=p.entry||{},ex=p.exit||{};
+  if(ex.sellable===true)line('good','A sell goes through right now.','Simulated on the chain at this block, from a fresh address.');
+  // a pool token's answer carries the round trip through the best route; a curve token's carries both legs
+  if(en.cost_pct==null&&ex.round_trip_cost_pct!=null)line(p.gate==='stop'?'mid':'good','Buy $'+nf(p.size_usd||500)+' and sell straight back'+(en.route?' through PancakeSwap '+en.route:'')+': it costs '+pc(ex.round_trip_cost_pct)+'.',ex.round_trip_keep_pct!=null?'You keep about '+pc(ex.round_trip_keep_pct)+' — pool fees, your own price impact and any tax included.':null);
+  else if(en.cost_pct!=null&&ex.cost_pct!=null)line(p.gate==='stop'?'mid':'good','A $'+nf(p.size_usd||500)+' trade costs '+pc(en.cost_pct)+' to buy and '+pc(ex.cost_pct)+' to sell.',ex.round_trip_cost_pct!=null?'Round trip about '+pc(ex.round_trip_cost_pct)+(p.venue?', through '+p.venue:'')+'.':null);
+  const tx=p.tax||{};
+  if(tx.buy_pct!=null||tx.sell_pct!=null)line(tx.buy_pct>=10||tx.sell_pct>=10?'bad':(tx.buy_pct||tx.sell_pct)?'mid':'good',(tx.buy_pct||tx.sell_pct)?'Transfer tax: '+pc(tx.buy_pct||0)+' on a buy, '+pc(tx.sell_pct||0)+' on a sell.':'No transfer tax.',tx.source||null);
+  for(const x of (p.caution||[]).slice(0,4))line('mid',x.short||x.why,null);
+  if(p.gate==='no_known_stop')line('good','Nothing this read found stops a trade.','What it found, never a promise of safety.');
+  c.appendChild(list);
+  o.textContent='';o.appendChild(c);o.hidden=false;$('sc-err').hidden=true;
+}
 async function scan(input){
   if(scanning)return;
   scanning=true;
@@ -1539,6 +1565,8 @@ async function scan(input){
 async function scanOnce(input){
   stage='start';
   busy(true,'identifying the address…');
+  { const seq=++scanSeq; $('sc-out').hidden=true; $('sc-out').textContent='';
+    fetch('/api/preflight?address='+encodeURIComponent(input)+'&usd=500').then(r=>r.ok?r.json():null).then(p=>{if($('sc-go').disabled)quickCard(p,seq)}).catch(()=>{}); }
   try{
     const askGoPlus=a=>fetch(GOPLUS+a).then(r=>r.ok?r.json():null)
       .then(j=>j&&j.result&&(j.result[a]||j.result[a.toLowerCase()])).catch(()=>null);

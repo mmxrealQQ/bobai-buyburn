@@ -630,12 +630,11 @@ export async function scan(input, env, timing = null) {
   const inf = pool.kind === 'inf';
   const agesP = contractAges(inf ? [token] : [pool.pair, token]).catch(() => null);
   mark('before_tax');
-  let tax = await measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
-  // Can it be sold at all? Asked of the chain, not of a label (see the
-  // function's header). V2 pairs only; anything else says so.
-  let sim = inf
-    ? { ok: false, reason: 'the sell test covers PancakeSwap V2 pairs and V3 pools; the sell side of this Infinity pool is priced by its own quoter below, hook included' }
-    : await simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind);
+  // The tax from executed trades and the sell test, side by side (C22, A-Z 24.11.: they ran one after the other; neither
+  // needs the other). Can it be sold at all? Asked of the chain, not of a label (see the function's header).
+  let [tax, sim] = await Promise.all([measureTax(token, pool.pair.toLowerCase(), tokenIs0, pool.kind),
+    inf ? { ok: false, reason: 'the sell test covers PancakeSwap V2 pairs and V3 pools; the sell side of this Infinity pool is priced by its own quoter below, hook included' }
+      : simulateRoundTrip(token, pool.pair.toLowerCase(), tokenIs0, pool.kind)]);
   // One patient retry before the label wins. Measured on 2026-09-08: one scan
   // in ten came back with status 200 and the tax "labelled by GoPlus" and the
   // sell test "every BSC endpoint refused" — the same question, answered by

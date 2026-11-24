@@ -944,7 +944,8 @@ function shareBar(token,symb){
   const share=(label,href)=>{const a=document.createElement('a');a.className='sc-sh';a.textContent=label;a.href=href;a.target='_blank';a.rel='noopener';return a};
   const acts=document.createElement('span');acts.className='sc-acts';
   acts.append(b,share('Post on X','https://x.com/intent/post?text='+encodeURIComponent(say)+'&url='+encodeURIComponent(url)),share('Telegram','https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(say)));
-  d.append(t,acts);o.prepend(d);
+  // under the short answer (C26, A-Z 24.11.: on a phone it stood above the token's name and the answer)
+  d.append(t,acts);const vc=o.querySelector('.vd-card');if(vc)vc.after(d);else o.prepend(d);
   if(symb)d.title='Anyone who opens it sees '+symb+' scanned again, live';
 }
 
@@ -1980,10 +1981,11 @@ function drawFeed(){
         r.appendChild(el('td','sc-feed-m',(()=>{const sec=Math.round(x.blocksAgo*0.45);return x.blocksAgo<=2?'just now':sec<90?'~'+sec+' s ago':'~'+Math.round(sec/60)+' min ago'})()));
         const go=()=>{$('sc-in').value=x.token;showClear();scan(x.token);window.scrollTo({top:0,behavior:'smooth'})};
         r.addEventListener('click',go);r.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}});
+        // each cell names its column, so a phone shows the row as a card (C27, A-Z 24.11.: the table needed a sideways swipe)
+        [...r.children].forEach((td,i)=>td.setAttribute('data-l',['Token','Raised','Price','$100 buy','$100 sell','Last trade'][i]));
         t.appendChild(r);
       }
       body.appendChild(t);
-      if(matchMedia('(max-width:640px)').matches)body.appendChild(el('p','sc-feed-note','Swipe the table sideways for the sell cost and the last trade.')); // the box is narrower than the table on a phone (2026-10-09)
       body.appendChild(el('p','sc-feed-note','Read from four.meme’s contract at block '+nf(f.head)+': the last '+f.blocks+' blocks, newest first, tokens that have not graduated. Cost is four.meme’s own quote for that size, its fee included. Tap a row to scan it. Not a recommendation of anything.'));
     }catch(e){
       body.appendChild(el('p','sc-feed-note','The log nodes did not answer just now. Try again in a few seconds.'));

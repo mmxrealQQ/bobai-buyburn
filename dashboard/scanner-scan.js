@@ -31,6 +31,11 @@ const parseInput = (s) => {
 
 // `code` (2026-10-09) is the refusal in one machine-readable word — not_a_token,
 // is_wallet — so a caller can branch on it instead of on the sentence.
+// A NEAR MISS OF A BIG TOKEN (C28, A-Z 24.11.: a USDT address with a mangled tail, 0x55d3…dd1f55, was only 'a wallet'):
+// the same first four hex digits as one of these, and the answer names it
+const BIG = [['0x55d398326f99059ff775485246999027b3197955', 'USDT'], ['0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', 'USDC'], ['0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c', 'WBNB'], ['0xe9e7cea3dedca5984780bafc599bd69add087d56', 'BUSD'], ['0x8d0d000ee44948fc98c9b98a4fa4921476f08b0d', 'USD1'], ['0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', 'CAKE'], ['0x2170ed0880ac9a755fd29b2688956bd959f933f8', 'ETH'], ['0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c', 'BTCB'], ['0x245c386dcfed896f5c346107596141e5edcbffff', 'BOBAI']];
+export function nearMiss(a) { const x = String(a || '').toLowerCase(), m = BIG.find(([b]) => b !== x && b.slice(0, 6) === x.slice(0, 6)); return m ? `Did you mean ${m[1]}, ${m[0]}? It starts the same. ` : ''; }
+
 export class ScanError extends Error {
   constructor(headline, detail, code) {
     super(headline);
@@ -252,7 +257,7 @@ export async function scan(input, env, timing = null) {
   if (code === '0x')
     throw new ScanError(
       'That address is a wallet, not a token.',
-      'There is no contract code at it on BNB Smart Chain, so there is nothing to trade or measure. Paste the token’s contract address (or its pool, or a link containing one).',
+      'There is no contract code at it on BNB Smart Chain, so there is nothing to trade or measure. ' + nearMiss(input) + 'Paste the token’s contract address (or its pool, or a link containing one).',
       'is_wallet',
     );
 

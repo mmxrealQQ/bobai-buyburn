@@ -95,6 +95,7 @@
     .sc-feed-t{width:100%;border-collapse:collapse;margin-top:12px;font-size:.78rem}
     .sc-feed-t th{text-align:left;font-weight:600;color:var(--muted);font-size:.68rem;letter-spacing:.4px;text-transform:uppercase;padding:4px 8px 6px;border-bottom:1px solid var(--border)}
     .sc-feed-t td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;white-space:nowrap}
+    @media(max-width:640px){.sc-feed-t,.sc-feed-t tbody{display:block}.sc-feed-t tr:first-child{display:none}.sc-feed-t tr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}.sc-feed-t td{border:0;padding:0;white-space:normal;min-width:0}.sc-feed-t td:first-child{grid-column:1/-1}.sc-feed-t td:nth-child(2){grid-column:1/-1}.sc-feed-t td[data-l]:not(:first-child)::before{content:attr(data-l);display:block;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}}
     .sc-feed-t tr[tabindex]{cursor:pointer}
     .sc-feed-t tr[tabindex]:hover td,.sc-feed-t tr[tabindex]:focus-visible td{background:rgba(240,185,11,.06)}
     .sc-feed-t tr:focus-visible{outline:none}
@@ -496,6 +497,6 @@
 </div></footer>
 </div>
 <!-- Bump both ?v= when editing: the files are cached for a week. -->
-<script src="scanner.js?v=89" type="module"></script>
+<script src="scanner.js?v=90" type="module"></script>
 </body>
 </html>

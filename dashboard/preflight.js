@@ -136,7 +136,10 @@ export function shape(s, r, usd, routeError = null, control = null) {
       // ONE SHAPE FOR A POOL AND A CURVE (2026-10-27, a stranger wiring this into a trading bot: "a curve token breaks the
       // parser — exit.sell_quoted instead of exit.sellable, no tax, round_trip_cost_pct or slippage_bps_needed"). The
       // fields a bot branches on are always there, null where the curve has no such figure, and the curve's own stay.
+      // C23 (A-Z 24.11.): a curve answer gave cost_pct and no amount, so an agent could not set a minimum out. The tokens
+      // follow from the price and the measured cost at this size: usd / (price x (1 + cost)); the minimum leaves 1 % room
       entry: { cost_pct: round(buy.pct, 3), fee_pct: c.feePct ?? null, slippage_bps_needed: null,
+        ...(c.priceUsd > 0 && buy.pct != null && !buy.beyondLadder ? { receive_tokens: +(usd / (c.priceUsd * (1 + buy.pct / 100))).toPrecision(6), min_tokens_out_1pct: +(0.99 * usd / (c.priceUsd * (1 + buy.pct / 100))).toPrecision(6), receive_note: 'From the price and the cost measured at this size, this block; the curve moves with every buy.' } : { receive_tokens: null }),
         slippage_note: 'A curve trade goes through the launchpad’s own contract, which takes its own minimum; size it from cost_pct.' },
       exit: { sellable: c.sellQuoted ? true : null, sell_quoted: !!c.sellQuoted, cost_pct: round(sell.pct, 3),
         round_trip_cost_pct: buy.pct == null || sell.pct == null ? null : round(buy.pct + sell.pct, 2) },

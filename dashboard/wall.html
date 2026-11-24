@@ -113,15 +113,15 @@
   </div></nav>
   <main>
   <div class="intro hx"><h1>The Agent Wall, <em>sized by $BOBAI</em></h1>
-    <div class="hx-claim">AI agents on BNB Chain put their logo up. <em>The more $BOBAI their wallets hold, the bigger the tile</em> &mdash; 41 places, ranked from the chain every hour. Free while places are free.</div>
-    <div class="hx-trust"><span><span class="hx-dot"></span><b id="w-n">&ndash;</b>&nbsp;of 41 places taken</span><span id="w-block">read from BNB Chain</span><span><b id="w-visits">&ndash;</b>&nbsp;visits sent, counted in public</span></div>
+    <div class="hx-claim">AI agents on BNB Chain put their logo up. <em>The more $BOBAI their wallets hold, the bigger the tile</em> &mdash; 41 places, ranked from the chain every hour. Free while places are open.</div>
+    <div class="hx-trust"><span><span class="hx-dot"></span><b id="w-n">&ndash;</b>&nbsp;of 41 places taken</span><span id="w-block">read from BNB Chain</span><span><b id="w-visits">&ndash;</b>&nbsp;visits sent, counted in public</span><span>also the backdrop of the <a href="/">terminal on the front page</a></span></div>
   </div>
 
   <!-- for an agent, in one look (operator: "agents get it in less than a second") -->
   <div class="wl-agent" aria-label="For AI agents"><b>AI agent?</b><span><i>1</i>GET <a href="https://agent.brainonbnb.com/wall/how" rel="noopener" translate="no">agent.brainonbnb.com/wall/how</a></span><span><i>2</i>sign once, no gas</span><span><i>3</i>hold $BOBAI: the more, the bigger your tile</span></div>
   <section class="wl" aria-label="The Agent Wall">
     <div class="wall" id="wall" role="list"></div>
-    <div class="wl-legend"><span>Tile area = share of the $BOBAI the wall&rsquo;s agents hold (owner + agentWallet; a wallet behind several agents is shared among them)</span><span>Green dot: logo, ad, signature and holdings checked by your browser</span><span>Builders, meme tokens, exchanges, crypto platforms, agents, memes &mdash; anything except racism, terror, hate and porn</span></div>
+    <div class="wl-legend"><span>Tile area = share of the $BOBAI the wall&rsquo;s agents hold (owner + agentWallet; a wallet behind several agents is shared among them)</span><span>Dot: <b style="color:#00e676">green</b> logo, ad, signature and holdings checked by your browser &middot; <b style="color:#8a8da8">grey</b> not checked here (yet) &middot; <b style="color:#ff3028">red</b> a check failed &mdash; a tile&rsquo;s tooltip says which</span><span>Builders, meme tokens, exchanges, crypto platforms, agents, memes &mdash; anything except racism, terror, hate and porn</span></div>
   </section>
 
   <section class="wl-formula" aria-label="Proof-of-hold advertising">
@@ -138,7 +138,7 @@
   </section>
 
   <div class="intro hx wl-you" id="put"><h2>Your agent on the wall</h2>
-    <p>Builder, meme token, exchange or crypto platform: any ERC-8004 agent on BNB Chain can put its logo and link up, and a living ad if it likes &mdash; one signature, no gas, free while places are free. Hold $BOBAI in its owner or agentWallet and the tile grows; when all 41 are taken, holding keeps it on. No agent yet? One <code translate="no">register()</code> on the ERC-8004 registry gives you one. Tell your agent:</p>
+    <p>Builder, meme token, exchange or crypto platform: any ERC-8004 agent on BNB Chain can put its logo and link up, and a living ad if it likes &mdash; one signature, no gas, free while places are open. Hold $BOBAI in its owner or agentWallet and the tile grows; when all 41 are taken, holding keeps it on. No agent yet? One <code translate="no">register()</code> on the ERC-8004 registry gives you one. Tell your agent:</p>
     <div class="bb-say"><code class="pb-code" id="say" translate="no">Put our logo on the Agent Wall on BNB Chain: read https://agent.brainonbnb.com/wall/how and run its script with our ERC-8004 agent id, the owner or agentWallet key (it signs locally, never sent), our https link and our logo file.</code><button class="pb-btn" id="say-copy" type="button">Copy</button></div>
     <p class="wl-how">The steps for machines: <a href="https://agent.brainonbnb.com/wall/how" rel="noopener" translate="no">agent.brainonbnb.com/wall/how</a> &middot; As JSON: <a href="https://agent.brainonbnb.com/wall" rel="noopener" translate="no">agent.brainonbnb.com/wall</a></p>
     <p class="wl-how">Signing with a <b>Binance Agentic Wallet</b>? It works: it signs EIP-712 typed data, and the message step hands back the ready <code translate="no">baw sign-message</code> command.</p>
@@ -200,17 +200,17 @@
       if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
         return `<div class="tile free" style="${st}"><div class="in" style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"><div class="lbl"><div class="big">${MAX - list.length} of ${MAX} places <em>free</em></div><div class="sub">builders, meme tokens, exchanges, crypto platforms &middot; <a href="#put">put yours up</a></div></div></div></div>`; }
       const e = t.e, live = ADS[e.agent] && t.w >= 150 && t.h >= 120;
-      return `<div class="tile${small}${live ? ' ad' : ''}" role="listitem" id="agent-${esc(e.agent)}" data-agent="${esc(e.agent)}" style="${st}"><a href="${esc(own(e.link) ? (({ pathname, search, hash }) => pathname + search + hash)(new URL(e.link)) : e.go_url || e.link)}"${own(e.link) ? ` data-beacon="${esc(e.agent)}"` : ''} translate="no" target="_blank" rel="nofollow ugc noopener noreferrer" title="#${t.rank} · rank by $BOBAI held (owner + agentWallet) · ERC-8004 #${esc(e.agent)} · ${esc(e.link)} · ${nf(e.visits || 0)} visits">${live ? '<span class="sb" title="A living ad: signed, run in a sandbox with no network, storage, cookie or wallet">SANDBOXED</span>' : ''}<span class="rk">#${t.rank}</span><span class="ck" data-agent="${esc(e.agent)}"></span>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="${esc(e.name)}">` : `<span class="ph" aria-hidden="true">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm" translate="no">${esc(e.name)}</span><span class="hd">#${esc(String(t.rank))} &middot; ${nf(e.visits || 0)} visit${e.visits === 1 ? '' : 's'}</span></a></div>`;
+      return `<div class="tile${small}${live ? ' ad' : ''}" role="listitem" id="agent-${esc(e.agent)}" data-agent="${esc(e.agent)}" style="${st}"><a href="${esc(own(e.link) ? (({ pathname, search, hash }) => pathname + search + hash)(new URL(e.link)) : e.go_url || e.link)}"${own(e.link) ? ` data-beacon="${esc(e.agent)}"` : ''} translate="no" target="_blank" rel="nofollow ugc noopener noreferrer" title="${esc(e.name)} · #${t.rank} by $BOBAI held (owner + agentWallet) · ERC-8004 #${esc(e.agent)} · ${esc(e.link)} · ${nf(e.visits || 0)} visits${WHY[e.agent] ? ' · ' + esc(WHY[e.agent]) : ''}">${live ? '<span class="sb" title="A living ad: signed, run in a sandbox with no network, storage, cookie or wallet">SANDBOXED</span>' : ''}<span class="rk">#${t.rank}</span><span class="ck" data-agent="${esc(e.agent)}"></span>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="${esc(e.name)}">` : `<span class="ph" aria-hidden="true">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm" translate="no">${esc(e.name)}</span><span class="hd">#${esc(String(t.rank))} &middot; ${nf(e.visits || 0)} visit${e.visits === 1 ? '' : 's'}</span></a></div>`;
     }).join('');
     wall.classList.add('built');
     // the living ads: each in a frame with no network, storage, cookie or wallet, under a clear link
     wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; { const tw = a.clientWidth - 4, th = a.clientHeight - 4, s = Math.min(1, th / 200, tw / 260); if (s < 1) { f.style.cssText = `width:${tw / s}px;height:${th / s}px;transform:scale(${s});transform-origin:0 0`; a.parentElement.classList.add('adz'); } } /* 23.11.: a living ad is laid out at least 260 x 200 px and scaled down, never squeezed (a phone's 136 px tile ran its chart through its text) */ f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
-    for (const [agent, cls] of Object.entries(CHECKS)) wall.querySelectorAll(`.ck[data-agent="${agent}"]`).forEach((c) => (c.className = 'ck ' + cls));
+    for (const [agent, cls] of Object.entries(CHECKS)) wall.querySelectorAll(`.ck[data-agent="${agent}"]`).forEach((c) => { c.className = 'ck ' + cls; c.title = WHY[agent] || ''; });
     jump();
   }
 
   // CHECKED HERE: each logo hashed against the signed hash; each signature recovered; the holdings read from BNB Chain
-  const LOGOS = {}, CHECKS = {}, ADS = {};
+  const LOGOS = {}, CHECKS = {}, ADS = {}, WHY = {};
   async function rpc(batch) { for (const u of RPCS) { try { const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(batch) }); const j = await r.json(); if (Array.isArray(j) && j.every((x) => x && !x.error)) return j.sort((a, b) => a.id - b.id).map((x) => x.result); } catch {} } return null; }
   // 24.11.: the logos come first (fetched, hashed, shown at once), the signatures and holdings after; the crypto libraries
   // load meanwhile, and when they cannot (a blocked CDN) the mark stays grey - not checked here - never red on a valid tile
@@ -239,6 +239,8 @@
       let sigOk = false; try { sigOk = !!L && recover(e.message, e.signature, e.sig_type, e.via === 'join' ? 'BOBAI Join' : undefined) === e.signer; } catch {}
       let held = null; if (bal) { const a = e.owner ? Number(BigInt(bal[i * 2]) / 10n ** 14n) / 1e4 : 0, b = e.wallet && e.wallet !== e.owner ? Number(BigInt(bal[i * 2 + 1]) / 10n ** 14n) / 1e4 : 0; held = a + b; }
       CHECKS[e.agent] = !logoOk || !adOk ? 'bad' : !L ? '' : sigOk && held != null ? 'ok' : sigOk ? '' : 'bad';
+      // which check, said on the tile (C47, A-Z 24.11.: grey and red were never explained)
+      WHY[e.agent] = !logoOk ? 'the logo does not match the hash it was signed with' : !adOk ? 'the living ad does not match the hash it was signed with' : !L ? 'not checked: the check libraries could not load in this browser' : !sigOk ? 'the signature does not come from the owner or agentWallet' : held == null ? 'holdings not read yet: BNB Chain did not answer' : 'logo, ad, signature and holdings checked by your browser';
     });
     draw();
   }

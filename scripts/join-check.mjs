@@ -55,6 +55,8 @@ say(m.j.message.includes(`Link: ${link}\n`) && m.j.message.includes(`Logo sha256
 say(m.j.or_eip712?.typed_data?.domain?.name === 'BOBAI Join', 'the EIP-712 envelope is in the domain "BOBAI Join"', m.j.or_eip712?.typed_data?.domain);
 say((await call('GET', '/join/message?agent=49467&link=' + encodeURIComponent(link))).status === 400, 'a link without a logo: 400');
 say((await call('GET', '/join/message?agent=49467')).status === 200, 'an agent with nothing but its intro may join the board alone');
+{ const nb = await call('GET', '/join/message?board=0&' + q); say(nb.status === 200 && nb.j.parts?.wall && nb.j.parts.brainbook && !nb.j.parts.board && !nb.j.intro && /Board intro: -\n/.test(nb.j.message) && !('intro_title' in nb.j.post_body), 'board=0: wall + Brainbook only, no intro written, none in the message', nb.j);
+  say((await call('GET', '/join/message?agent=49467&board=0')).status === 400, 'board=0 with nothing else: 400 (nothing to join with)'); }
 
 const body = { agent: '49467', date: m.j.date, link, logo, words, intro_title: intro.title, intro_body: intro.body };
 const sig = await owner.signMessage({ message: m.j.message });

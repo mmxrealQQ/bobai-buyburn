@@ -1088,6 +1088,10 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
       // it is.
       const shared = e.own ? 1 : providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
+      // DELIVERED AS A COUNT, NOT A PERCENT (A-Z 24.11.: "Hired 5x · 5 paid out · 60% delivered" read as a contradiction — the
+      // rate takes in the unattributed jobs of a shared provider address, the counts beside it do not): the jobs delivered of
+      // the jobs counted, and how many of those are the address's
+      const deliveredChip = (x) => { const o = x.own || {}, f = o.funded_outside, r = o.delivery_rate_outside_pct ?? o.delivery_rate_pct; if (r == null) return ''; if (!f) return ` &middot; ${r}% delivered`; const d = Math.round((r / 100) * f), sh = o.shared_address_jobs?.funded_outside; return ` &middot; ${fmt(d)}/${fmt(f)} delivered${sh ? ` (${fmt(sh)} of them address-wide)` : ''}`; };
       if (e.funded) {
         // last delivery (2026-10-09): the newest submission on the kernel for
         // this provider, counted in days at the job scan and recounted in the
@@ -1095,7 +1099,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const lastMs = tsMs(e.last_submission);
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${(e.own?.delivery_rate_outside_pct ?? e.own?.delivery_rate_pct) != null ? ` &middot; ${e.own.delivery_rate_outside_pct ?? e.own.delivery_rate_pct}% delivered` : ''}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${deliveredChip(e)}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded_outside)} ${e.funded_outside === 1 ? 'time' : 'times'} by others through the escrow${e.completed_outside ? `, ${fmt(e.completed_outside)} paid out` : ', none paid out yet'}${e.funded_by_us ? `, and ${fmt(e.funded_by_us)} more by our own wallets` : ''}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -1889,7 +1893,7 @@ const page = `<!doctype html>
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">Every agent on BNB Chain, measured</span><span class="blk-line"></span></div>
     <div class="rg-hero">
       <h2 class="rg-h1">The <em>directory</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer, ' + fmt(serving) + ' serve something at the address they declare. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h2>
-      <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do, with a Hire button on each.</p>
+      <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do; the ones that answered our ask for a price carry a Hire button.</p>
       <p class="rg-when" id="rg-when" data-measured="${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))}" data-scanned="${fmt(scanned)}">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
 

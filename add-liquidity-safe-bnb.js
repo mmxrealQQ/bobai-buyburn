@@ -8,6 +8,8 @@
 // Usage: node add-liquidity-safe-bnb.js            (buy, add, burn)
 //        node add-liquidity-safe-bnb.js --resume   (a run that stopped after its buy: add the BOBAI over 808.41 with the
 //                                                    BNB on the wallet, burn the LP — no new buy, nothing sold)
+//        node add-liquidity-safe-bnb.js --hold     (BEFORE sending the BNB: the dev sweep leaves the wallet alone, 6 h)
+//        node add-liquidity-safe-bnb.js --release  (lift that hold when no run follows)
 // Requires: PRIVATE_KEY in .env or environment
 
 require('dotenv').config();
@@ -103,7 +105,30 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const RESUME = process.argv.includes('--resume');
 const RESUME_HINT = 'start  node add-liquidity-safe-bnb.js --resume  to add it (no new buy, nothing sold; the dev sweep waits up to 6 h while BOBAI lies here)';
 
+// THE HOLD ON THE DEV SWEEP (Liste B 4, 2026-11-24): BNB sent here for this run lies here as plain BNB until the run buys,
+// and the hourly dev sweep (worker-dev-buyback) took it 80/20 when a full hour fell in between. `--hold` (before the BNB
+// is sent) and every run set liq-hold in the logs KV the sweep reads; the sweep waits while it stands. It ends by itself
+// after 6 h, when a run is done, or with --release. Written with wrangler (logged in on this machine), no secret needed.
+// LIQ_HOLD=off: a fork test, where no real KV may be touched.
+const LOGS_KV = '630df426f6d84503b40460f13ab4b9f3', HOLD_TTL = 6 * 3600;
+function liqHold(on) {
+  if (process.env.LIQ_HOLD === 'off') return true;
+  const { spawnSync } = require('child_process');
+  const args = on
+    ? ['wrangler', 'kv', 'key', 'put', 'liq-hold', new Date().toISOString(), '--namespace-id', LOGS_KV, '--ttl', String(HOLD_TTL), '--remote']
+    : ['wrangler', 'kv', 'key', 'delete', 'liq-hold', '--namespace-id', LOGS_KV, '--remote'];
+  // one command line (fixed words and an ISO time only — nothing from outside goes into it); npx is a .cmd on Windows
+  const r = spawnSync(['npx', ...args].join(' '), { cwd: __dirname, encoding: 'utf8', shell: true, timeout: 120000 });
+  return r.status === 0;
+}
+
 async function main() {
+  if (process.argv.includes('--hold') || process.argv.includes('--release')) {
+    const on = process.argv.includes('--hold');
+    if (!liqHold(on)) { console.log(`[ERROR] The hold could not be ${on ? 'set' : 'lifted'} (wrangler kv). ${on ? 'Do not send BNB yet.' : 'It ends by itself 6 h after it was set.'}`); process.exit(1); }
+    console.log(on ? `Hold set: the dev sweep leaves this wallet alone for ${HOLD_TTL / 3600} h. Send the BNB now, then start  node add-liquidity-safe-bnb.js  (from minute 03 of an hour).` : 'Hold lifted: the dev sweep runs again at the next full hour.');
+    return;
+  }
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) { console.log('[ERROR] No PRIVATE_KEY in .env'); process.exit(1); }
   const rpcUrl = process.env.BSC_RPC_URL || 'https://bsc-dataseed.binance.org/';
@@ -119,6 +144,8 @@ async function main() {
     console.error('  Start again from minute 03 on (UTC). Nothing was sent.');
     process.exit(1);
   }
+  // the run holds the sweep off itself too (a run that stops keeps the hold until --resume is done, or 6 h)
+  if (!liqHold(true)) console.log('[WARN] The hold on the dev sweep could not be set (wrangler kv) — the run goes on; it is well before the full hour.');
 
   console.log('============================================');
   console.log('BOBAI Safe Liquidity Add + LP Burn — from BNB');
@@ -262,6 +289,10 @@ async function main() {
   console.log(`\nBOBAI left on wallet: ${formatEther(bobaiLeft)}`);
   console.log(`BNB left on wallet:   ${formatEther(bnbLeft)}`);
   if (bobaiLeft !== KEEP_BOBAI) console.log(`[WARN] Not exactly ${formatEther(KEEP_BOBAI)}: ${formatEther(bobaiLeft - KEEP_BOBAI)} BOBAI over — start add-liquidity-safe.js once.`);
+
+  // done: the dev sweep may run again
+  if (liqHold(false)) console.log('The hold on the dev sweep is lifted.');
+  else console.log('[WARN] The hold on the dev sweep could not be lifted — it ends by itself 6 h after it was set (or: node add-liquidity-safe-bnb.js --release).');
 
   // The record, as add-liquidity-safe.js writes it (LIQ_RUNS_LOG only for a fork test, so it never touches the real file).
   try {

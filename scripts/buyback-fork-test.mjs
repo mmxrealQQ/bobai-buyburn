@@ -477,7 +477,8 @@ console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a th
 console.log('\nthe BNB liquidity script, --resume (add-liquidity-safe-bnb.js: a copy, on a throwaway wallet)');
 {
   const bnbSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe-bnb.js'), 'utf8');
-  ok('no failure after the buy points at the selling script any more: each says --resume', !/start add-liquidity-safe\.js to add it/.test(bnbSrc) && (bnbSrc.match(/\$\{RESUME_HINT\}/g) || []).length >= 4);
+  ok('the run holds the dev sweep off (liq-hold) before it starts and lifts the hold after the LP burn; --hold / --release exist (Liste B 4)', bnbSrc.indexOf('if (!liqHold(true))') > 0 && bnbSrc.indexOf('if (!liqHold(true))') < bnbSrc.indexOf('Step 1: Swap') && bnbSrc.indexOf('if (liqHold(false))') > bnbSrc.indexOf('BURNED') && bnbSrc.includes("process.argv.includes('--hold')") && bnbSrc.includes("process.argv.includes('--release')") && bnbSrc.includes("process.env.LIQ_HOLD === 'off'"));
+  ok('no failure after the buy points at the selling script any more: each says --resume',!/start add-liquidity-safe\.js to add it/.test(bnbSrc) && (bnbSrc.match(/\$\{RESUME_HINT\}/g) || []).length >= 4);
   const k = generatePrivateKey(), acct = privateKeyToAccount(k);
   const runsCopy = path.join(ROOT, 'temp', 'liq-runs-bnb-fork.json'), scriptCopy = path.join(ROOT, 'temp', 'add-liquidity-bnb-fork.js');
   const realRuns = fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8');
@@ -492,7 +493,7 @@ console.log('\nthe BNB liquidity script, --resume (add-liquidity-safe-bnb.js: a 
   if (safeCopy) {
     fs.writeFileSync(scriptCopy, copySrc);
     const { spawnSync } = await import('node:child_process');
-    const runIt = (args) => { const r = spawnSync(process.execPath, [scriptCopy, ...args], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k, BSC_RPC_URL: LOCAL } }); return { status: r.status, said: `${r.stdout || ''}${r.stderr || ''}` }; };
+    const runIt = (args) => { const r = spawnSync(process.execPath, [scriptCopy, ...args], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, LIQ_HOLD: 'off' } }); return { status: r.status, said: `${r.stdout || ''}${r.stderr || ''}` }; };
     // nothing over 808.41 on the wallet: --resume refuses and sends nothing
     await test.setBalance({ address: acct.address, value: parseEther('0.05') });
     const n0 = await pub.getTransactionCount({ address: acct.address });
@@ -518,7 +519,7 @@ console.log('\nthe BNB liquidity script, --resume (add-liquidity-safe-bnb.js: a 
     fs.writeFileSync(runsCopy, JSON.stringify({ dev: { burns: 0 }, runs: [] }));
     fs.writeFileSync(scriptCopy, bnbSrc.replace("require('dotenv').config();", '').replace(/const CREATOR_WALLET = '0x[0-9a-fA-F]{40}';/, `const CREATOR_WALLET = '${acct2.address}';`).replace('return m >= 55 || m < 3;', 'return false;').replace("require('path').join(__dirname, 'dashboard', 'liq-runs.json')", JSON.stringify(runsCopy)));
     await test.setBalance({ address: acct2.address, value: parseEther('0.05') });
-    const plain = spawnSync(process.execPath, [scriptCopy], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k2, BSC_RPC_URL: LOCAL } });
+    const plain = spawnSync(process.execPath, [scriptCopy], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k2, BSC_RPC_URL: LOCAL, LIQ_HOLD: 'off' } });
     const ps = `${plain.stdout || ''}${plain.stderr || ''}`, prec = JSON.parse(fs.readFileSync(runsCopy, 'utf8')).runs[0];
     ok('the plain run from BNB: three chunks bought, liquidity added, LP burned, recorded as from bnb', plain.status === 0 && /Chunk 3\/3/.test(ps) && /BURNED [0-9.]+ LP tokens/.test(ps) && !!prec && prec.from === 'bnb', ps.slice(-300));
     ok('the real dashboard/liq-runs.json was not touched', fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8') === realRuns);
@@ -582,6 +583,16 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 20
   hstore.set('dev-hold-since', String(Date.now() - 7 * 3600e3));
   const late = await runDev({ k: hk, store: hstore, value: held.left });
   ok('after 6 hours it sweeps anyway (BOBAI left lying does not stop the creator share for good)', late.got[0] > 0n && late.log.length === 1);
+  // A LIQUIDITY RUN ANNOUNCED (Liste B 4, 2026-11-24): plain BNB sent for add-liquidity-safe-bnb.js, the hold set before
+  const lk = generatePrivateKey(), lstore = new Map([['liq-hold', '2026-11-24T08:00:00.000Z']]);
+  const onHold = await runDev({ k: lk, store: lstore });
+  ok('with a liquidity run announced (liq-hold) the sweep sends nothing, though the BNB is plain BNB', onHold.got.every((v) => v === 0n) && onHold.log.length === 0);
+  lstore.delete('liq-hold');
+  const lifted = await runDev({ k: lk, store: lstore, value: onHold.left });
+  ok('the hold lifted, the next sweep runs', lifted.got[0] > 0n && lifted.log.length === 1);
+  class Unreadable extends Map { has(x) { if (x === 'liq-hold') throw new Error('KV GET failed: 500'); return super.has(x); } }
+  const blind = await runDev({ store: new Unreadable() });
+  ok('a hold that cannot be read is a hold: nothing is sent (fail-closed)', blind.got.every((v) => v === 0n) && blind.log.length === 0);
 }
 
 console.log(`\n${n - failed}/${n} checks pass on the fork of block ${forkBlock}`);

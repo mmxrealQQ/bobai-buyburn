@@ -183,6 +183,16 @@ async function runBot(env) {
     await env.LOGS.delete('dev-hold-since').catch(() => {});
   }
 
+  // A LIQUIDITY RUN ANNOUNCED (Liste B 4, 2026-11-24): BNB sent here for add-liquidity-safe-bnb.js lies here as plain BNB
+  // until the run buys — the BOBAI check above cannot see it, and a full hour in between swept it 80/20. The run (or
+  // `node add-liquidity-safe-bnb.js --hold`, before the BNB is sent) sets liq-hold in this KV; while it stands, the sweep
+  // waits. It ends by itself after 6 h (its TTL) or when the run is done. Fail-closed: a hold that cannot be read is a hold.
+  {
+    let hold = null;
+    try { hold = await env.LOGS.get('liq-hold'); } catch (e) { console.log(`liq-hold could not be read (${say(e)}) — the sweep waits.`); return; }
+    if (hold) { console.log(`A liquidity run was announced (${String(hold).slice(0, 40)}) — the sweep waits; the hold ends by itself after 6 h.`); return; }
+  }
+
   // Step 1: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);

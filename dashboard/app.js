@@ -632,6 +632,15 @@ document.addEventListener('click',e=>{
 const TX_CHUNK=60;
 function paintRows(id,rows){
   const body=document.getElementById(id);if(!body)return;
+  // A TABLE IN A CLOSED WINDOW WAITS (C40, A-Z 24.11.: the front page carried 6,723 elements, 5,859 of them in the four
+  // closed windows - the archive's run tables alone 3,700 - built at load for nobody): its rows are kept and drawn when
+  // the window opens (brain.js unhides it); the classic page and /token have no windows and draw at once as before
+  const win=body.closest('.bw-win');
+  if(win&&win.hidden){
+    (win.__pend=win.__pend||new Map()).set(id,rows);
+    if(!win.__obs){win.__obs=new MutationObserver(()=>{if(win.hidden||!win.__pend.size)return;const p=[...win.__pend];win.__pend.clear();for(const [k,r] of p)paintRows(k,r)});win.__obs.observe(win,{attributes:true,attributeFilter:['hidden']})}
+    return;
+  }
   const wrap=body.closest('.txw');
   if(body.__more&&wrap)wrap.removeEventListener('scroll',body.__more);
   body.__more=null;

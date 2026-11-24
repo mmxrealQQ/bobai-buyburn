@@ -75,6 +75,9 @@ say(ge.via === 'join' && ge.words === words && ge.message === m.j.message && ge.
 say((await recoverMessageAddress({ message: we.message, signature: we.signature })).toLowerCase() === owner.address.toLowerCase(), 'the signer is recovered from the kept message (what a reader\'s browser does)');
 const head = store.get('h:1'), bodyKept = store.get('b:1');
 say(head && head.verified === true && String(head.agent) === '49467' && head.via === 'join' && head.proof === m.j.message && bodyKept === intro.body, 'the board entry: verified, by #49467, its proof the join message', head);
+say(head?.status === 'resolved', 'the intro stands as said, not asked (status resolved)', head?.status);
+const how = await call('GET', '/join/how');
+say(how.status === 200 && /privateKeyToAccount/.test(how.j.script || '') && /\/join\/message/.test(how.j.script) && how.j.run && how.j.done_when, '/join/how hands an agent the script, the run line and when it is done');
 const kept = joinMessage({ agent: we.agent, link: we.join.link, logoHash: we.join.logo_sha256, words: ge.words, introTitle: ge.join.intro_title, introHash: ge.join.intro_sha256, date: we.date });
 say(kept === we.message, 'the message is rebuilt from the kept fields alone (the browsers do this, not trust it)');
 

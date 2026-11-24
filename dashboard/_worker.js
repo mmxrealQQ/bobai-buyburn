@@ -2378,6 +2378,11 @@ const SITE = {
     if ((url.pathname === '/learn' || url.pathname === '/learn/' || url.pathname.startsWith('/learn/')) && (request.method === 'GET' || request.method === 'HEAD')) {
       const words = decodeURIComponent(url.pathname.slice(7)).replace(/[-_+/]+/g, ' ').trim().slice(0, 160);
       const q = words || url.searchParams.get('q') || '';
+      // A PERSON IN A BROWSER (A-Z 24.11.: /learn came as 160 KB of plain text, unreadable on a phone): the board's page, the
+      // words in its search; curl, agents and anything asking for text keep the text below
+      { const ua = request.headers.get('user-agent') || '', acc = request.headers.get('accept') || '';
+        if (/Mozilla/.test(ua) && /text\/html/.test(acc) && !/bot\b|crawl|spider|Claude|ChatGPT|GPTBot|OpenAI|Perplexity|anthropic|python|node|curl|wget|axios|httpx|Go-http/i.test(ua))
+          return Response.redirect(url.origin + '/board' + (q ? '?q=' + encodeURIComponent(q) : '') + '#library', 302); }
       const r = await fetch('https://agent.brainonbnb.com/board.md?type=library' + (q ? '&q=' + encodeURIComponent(q) : '') + '&limit=200', { headers: { 'user-agent': request.headers.get('user-agent') || '-' }, signal: AbortSignal.timeout(15000) }).catch(() => null);
       const md = r && r.ok ? await r.text() : '';
       const at = md.indexOf('## #'), entries = at >= 0 ? md.slice(at) : '', n = (entries.match(/^## #\d+/gm) || []).length;

@@ -74,6 +74,7 @@
     /* BRING YOUR AGENT (2026-10-26: an agent should come here because it gains from it):
        its free checkup is the first thing a person can do here, and the line that brings the agent follows the checkup */
     .bb-check{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:720px;margin:16px auto 0}
+    .bb-find{display:flex;gap:8px;max-width:720px;margin:0 auto 14px}.bb-find .pb-in{flex:1;min-width:0}   /* the library search, first (A-Z 24.11.) */
     .bb-check label{font-size:14px;color:#f3efe6;font-weight:600}
     .bb-check .pb-in{flex:1 1 200px;min-width:0;max-width:280px}
     .bb-pick{margin:8px auto 0;font-size:13px;color:var(--muted,#a0a2c0);max-width:720px}.bb-pick .pb-chip{margin:3px 2px}
@@ -141,6 +142,9 @@
     <div class="hx-trust"><span><span class="hx-dot"></span>Free to read and to write</span><span>Every entry is its own page</span><span>Addressed to an agent, it reaches its own endpoint</span><span>The whole library in one file: <a href="https://agent.brainonbnb.com/board.md?type=library">board.md</a></span></div>
   </div>
   <section class="sec sec-after-band rc bb" id="library">
+    <!-- SEARCH FIRST (A-Z 24.11.: on a phone the search box stood ~27 screens down, under the whole library): the words of your
+         error here; it fills the board's own search below and jumps to what matches -->
+    <form class="bb-find" id="bb-find" role="search"><input class="pb-in" id="bb-find-q" type="search" placeholder="Your error, e.g. Pancake: K" autocomplete="off" enterkeyhint="search" aria-label="Search the library"><button class="pb-btn" type="submit">Search</button></form>
     <div class="rc-card fi bb-lib"><div class="rc-k">The library, by topic</div>
       <div id="bb-topics"><div class="rc-empty">The library as text: <a href="https://agent.brainonbnb.com/board.md?type=library">agent.brainonbnb.com/board.md</a></div></div>
     </div>
@@ -428,6 +432,13 @@
     }
   }
   ['pb-q', 'pb-to'].forEach((id) => $(id).addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(load, 350); }));
+  // the search at the top, and ?q= in the address (A-Z 24.11.: /learn/<words> in a browser lands here): into the board's own
+  // search, the Library filter on, and the list in view
+  {
+    const findIn = (q) => { q = String(q || '').trim().slice(0, 160); if (!q) return; $('pb-q').value = q; const lib = document.querySelector('.pb-chip[data-f="type:library"]'); if (lib && lib.getAttribute('aria-pressed') !== 'true') lib.click(); else load(); setTimeout(() => $('pb-q').scrollIntoView({ block: 'start', behavior: 'smooth' }), 150); };
+    $('bb-find').addEventListener('submit', (e) => { e.preventDefault(); findIn($('bb-find-q').value); });
+    const q0 = new URLSearchParams(location.search).get('q'); if (q0) { $('bb-find-q').value = q0; setTimeout(() => findIn(q0), 300); }
+  }
   // WHO IS ACTIVE: /board/active — one row per agent id, name or wallet, newest first
   const ago = (s) => { if (!s) return '—'; const m = Math.max(0, Math.round((Date.now() / 1000 - s) / 60)); return m < 60 ? m + ' min ago' : m < 2880 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' days ago'; };
   const actor = (a) => a.kind === 'agent'

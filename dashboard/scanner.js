@@ -996,15 +996,35 @@ function render(d){
   { const vc=o.lastChild, list=vc&&vc.querySelector('.vd'), rs=(d.rows||[]).slice().sort((a,b)=>Math.abs(a.usd-500)-Math.abs(b.usd-500)), ref=rs.find(r=>r.buyCost!=null&&r.sellCost!=null);
     if(list&&ref){
       const here=(1-ref.buyCost/100)*(1-ref.sellCost/100)*100;
-      fetch('/api/best-route?address='+encodeURIComponent(addr)+'&usd='+encodeURIComponent(ref.usd)).then(r=>r.json()).then(b=>{
+      const cost=[...list.children].find(x=>/^A \$/.test(x.firstChild&&x.firstChild.textContent||''));
+      // 24.11. (A-Z B): the best route LEADS - it stood under the deepest pool's cost, so the first figure a trader read
+      // was the dearer one; and the short answer has its own size field (the only one sat in the route card far below)
+      const cheaper=(b)=>{
         const rt=b&&b.round_trip;
         if(!rt||rt.you_keep_pct==null||!b.best_route_pool||b.best_route_pool.toLowerCase()===String(pool.pair).toLowerCase()||rt.you_keep_pct-here<0.1||(b.refuse_to_trade||[]).length)return;
-        const r=el('div','vd-r vd-good'), s=el('span',null,'The cost above is for the deepest pool. At $'+nf(ref.usd)+', buying and selling straight back through '+(b.best_route||'another pool')+' keeps '+pc(rt.you_keep_pct)+' instead of '+pc(here)+' — quoted by PancakeSwap’s own quoter at block '+b.block+'. The swap page’s router usually finds it by itself; check that it did. Pool ');
-        r.appendChild(el('b',null,'A cheaper way in: PancakeSwap '+(b.best_route||'')+'.'));
+        const r=el('div','vd-r vd-good'), s=el('span',null,'At $'+nf(ref.usd)+', buying and selling straight back through '+(b.best_route||'another pool')+' keeps '+pc(rt.you_keep_pct)+' — the deepest pool, measured below, keeps '+pc(here)+'. Quoted by PancakeSwap’s own quoter at block '+b.block+'. The swap page’s router usually finds it by itself; check that it did. Pool ');
+        r.appendChild(el('b',null,'The cheapest way in: PancakeSwap '+(b.best_route||'')+'.'));
         s.appendChild(link(short(b.best_route_pool),'https://bscscan.com/address/'+b.best_route_pool)); r.appendChild(s);
-        const cost=[...list.children].find(x=>/^A \$/.test(x.firstChild&&x.firstChild.textContent||''));
-        list.insertBefore(r,cost?cost.nextSibling:list.firstChild);
-      }).catch(()=>{});
+        list.insertBefore(r,cost||list.firstChild);
+        if(cost&&cost.firstChild)cost.firstChild.textContent='Through the deepest pool, a'+cost.firstChild.textContent.slice(1);
+      };
+      fetch('/api/best-route?address='+encodeURIComponent(addr)+'&usd='+encodeURIComponent(ref.usd)).then(r=>r.json()).then(cheaper).catch(()=>{});
+      // your own size: the best route and the round trip in one line, here
+      const row=el('div','vd-r vd-size'), form=el('div','rt-form'), inp=document.createElement('input'), btn=el('button','sc-tierbtn','Quote'), res=el('span','vd-size-out');
+      inp.type='number';inp.min='1';inp.max='1000000';inp.step='1';inp.value=String(ref.usd);inp.className='rt-inp';inp.inputMode='decimal';inp.setAttribute('aria-label','Your trade size in US dollars');btn.type='button';
+      form.append(el('label','rt-lab','Your size in USD'),inp,btn);row.append(form,res);
+      const ask=async()=>{
+        if(btn.disabled)return; const usdSize=Math.min(1000000,Math.max(1,Number(inp.value)||ref.usd)); inp.value=String(usdSize);
+        btn.disabled=true;btn.textContent='Quoting…';res.textContent='';
+        try{
+          const b=await (await fetch('/api/best-route?address='+encodeURIComponent(addr)+'&usd='+encodeURIComponent(usdSize))).json(), rt=b&&b.round_trip;
+          if(b.error||!b.best_route){res.textContent=b.error?String(b.error):'No pool quoted $'+nf(usdSize)+' just now — try a smaller size or again in a moment.';return;}
+          res.textContent='At $'+nf(usdSize)+': '+b.best_route+' returns the most'+(rt&&rt.you_keep_pct!=null?'; buy and sell straight back keeps '+pc(rt.you_keep_pct):'')+(b.slippage_bps_needed!=null?'; slippage '+(b.slippage_bps_needed/100)+'% is enough':'')+'. Every pool in the route card below.';
+        }catch(e){res.textContent='The quote did not come back — a retry usually works.';}
+        finally{btn.disabled=false;btn.textContent='Quote';}
+      };
+      btn.addEventListener('click',ask);inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ask();}});
+      list.appendChild(row);
     }
   }
 

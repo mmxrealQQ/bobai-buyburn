@@ -650,7 +650,7 @@ curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
 - Example — call a tool:
 \`\`\`bash
 curl -s https://brainonbnb.com/mcp -H 'Content-Type: application/json' \\
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token_info"}}'
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"bobai_token","arguments":{"what":"info"}}}'
 \`\`\`
 
 ## Measure any BSC token or pool, find any agent — free (the pool scan 1,000 a caller a day, then a day pass), no key, not about $BOBAI
@@ -702,30 +702,30 @@ Every read tool is also mirrored as a plain JSON GET endpoint — no MCP, no aut
 - https://brainonbnb.com/api/links · /api/guide · /api/purchase-guide (the older /api/trade and /api/how-to-buy still answer; renamed because a router that refuses mutating verbs in tool names refused them)
 - https://brainonbnb.com/api/circulating-supply · /api/total-supply — bare numbers as text/plain (aggregator-style supply endpoints). Total supply as the aggregators define it: minted minus burned (the dead address does not count), so today it equals circulating; the contract's own totalSupply() stays 1,000,000,000 (/api/token)
 
-## What you can ASK (read-only, all on-chain)
-- \`bobai_price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
-- \`bobai_liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
-- \`bobai_activity\` — is the tax bot running? Its last burn (BscScan tx), burns over the last 7/30 days, the full audit log
-- \`bobai_smart_money\` — smart-money signals: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), live whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more, 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable ledger of recent $100+ buys with buyer wallet + tx, burn momentum
-- \`bobai_token_info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
-- \`bobai_burned\` — total $BOBAI burned for good (held by the dead and zero addresses: the tax bot's burns and the ones before them)
-- \`bobai_circulating_supply\` — total minus burned
-- \`bobai_wallet_balance\` — BNB and $BOBAI balance of any BSC wallet (arg: \`address\`)
-- \`bobai_links\` — official verified links (site, contract, socials, DEX, source)
-- \`bobai_tokenomics\` — how the token accrues value (deflationary mechanics + trust properties), verifiable, not a recommendation
+## What you can ASK (read-only, all on-chain) — one tool, \`bobai_token\`, with \`what\` (the older \`bobai_*\` names still answer)
+- \`bobai_token what=price\` — live price in USD/BNB + market cap (pair reserves × Chainlink BNB/USD — no off-chain price API)
+- \`bobai_token what=liquidity\` — pool reserves, liquidity in USD, LP-burned % (perma-locked), price impact per buy size
+- \`bobai_token what=activity\` — is the tax bot running? Its last burn (BscScan tx), burns over the last 7/30 days, the full audit log
+- \`bobai_token what=smart_money\` — smart-money signals: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), live whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more, 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable ledger of recent $100+ buys with buyer wallet + tx, burn momentum
+- \`bobai_token what=info\` — contract, name, symbol, decimals, total & circulating supply, amount burned
+- \`bobai_token what=burned\` — total $BOBAI burned for good (held by the dead and zero addresses: the tax bot's burns and the ones before them)
+- \`bobai_token what=supply\` — total minus burned
+- \`bobai_token what=wallet\` — BNB and $BOBAI balance of any BSC wallet (arg: \`address\`)
+- \`bobai_token what=links\` — official verified links (site, contract, socials, DEX, source)
+- \`bobai_token what=tokenomics\` — how the token accrues value (deflationary mechanics + trust properties), verifiable, not a recommendation
 
-## What you can DO
-- \`bobai_dex_info\` — raw DEX execution params (below)
-- \`bobai_purchase_guide\` — ready-to-run buy code (below)
-- \`bobai_nft_drop\` — EARN an on-chain collectible (below)
-- \`bobai_guide\` — interactive menu that routes each intent to a tool
+## What you can DO (the same tool)
+- \`bobai_token what=dex\` — raw DEX execution params (below)
+- \`bobai_token what=purchase\` — ready-to-run buy code (below)
+- \`bobai_token what=nft_drop\` — EARN an on-chain collectible (below)
+- \`bobai_token what=guide\` — interactive menu that routes each intent to a tool
 
 ## Earnable on-chain reward: the NFT buy drop
 This is not a promo claim — it's a live, renounced ERC-721 contract you can verify:
 - **Every $BOBAI buy of >= $100 in a single swap auto-mints a collectible NFT to the buying wallet.** No claim step, no signup, no extra cost — an agent-controlled wallet earns one exactly like a human's.
 - 1,925 max supply · 6 buy-tier motifs ($100 / $150 / $250 / $500 / $1000 / $2500+) · 7 rarities (Common → Immortal) from a weighted matrix with **hard per-cell caps** — minted-out combinations can never exist again, so supply only shrinks.
-- To earn one: \`bobai_price\` (convert the tier threshold to BNB, add ~5% headroom) → one swap via \`bobai_purchase_guide\` → the NFT lands in the wallet within ~1 minute.
-- Live remaining supply per tier and rarity: \`bobai_nft_drop\` / https://brainonbnb.com/api/nft-drop · collection: https://brainonbnb.com/nft
+- To earn one: \`bobai_token what=price\` (convert the tier threshold to BNB, add ~5% headroom) → one swap via \`bobai_token what=purchase\` → the NFT lands in the wallet within ~1 minute.
+- Live remaining supply per tier and rarity: \`bobai_token what=nft_drop\` / https://brainonbnb.com/api/nft-drop · collection: https://brainonbnb.com/nft
 - The NFT is a collectible with no promised value or utility. Not financial advice.
 
 ## FoT-safe swapping on BSC (general reference — works for any tax token)
@@ -761,9 +761,9 @@ To sell: reverse the path, approve the router for $BOBAI first, then call \`swap
 
 ## Tokenomics (how it works — verify, don't trust)
 - **Model:** deflationary — circulating supply shrinks as trading volume grows.
-- **Mechanism:** 3% trade tax, split by a bot every 10 minutes into the creator share, burns ($BOBAI bought and sent to the dead address, and $BOB from launch → Dec 1, 2026) and permanent BOBAI/BNB liquidity with the LP burned — every slice a transaction (\`bobai_tokenomics\` has the split of each phase). More volume → more burned, more liquidity locked for good → lower supply.
+- **Mechanism:** 3% trade tax, split by a bot every 10 minutes into the creator share, burns ($BOBAI bought and sent to the dead address, and $BOB from launch → Dec 1, 2026) and permanent BOBAI/BNB liquidity with the LP burned — every slice a transaction (\`bobai_token what=tokenomics\` has the split of each phase). More volume → more burned, more liquidity locked for good → lower supply.
 - **Trust:** ownership renounced (no mint/pause/proxy) · LP burned (perma-locked) · fair launch on Four.Meme (no presale, no team allocation) · contract source verified and published on BscScan.
-- Verify: \`bobai_burned\`, \`bobai_circulating_supply\`, and BscScan. Describes the design, not a recommendation — meme tokens are high-risk, not financial advice.
+- Verify: \`bobai_token what=burned\`, \`bobai_token what=supply\`, and BscScan. Describes the design, not a recommendation — meme tokens are high-risk, not financial advice.
 
 ## Verify everything yourself
 - Contract: https://bscscan.com/token/${TOKEN}
@@ -914,6 +914,13 @@ const MCP_TOOLS = [
   { name: 'bobai_nft_drop', description: 'On-chain reward an agent can EARN: every $BOBAI buy >= $100 (single swap) auto-mints a capped-supply collectible NFT to the buyer wallet — no claim, no signup. Live remaining supply per buy-tier and rarity, plus the exact steps to earn one. Use it before a buy of $100 or more to see which NFT it would mint; for the buy itself use bobai_purchase_guide.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
   { name: 'bobai_smart_money', description: 'Live smart-money signals for $BOBAI: the tax reserve charging the next buyback (wallet + contract queue; the queue is sold into the pool at each run and the current split buys part of it back, so this is not pure buy pressure), whale flows & holdings (auto-tracked wallets holding 0.5% of supply or more: 24h/7d in/outflows, top movers with tx, daily balance snapshots with 1d/7d/30d holdings trends), an immutable on-chain ledger of recent $100+ buys (size, buyer wallet, tx), and burn momentum. All verifiable, no API key. Use it to read buy pressure and what large holders do; for proof of past burns use bobai_activity, for one wallet’s balance bobai_wallet_balance.', inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
 ];
+// ONE TOOL FOR THE TOKEN (operator 24.11., "leg die bobai tools zusammen"; A-Z 23.11.: fourteen bobai_* tools were half of a
+// 41 KB tools/list an agent reads before it calls anything): bobai_token with what=… is listed, the fourteen are not -
+// and each old name still answers when called, as before, so no client that learned them breaks.
+const BOBAI_PARTS = { info: 'bobai_token_info', price: 'bobai_price', burned: 'bobai_burned', supply: 'bobai_circulating_supply', wallet: 'bobai_wallet_balance', liquidity: 'bobai_liquidity', activity: 'bobai_activity', tokenomics: 'bobai_tokenomics', dex: 'bobai_dex_info', purchase: 'bobai_purchase_guide', smart_money: 'bobai_smart_money', nft_drop: 'bobai_nft_drop', links: 'bobai_links', guide: 'bobai_guide' };
+const BOBAI_UNLISTED = new Set(Object.values(BOBAI_PARTS));
+MCP_TOOLS.push({ name: 'bobai_token', description: 'Everything about $BOBAI itself, the token behind this server (for any other token: bsc_token_preflight), read on-chain or from its public logs, one tool with what=: info (contract, supply, burned) · price (USD and BNB from the pool and Chainlink, market cap) · burned · supply (circulating) · wallet (BNB and $BOBAI of an address; give address) · liquidity (depth, LP burned, price impact by size) · activity (the tax bot’s runs and burns, each with its transaction) · tokenomics (the 3% tax and its split) · dex (router, pair, paths, the fee-on-transfer swap and the slippage the measured tax needs) · purchase (ready viem code with a live quote) · smart_money (the next buyback, whale flows, recent $100+ buys) · nft_drop (the NFT a $100+ buy mints) · links · guide (what to ask). Read-only; the older bobai_* names still answer.', inputSchema: { type: 'object', properties: { what: { type: 'string', enum: Object.keys(BOBAI_PARTS), description: 'which part: info, price, burned, supply, wallet, liquidity, activity, tokenomics, dex, purchase, smart_money, nft_drop, links, guide' }, address: { type: 'string', description: 'what=wallet only: the BSC wallet (0x + 40 hex)' } }, required: ['what'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } });
+const LISTED_TOOLS = MCP_TOOLS.filter((t) => !BOBAI_UNLISTED.has(t.name));
 
 // Two tools were unroutable for two years' worth of a reason that had nothing
 // to do with what they do: the router's name check refuses any tool with a
@@ -1101,6 +1108,12 @@ async function runTool(rawName, args, caller = {}) {
     if (picked !== args.address) args = { ...args, address: picked };
   }
   switch (name) {
+    case 'bobai_token': {
+      const w = String(args?.what || '').toLowerCase().replace(/[\s-]+/g, '_'), part = BOBAI_PARTS[w] || BOBAI_PARTS[{ circulating: 'supply', circulating_supply: 'supply', balance: 'wallet', wallet_balance: 'wallet', token_info: 'info', dex_info: 'dex', purchase_guide: 'purchase', buy: 'purchase', nft: 'nft_drop', whales: 'smart_money' }[w]];
+      if (!part) throw Object.assign(new Error(`what must be one of: ${Object.keys(BOBAI_PARTS).join(', ')}.`), { relayed: true, status: 400, code: 'bad_body' });
+      const { what: _w, ...rest } = args || {};
+      return runTool(part, rest, caller);
+    }
     case 'bsc_rug_watch': {
       // Proxied to the agent worker, which keeps the watches. The caller's address goes with the shared
       // secret: without it every MCP caller would arrive as this worker and share one free watch.
@@ -1497,12 +1510,12 @@ async function runTool(rawName, args, caller = {}) {
 function unknownToolText(name) {
   const said = String(name ?? '').slice(0, 60);
   const words = said.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !['bsc', 'bnb', 'get', 'tool'].includes(w));
-  const near = MCP_TOOLS.map((t) => { const hay = (t.name + ' ' + (t.description || '')).toLowerCase();
+  const near = LISTED_TOOLS.map((t) => { const hay = (t.name + ' ' + (t.description || '')).toLowerCase();
     return { n: t.name, s: words.reduce((a, w) => a + (t.name.includes(w) ? 3 : hay.includes(w) ? 1 : 0), 0) }; })
     .filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.n.length - b.n.length).slice(0, 3).map((x) => x.n); // a tie: the plainer name first
   // a price asked for (30.10.: get_token_price twice on 29.10.): the two tools that give one, said in words
-  const price = /price/i.test(said) ? 'For the price of any BSC token: bsc_token_preflight with its address (token.price_usd); for $BOBAI: bobai_price. ' : '';
-  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}${price}This server has ${MCP_TOOLS.length} tools; tools/list names them all. To start: bsc_token_preflight checks a token before a trade, find_agents_on_bnb_chain finds an agent; the whole map is https://brainonbnb.com/llms.txt`;
+  const price = /price/i.test(said) ? 'For the price of any BSC token: bsc_token_preflight with its address (token.price_usd); for $BOBAI: bobai_token with what=price. ' : '';
+  return `Unknown tool: "${said}". ${near.length ? `Closest: ${near.join(', ')}. ` : ''}${price}This server has ${LISTED_TOOLS.length} tools; tools/list names them all. To start: bsc_token_preflight checks a token before a trade, find_agents_on_bnb_chain finds an agent; the whole map is https://brainonbnb.com/llms.txt`;
 }
 
 // MCP resources — documents an MCP client can read/subscribe to directly.
@@ -1701,7 +1714,7 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
     if (/text\/event-stream/i.test(request.headers.get('accept') || '')) {
       return new Response(JSON.stringify({ error: `This MCP server offers no SSE stream. Send JSON-RPC by POST to ${here}.` }), { status: 405, headers: { ...cors, Allow: 'POST' } });
     }
-    const shown = only ? MCP_TOOLS.filter((t) => only.includes(t.name)) : MCP_TOOLS;
+    const shown = only ? MCP_TOOLS.filter((t) => only.includes(t.name)) : LISTED_TOOLS;
     return new Response(JSON.stringify({ name: sub ? sub.name : 'Brain On BNB AI ($BOBAI)', protocol: '2025-06-18', endpoint: here, connect: 'https://brainonbnb.com/connect — one click to keep this server in Claude, Cursor or VS Code', tools: shown.map(t => t.name), prompts: sub ? [] : MCP_PROMPTS.map(p => p.name), resources: MCP_RESOURCES.map(r => r.uri), ...(sub ? { everything: 'https://brainonbnb.com/mcp' } : {}) }), { headers: cors });
   }
   let body;
@@ -1754,7 +1767,7 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
     // happily routing anything called `get_*`. A tool that says what it is
     // should not have to be named a particular way to be reachable.
     if (method === 'tools/list') {
-      const tools = MCP_TOOLS.filter((t) => !only || only.includes(t.name)).map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
+      const tools = (only ? MCP_TOOLS.filter((t) => only.includes(t.name)) : LISTED_TOOLS).map((t) => ({ ...t, annotations: { readOnlyHint: true, destructiveHint: false, ...(t.annotations || {}) } }));
       return new Response(JSON.stringify(rpcOk(id, { tools })), { headers: cors });
     }
     if (method === 'tools/call') {
@@ -1988,7 +2001,7 @@ const AGENT_REGISTRATION = {
   name: 'Brain On BNB AI ($BOBAI)',
   // the service first (A-Z 23.11.: the document an indexer reads described the token and named no tool - an agent that
   // verified the domain learned it could buy something, not what it could use); the token after, as it is
-  description: 'Free read-only tools for agents on BNB Smart Chain, no key: a pre-trade check for any token (bsc_token_preflight: can you get in and out, the round trip with the measured tax at your size), the pool scanner, the best PancakeSwap route, an ERC-8004 agent directory with the evidence of paid work, the Brain Board library of fixes, an ERC-8183 escrow reader - 31 MCP tools at https://brainonbnb.com/mcp, the same as REST (https://brainonbnb.com/openapi.json). Run by the team behind $BOBAI, an AI-built BEP-20 on BNB Chain whose 3% trade tax a bot splits every 10 minutes into burns, the creator share and liquidity with the LP burned; contract verified, ownership renounced, every run in a public log, the stack open source.',
+  description: 'Free read-only tools for agents on BNB Smart Chain, no key: a pre-trade check for any token (bsc_token_preflight: can you get in and out, the round trip with the measured tax at your size), the pool scanner, the best PancakeSwap route, an ERC-8004 agent directory with the evidence of paid work, the Brain Board library of fixes, an ERC-8183 escrow reader - 18 MCP tools at https://brainonbnb.com/mcp, the same as REST (https://brainonbnb.com/openapi.json). Run by the team behind $BOBAI, an AI-built BEP-20 on BNB Chain whose 3% trade tax a bot splits every 10 minutes into burns, the creator share and liquidity with the LP burned; contract verified, ownership renounced, every run in a public log, the stack open source.',
   image: 'https://brainonbnb.com/logo-200x200.png',
   active: true,
   // Every agent id this domain claims. The ERC-8004 verifier fetches exactly

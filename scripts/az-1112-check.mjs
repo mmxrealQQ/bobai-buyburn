@@ -62,7 +62,7 @@ say(reg && svIds && Number(svIds.replace(/,/g, '')) >= reg.registered_ids && svW
 const ag = await get(`${SITE}/agent/363709`), desc = (ag.match(/<meta name="description" content="([^"]+)"/) || [])[1] || '';
 say(/paid by outside buyers/.test(desc) && !/centred on the Evidence/.test(desc), `/agent/363709: the description ends a sentence and counts outside buyers ("…${desc.slice(-90)}")`);
 const defi = await get(`${SITE}/defi`);
-say(/This range alone \(±20%/.test(defi) && /≈−\$/.test(defi) && /left for 2 h is re-set/.test(defi) && /lp\/portfolio<\/code>/.test(defi), '/defi HTML: the range\'s own result, the signed dollars, the 2 h wait and the portfolio link');
+say(/This range alone \((±|\+)\d+%/.test(defi)   /* 24.11.: a range set to one side reads '+20% / −17%' */ && /≈−\$/.test(defi) && /left for 2 h is re-set/.test(defi) && /lp\/portfolio<\/code>/.test(defi), '/defi HTML: the range\'s own result, the signed dollars, the 2 h wait and the portfolio link');
 const home = await get(`${SITE}/`);
 say(/Runs its own PancakeSwap V3 range/.test(home) && !/The trade tax at work in PancakeSwap/.test(home), 'front page: the DeFi card no longer ends with the tax slice (20 Nov)');
 const arHome = await get(`${SITE}/ar/`), arDesc = (arHome.match(/<meta name="description" content="([^"]+)"/) || [])[1] || '';

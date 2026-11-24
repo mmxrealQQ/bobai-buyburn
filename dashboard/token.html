@@ -279,7 +279,7 @@
        BOB-burn slice into the BOBAI/BNB pool, LP burned — beside the Giggle pot and the DeFi
        agent, ending with them Nov 20, 00:01 UTC. Own IDs (bb3-*); the adds come from the same
        bobai-liq-log.json as rounds I and II, split by window, so the two archives stay frozen. -->
-  <section class="liq-boost fi" id="liq-boost-bobai-3">
+  <section class="liq-boost fi" id="liq-boost-bobai-3" style="display:none"><!-- ended 20.11.; app.js still swaps by the clock (C10, A-Z 24.11.: it stood here, counting "--", until the script ran) -->
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Permalocked Liquidity Boost III</em></div>
       <div class="lb-sub">Sep 19 &rarr; Nov 20, 2026: 0.3% (0.5% from Sep 20, 06:00 UTC) of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; <span style="color:var(--gold)" id="bb3-phase">ended Nov 20, 2026</span></div>
@@ -307,7 +307,7 @@
        the tax splits 1% $BOBAI burn / 1% creator / 1% into the BOBAI/BNB pool, LP burned — with no end date. app.js shows
        this card instead of Boost III from the moment the boost ends (Nov 20, 00:01 UTC; until Dec 1 it counts down to the
        start) and moves Boost III to the archive. Own IDs (lfg-*); the adds come from the same bobai-liq-log.json. -->
-  <section class="liq-boost fi" id="liq-for-good" style="display:none">
+  <section class="liq-boost fi" id="liq-for-good">
     <div class="lb-card">
       <div class="lb-title"><em>$BOBAI</em> <em>Liquidity for good</em></div>
       <div class="lb-sub">From Dec 1, 2026: 1% of every trade permanently added to the BOBAI/BNB liquidity pool &middot; LP burned to the dead address &middot; no end date &middot; <span style="color:var(--gold)" id="lfg-phase">&hellip;</span></div>
@@ -377,6 +377,6 @@
   }).catch(() => { box.innerHTML = ''; when.innerHTML = 'The log could not be read just now &mdash; <a href="https://logs.brainonbnb.com/logs/burns.json" target="_blank" rel="noopener">open it yourself</a>'; });
 })();
 </script>
-<script src="app.js?v=149" defer></script>
+<script src="app.js?v=150" defer></script>
 </body>
 </html>

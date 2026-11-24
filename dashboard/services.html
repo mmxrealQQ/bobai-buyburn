@@ -185,9 +185,9 @@
       <p class="primer-how"><b>Not sure where to start?</b> Open <a href="/scanner">the Pool Scanner</a> and paste any BNB Chain token address. It shows you what a trade would really cost &mdash; the shortest way to see what kind of answers this whole site produces.</p>
     </details>
     <div class="sv-nums">
-      <div class="sv-num"><b id="sv-agents">421,097</b><span>agent ids registered on BNB Chain</span></div>
-      <div class="sv-num"><b id="sv-reach">995</b><span>of them send any reply when contacted <i id="sv-when">census of 2026-11-23</i></span></div>
-      <div class="sv-num"><b id="sv-asked">706,321</b><span>requests answered for others — people, agents and registries</span></div>
+      <div class="sv-num"><b id="sv-agents">421,283</b><span>agent ids registered on BNB Chain</span></div>
+      <div class="sv-num"><b id="sv-reach">1,012</b><span>of them send any reply when contacted <i id="sv-when">census of 2026-11-24</i></span></div>
+      <div class="sv-num"><b id="sv-asked">709,254</b><span>requests answered for others — people, agents and registries</span></div>
       <div class="sv-num"><b>6</b><span>things you can hire us to deliver</span></div>
     </div>
   </header>
@@ -815,6 +815,20 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
   // A REAL ANSWER, READABLE (2026-11-20, A-Z: "See a real answer, free" opened a wall of raw JSON for a person): the answer
   // opens under the link — what was asked, when, how long it took, then the JSON indented in its own scroll box, and the
   // raw link for an agent. Without JavaScript the link still opens the JSON itself.
+  function usd(n) { n = Number(n); if (!isFinite(n)) return '?'; var a = Math.abs(n); return (n < 0 ? '-$' : '$') + (a >= 1e6 ? (a / 1e6).toFixed(2) + 'M' : a >= 1e4 ? (a / 1e3).toFixed(1) + 'k' : a >= 100 ? Math.round(a).toLocaleString('en-US') : a.toFixed(2)); }
+  function pct(n, d) { return Number(n).toFixed(d == null ? 2 : d) + '%'; }
+  function plain(j) {
+    var r = j.result || {}, p = r.plan || {}, out = [];
+    try {
+      if (j.service === 'health_factor' && r.position) { var x = r.position; out.push('Health factor ' + Number(x.health_factor).toFixed(2) + ' · ' + String(x.verdict || '').replace(/[.]$/, '') + (x.liquidatable ? ' · liquidatable now' : '')); out.push('Borrowed ' + usd(x.borrowed_usd) + ' against ' + usd(x.collateral_usd) + ' of collateral · headroom ' + usd(x.headroom_usd) + ' before liquidation'); }
+      else if (j.service === 'grid_plan' && p.grid) { out.push(p.grid.levels + ' levels for ' + usd(p.grid.capital_usd) + ' of ' + ((p.token && p.token.symbol) || 'the token') + ', ' + pct(p.grid.band_pct, 0) + ' either side of the price, every ' + pct(p.grid.spacing_pct)); if (p.economics) out.push('One round trip costs ' + pct(p.economics.round_trip_cost_pct) + '; each completed cycle ' + (p.economics.net_per_completed_cycle_pct >= 0 ? 'earns ' : 'loses ') + pct(Math.abs(p.economics.net_per_completed_cycle_pct))); if (p.warnings && p.warnings[0]) out.push(p.warnings[0].split('. ').slice(-1)[0]); }
+      else if (j.service === 'lp_tier_plan' && p.best_tier_for_your_size) { out.push('Best paying tier for ' + usd(p.capital_considered_usd) + ': ' + p.best_tier_for_your_size + ' · most capital sits in ' + p.most_capital_tier); if (p.move_worth_it) out.push('Moving from ' + p.move_worth_it.from + ' to ' + p.move_worth_it.to + ' earned ' + usd(p.move_worth_it.extra_fees_usd_per_window) + ' more in the ' + Math.round((p.measured_window && p.measured_window.minutes) || 60) + ' minutes measured; at that rate the move (about ' + usd(p.move_worth_it.assumed_move_cost_usd) + ') pays back in ' + Number(p.move_worth_it.hours_to_break_even_if_this_rate_held != null ? p.move_worth_it.hours_to_break_even_if_this_rate_held : p.move_worth_it.windows_to_break_even).toFixed(1) + ' hours'); else if (p.no_move_because) out.push(p.no_move_because); }
+      if (!out.length && (p.verdict || r.verdict)) out.push(String(p.verdict || r.verdict).split('. ').slice(0, 2).join('. ').replace(/([^.])$/, '$1.'));
+      if (j.service === 'yield_plan' && p.best_available) out.push(p.markets_read + ' Venus markets read; the best one you can enter has ' + usd(p.best_available.available_liquidity_usd) + ' available');
+      if (j.service === 'rebalance_plan' && p.legs) out.push(p.legs.map(function (l) { return l.symbol + ': ' + l.action + (l.cost_usd != null ? ' (costs ' + usd(l.cost_usd) + ')' : ''); }).join(' · '));
+    } catch (e) {}
+    return out.filter(Boolean).slice(0, 3);
+  }
   document.querySelectorAll('a.sv-example').forEach(function (a) {
     a.addEventListener('click', function (e) {
       if (e.metaKey || e.ctrlKey || e.shiftKey) return;
@@ -832,7 +846,13 @@ fetch('/api/price').then(function(r){ return r.json(); }).then(function(p){
         var pre = document.createElement('pre'); pre.style.cssText = 'margin:0;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:.72rem;line-height:1.45';
         pre.textContent = JSON.stringify(j.result || j, null, 2);
         var raw = document.createElement('a'); raw.href = a.href; raw.target = '_blank'; raw.rel = 'noopener'; raw.textContent = 'the raw JSON, as an agent gets it ↗'; raw.style.cssText = 'display:inline-block;margin-top:8px;color:var(--gold,#f0b90b)';
-        box.append(head, pre, raw);
+        // IN PLAIN WORDS FIRST (A-Z 24.11. C8: the box opened on "borrowed_usd": 2383482.00033859): two or three lines a
+        // person reads, figures rounded, then the JSON folded underneath
+        var lines = plain(j), sum = document.createElement('div'); sum.style.cssText = 'margin:0 0 10px;display:grid;gap:4px;font-size:.86rem;line-height:1.5;color:var(--text,#f3ece6)';
+        lines.forEach(function (l) { var p = document.createElement('div'); p.textContent = l; sum.appendChild(p); });
+        var det = document.createElement('details'), su = document.createElement('summary'); su.textContent = 'The whole answer (JSON)'; su.style.cssText = 'cursor:pointer;color:var(--muted,#a0a2c0);margin:0 0 6px';
+        det.append(su, pre); if (!lines.length) det.open = true;
+        box.append(head, sum, det, raw);
       }).catch(function () { box.textContent = 'The answer could not be read just now — '; var r = document.createElement('a'); r.href = a.href; r.textContent = 'open it directly'; box.append(r); });
     });
   });

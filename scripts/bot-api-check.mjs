@@ -30,8 +30,14 @@ for (const t of tr) {
   pin('a preflight names the free rug watch first, filled in for its token, with what 1,000,000 $BOBAI changes', keys[0] === 'why' && keys[1] === 'rug_watch' && /free rug watch below/.test(kw.why || '') && (kw.rug_watch?.how || '').includes('0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82') && /25 tokens/.test(kw.rug_watch?.holder || ''), keys.join(','));
 }
 const oa = await get(`${BASE}/openapi.json`);
-const paths = Object.keys(oa.body?.paths || {});
+const all = Object.keys(oa.body?.paths || {}), paths = all.filter((p) => ['/api/preflight', '/api/pool-scan', '/api/best-route', '/api/fee-tiers', '/api/range-plan'].includes(p));
 pin('/openapi.json is OpenAPI 3.1 with the five trading routes', oa.status === 200 && oa.body?.openapi === '3.1.0' && paths.length === 5, `${oa.status} ${oa.body?.openapi} ${paths.length}`);
+// the other routes agents use (24.11.): each has an operationId, an example that answers 200, and the agent host's own server
+{ const extra = all.filter((p) => !paths.includes(p)), probes = [];
+  for (const p of extra) { const op = oa.body.paths[p].get || oa.body.paths[p].post, ex = String(op?.['x-example'] || ''); if (op?.operationId && /^https:/.test(ex) && oa.body.paths[p].get) probes.push(fetch(ex.replace(/%20/g, '%20'), { headers: { 'user-agent': 'brainonbnb-bot-api-check' } }).then((r) => [p, r.status]).catch(() => [p, 0])); else if (!op?.operationId || !ex) probes.push(Promise.resolve([p, 'no operationId or example'])); }
+  const got = await Promise.all(probes), bad = got.filter(([, st]) => st !== 200);
+  const agentHost = extra.filter((p) => ['/find', '/board', '/rug-watch', '/job', '/hire', '/join/how'].includes(p));
+  pin('the other routes agents use are in the spec, each with an example that answers, the agent routes on agent.brainonbnb.com', extra.length >= 8 && bad.length === 0 && agentHost.every((p) => oa.body.paths[p].servers?.[0]?.url === 'https://agent.brainonbnb.com'), `${extra.length} extra, failing ${JSON.stringify(bad)}`); }
 pin('every OpenAPI route has an operationId, a required address and an example', paths.length > 0 && paths.every((p) => { const g = oa.body.paths[p].get; return g.operationId && g.parameters.some((x) => x.name === 'address' && x.required) && g['x-example']; }));
 pin('only pool-scan documents the day pass header and the 402', paths.length > 0 && paths.every((p) => { const g = oa.body.paths[p].get, scan = p === '/api/pool-scan'; return scan === g.parameters.some((x) => x.name === 'X-Scan-Pass') && scan === !!g.responses[402]; }));
 const bad404 = await get(`${BASE}/api/nope`);

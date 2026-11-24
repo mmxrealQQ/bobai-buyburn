@@ -39,10 +39,11 @@ import {
 const BAND_PCT = 2;
 
 export class TierError extends Error {
-  constructor(headline, detail) {
+  constructor(headline, detail, code) {
     super(headline);
     this.headline = headline;
     this.detail = detail;
+    if (code) this.code = code;
   }
 }
 
@@ -118,6 +119,7 @@ export async function feeTiers(input) {
     throw new TierError(
       'No pool found for that address.',
       'The factories were asked directly for every fee tier against BNB, USDT, BUSD, USDC and USD1, and none of them has a pool.',
+      'no_pool',   // C20 (A-Z 24.11.): it went out as not_measurable, 'asking again will not change it' - a curve token graduates
     );
 
   const quote = pinnedQuote || cands[0].quote;

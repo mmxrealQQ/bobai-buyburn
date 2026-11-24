@@ -1049,9 +1049,10 @@ function errorAnswer(e) {
     bad_address: 'Send a BSC address as the argument "address" — 0x followed by 40 hex characters — or a BscScan, DexScreener or PancakeSwap link containing one.',
     bad_usd: 'Send the size as a positive number of dollars (usd; capitalUsd for pancakeswap_range_plan), e.g. 250, or leave it out for the default.',
     bad_limit: 'Send limit as a whole number from 1 to 25, or leave it out for 10.',
-    is_wallet: 'This address is a wallet. Send the token’s contract address instead (or its pool, or a link containing one).',
+    is_wallet: 'No token contract at this address (a wallet, or the zero or burn address). Send the token’s contract address instead (or its pool, or a link containing one).',
+    is_wbnb: 'WBNB converts 1:1 with BNB on its own contract (deposit / withdraw); no route to quote. Ask about the token you want to buy with it.',
     not_a_token: 'Nothing at this address behaves like a token. Check that the address is the token contract, not a router, an NFT or another contract.',
-    no_pool: 'No pool was found at the venues read. A token still on its four.meme launch curve is answered by bsc_token_preflight and bsc_pool_scan from the curve.',
+    no_pool: 'No pool was found at the venues read. A token still on its four.meme launch curve is answered by bsc_token_preflight and bsc_pool_scan from the curve; once it graduates it gets a PancakeSwap pool, and this answers then.',
     not_measurable: 'A determinate answer about this address: asking again will not change it. The error sentence says why.',
     chain_unavailable: 'The chain or a log endpoint did not answer in time. Retry in a few seconds.',
     // bsc_rug_watch's own refusals (2026-10-10), passed through from the agent worker with their code.

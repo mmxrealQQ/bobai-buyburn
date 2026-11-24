@@ -53,6 +53,11 @@ export async function swapRoute(input, opts = {}) {
   // Lowercased at the door, for the reason spelled out in tier-scan.js.
   const address = String(input || '').toLowerCase();
   const usd = Number(opts.usd) > 0 ? Number(opts.usd) : 250;
+  // WBNB IS BNB, WRAPPED (C24, A-Z 24.11.: 'pay 0.452 BNB -> 0.452 WBNB' through a V3 pool, a fee and an impact for
+  // nothing). Asked directly, the answer is the wrap; the preflight (codeChecked) still reads WBNB as any token
+  if (!opts.codeChecked && address === WBNB.toLowerCase())
+    throw new RouteError('WBNB is wrapped BNB: no swap needed.',
+      'Wrap and unwrap 1:1 on the WBNB contract 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c itself: deposit() with the BNB as value, withdraw(amount) to get BNB back. No pool, no fee, only gas.', 'is_wbnb');
 
   // A wallet is said to be one (2026-10-09), asked beside classify() so it costs
   // no time. The preflight has asked already (its scan) and skips it: one
@@ -66,6 +71,10 @@ export async function swapRoute(input, opts = {}) {
     throw new RouteError('The chain did not answer.',
       'The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.');
   }
+  // the zero and the burn address are no wallet anybody holds (C21, A-Z 24.11.: 0x000…000 was called 'a wallet')
+  if (/^0x0{40}$/.test(address) || /^0x0{36}dead$/.test(address))
+    throw new RouteError('That is the ' + (/dead$/.test(address) ? 'burn address (0x…dEaD)' : 'zero address') + ', not a token.',
+      'Tokens are sent there to be burned or minted from; nothing trades at it. Paste the token’s contract address (or its pool, or a link containing one).', 'is_wallet');
   if (code === '0x')
     throw new RouteError('That address is a wallet, not a token.',
       'There is no contract code at it on BNB Smart Chain, so there is nothing to route through. Paste the token’s contract address (or its pool, or a link containing one).', 'is_wallet');

@@ -245,6 +245,10 @@ export async function scan(input, env, timing = null) {
       'The public BSC node refused or timed out. Nothing is cached here, so a retry in a few seconds usually works.',
     );
   }
+  // the zero and the burn address are no wallet anybody holds (C21, A-Z 24.11.: 0x000…000 was called 'a wallet')
+  if (/^0x0{40}$/.test(input) || /^0x0{36}dead$/.test(input))
+    throw new ScanError('That is the ' + (/dead$/.test(input) ? 'burn address (0x…dEaD)' : 'zero address') + ', not a token.',
+      'Tokens are sent there to be burned or minted from; nothing trades at it. Paste the token’s contract address (or its pool, or a link containing one).', 'is_wallet');
   if (code === '0x')
     throw new ScanError(
       'That address is a wallet, not a token.',

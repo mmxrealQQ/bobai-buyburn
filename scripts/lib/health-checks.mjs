@@ -692,6 +692,12 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
     ok('Ecosystem', 'the Agent Wall was ranked within 2 h', at > 0 && age < 2 && (w?.json?.block || 0) > 0, at > 0 ? `${age.toFixed(1)} h ago, block ${w.json.block}, ${(w.json.wall || []).length} of ${w.json.max} places` : 'no answer');
     const pg = await page('/wall'); ok('Ecosystem', '/wall, the page, answers', pg?.status === 200 && /Agent Wall/.test(pg.text || ''), pg ? `HTTP ${pg.status}` : 'no answer');
   }
+  // THE ONE-SIGNATURE JOIN (24.11., operator: "measure it"): it answers, and the morning report says how many agents from
+  // OUTSIDE joined this way — our own agents counted apart, so a test of ours never reads as a stranger
+  {
+    const j = await getJson(`${AGENT}/join/stats`), s = j?.json, last = s?.last_not_ours?.[0];
+    ok('Ecosystem', 'the one-signature join answers; agents from outside who joined', !!s && Number.isFinite(s.agents), s ? `${s.agents_not_ours} from outside${last ? ` (newest #${last.agent} ${String(last.name || '').slice(0, 30)}, ${String(last.at).slice(0, 10)})` : ''} · ${s.agents_ours} of ours` : 'no answer');
+  }
   // THE BRAINBOOK (2026-11-22): the book answers with its pages, the page loads, the latest anchor on BNB Chain holds
   // every page (or the newest ones came after the day's 06:00 UTC run), and the Brain Board wallet keeps gas for it
   {

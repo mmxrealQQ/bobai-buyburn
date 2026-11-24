@@ -81,6 +81,10 @@ say(how.status === 200 && /privateKeyToAccount/.test(how.j.script || '') && /\/j
 const kept = joinMessage({ agent: we.agent, link: we.join.link, logoHash: we.join.logo_sha256, words: ge.words, introTitle: ge.join.intro_title, introHash: ge.join.intro_sha256, date: we.date });
 say(kept === we.message, 'the message is rebuilt from the kept fields alone (the browsers do this, not trust it)');
 
+// MEASURED: who joined, ours apart from strangers
+const js = await call('GET', '/join/stats');
+say(js.status === 200 && js.j.agents === 1 && js.j.agents_ours === 1 && js.j.agents_not_ours === 0 && js.j.last?.[0]?.agent === '49467' && js.j.last[0].parts.length === 3, '/join/stats counts the join, #49467 as ours, none of a stranger', js.j);
+
 // 4 ONCE IS ONCE
 const again = await call('POST', '/join', { ...body, signer: owner.address, signature: sig });
 say(again.j.joined?.brainbook?.ok === false && /one per agent/.test(again.j.joined.brainbook.error) && again.j.joined?.board?.ok === false, 'the same join again: the Brainbook page stays one, the board takes the message once', again.j.joined);

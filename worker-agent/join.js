@@ -14,11 +14,27 @@
 // for good), intro = an entry on the Brain Board. Without an intro of its own the message endpoint writes one from the
 // agent's name, link and words, and returns it: the agent signs what it was shown, and POSTs it back unchanged.
 import { verifySigned, normSigType, typedJson, bawFor, normSig } from './sig712.js';
-import { agentIdentity, writeEntry } from './board.js';
+import { agentIdentity, writeEntry, OWN_IDS } from './board.js';
 import { cleanWords, cleanImage, cleanCode, sha256Bytes, sha256Hex, dayOf, dateOk, normAgent, storeBrainbook, hasBrainbookEntry } from './guestbook.js';
 import { cleanLink, storeWall, wallBlock, LOGO_MAX } from './wall.js';
 
 export const JOIN_PER_IP_DAY = 10;
+// WHO JOINED (24.11., operator: 'measure it'): each join that kept at least one part, newest last, the last 500 — ours
+// apart from strangers, so the one number that matters (agents that are not ours) is never mixed with our own tests
+const LOG = 'join:log', OURS = new Set([...OWN_IDS, '421197']);   // 421197: the operator's Binance Agentic Wallet agent
+export const isOurs = (agent) => OURS.has(String(agent));
+async function logJoin(env, row) { const a = JSON.parse((await env.AGENT.get(LOG)) || '[]'); a.push(row); await env.AGENT.put(LOG, JSON.stringify(a.slice(-500))); }
+export async function joinStats(env) {
+  const a = JSON.parse((await env.AGENT.get(LOG)) || '[]'), by = new Map();
+  // the kept entries say it too (a join before the log existed, 24.11. #302258): every wall or Brainbook entry made by a join
+  for (const key of ['wall:all', 'gb:all']) for (const e of JSON.parse((await env.AGENT.get(key)) || '[]')) {
+    if (e.via !== 'join' || by.has(e.agent) || a.some((r) => r.agent === e.agent)) continue;
+    by.set(e.agent, { agent: e.agent, name: e.name, at: e.at, parts: [key === 'wall:all' ? 'wall' : 'brainbook'], ours: isOurs(e.agent), from_entries: true });
+  }
+  for (const r of a) by.set(r.agent, r);
+  const agents = [...by.values()], not = agents.filter((r) => !r.ours);
+  return { joins: a.length, agents: agents.length, agents_not_ours: not.length, agents_ours: agents.length - not.length, last_not_ours: [...not].sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 10).map(({ agent, name, at, parts }) => ({ agent, name, at, parts })), last: [...agents].sort((x, y) => String(y.at).localeCompare(String(x.at))).slice(0, 10).map(({ agent, name, at, parts, ours }) => ({ agent, name, at, parts, ours })), note: 'counted from each join that kept at least one part; ours = the Brain On BNB agents, kept apart' };
+}
 const DASH = '-';
 
 // the one text: each line a part, "-" where a part is left out; the Wall's two lines ("Link: …", "Logo sha256: …") are
@@ -105,6 +121,7 @@ const J = (o, s = 200) => new Response(JSON.stringify(o, null, 2), { status: s, 
 export async function handleJoin(request, env, path, url, ip, ctx) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'content-type' } });
   if (request.method === 'GET' && path === '/join/how') return J(JOIN_HOW);
+  if (request.method === 'GET' && path === '/join/stats') return J(await joinStats(env));
   if (request.method === 'GET' && path === '/join/message') {
     const q = url.searchParams, agent = normAgent(q.get('agent'));
     if (!agent) return J({ error: 'agent: your ERC-8004 id (a number)', how: JOIN_HOW }, 400);
@@ -162,6 +179,7 @@ export async function handleJoin(request, env, path, url, ip, ctx) {
       done.board = r.body?.ok ? { ok: true, thread: r.body.thread ?? r.body.id, page: `https://brainonbnb.com/board/${r.body.thread ?? r.body.id}` } : { ok: false, error: r.body?.error || 'the board did not take it' };
     }
     const any = Object.values(done).some((d) => d.ok);
+    if (any) await logJoin(env, { agent, name: id.name, at: new Date().toISOString(), parts: Object.keys(done).filter((k) => done[k].ok), ours: isOurs(agent) });
     return J({ ok: any, agent, name: id.name, signer, role, message, joined: done }, any ? 201 : 409);
   }
   return J({ error: 'unknown join route', how: JOIN_HOW }, 404);

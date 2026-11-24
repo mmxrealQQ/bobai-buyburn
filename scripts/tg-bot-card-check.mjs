@@ -98,5 +98,9 @@ ok('/defi: no range read = no bar (the card stays as it was)', formatRangeBar(nu
     /<b>1\.0591 BNB<\/b>/.test(g) && g.includes('https://bscscan.com/tx/' + tx) && /one transaction/.test(g) && !/1\.05913442/.test(g), g.split('\n').find((l) => /Donated/.test(l)) || '');
 }
 
+// A-Z 24.11.: the 29 Mar run burned 7.78M BOBAI the wallet held (existingBobaiBurned, its own tx to dead) — counted as the bot's
+{ const s = botBurnsFromLog([{ bobaiBurned: '100', existingBobaiBurned: '7780696.589217028457008496' }, { bobaiBurned: '50' }, { bob: '10' }, { bobBurned: '5' }]);
+  ok('the bot\'s BOBAI burned counts the run that burned what the wallet held (existingBobaiBurned)', Math.round(s.bobai) === 7780847 && s.bob === 15 && s.runs === 4, JSON.stringify(s)); }
+
 console.log(`\n${n - failed}/${n} checks pass`);
 process.exitCode = failed ? 1 : 0;

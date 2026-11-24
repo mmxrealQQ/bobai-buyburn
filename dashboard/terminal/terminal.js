@@ -700,7 +700,7 @@ function info(k) {
   switch (k) {
     case 'burnA': return { t: 'BOBAI burns BOBAI', c: D.burnA.c, rows: [
       ['At the dead address', nf(S.deadA || 0) + ' BOBAI' + usdS(S.deadA, S.price)], ['Share of supply', supplyPct(S.deadA || 0) + '%'],
-      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(S.burns, e => e.bobaiBurned), S.price)], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(wk, e => e.bobaiBurned), S.price)],
+      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => (+e.bobaiBurned || 0) + (+e.existingBobaiBurned || 0))) + ' BOBAI' + usdS(sum(S.burns, e => (+e.bobaiBurned || 0) + (+e.existingBobaiBurned || 0)), S.price)], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(wk, e => e.bobaiBurned), S.price)],
       ['Bot burn runs', nf(S.burns.length)], ['Last burn', agoL(lastRun && Date.parse(lastRun.time))]],
       note: pctOf('burnA') + ' of every trade buys BOBAI back and sends it to the dead address. Gone for good.',
       links: [['last burn tx', lastRun && TX + lastRun.bobaiBurnTx], ['dead address', bsc('0x000000000000000000000000000000000000dEaD')]] };

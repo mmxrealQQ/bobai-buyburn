@@ -52,6 +52,7 @@
   .tile.tiny{padding:1px}.tile.tiny a{border-radius:3px;box-shadow:inset 0 0 0 1px rgba(240,185,11,.1)}.tile.tiny .ph,.tile.tiny .ck{display:none}.tile.tiny img{max-width:92%;max-height:92%;filter:none}
   .tile .ck{position:absolute;right:7px;top:7px;width:7px;height:7px;border-radius:50%;background:#5a5d78;box-shadow:0 0 0 2px rgba(0,0,0,.4)}
   .tile .ck.ok{background:#00e676;box-shadow:0 0 8px #00e676}.tile .ck.bad{background:#ff3028}
+  .tile.lit a{box-shadow:inset 0 0 0 2px #f0b90b,0 0 22px rgba(240,185,11,.55);transition:box-shadow .3s}
   .tile.free .in{background:linear-gradient(90deg,rgba(240,185,11,.13) 1px,transparent 1px),linear-gradient(180deg,rgba(240,185,11,.13) 1px,transparent 1px);box-shadow:inset 0 0 0 1px rgba(240,185,11,.16)}
   .tile.free .lbl{padding:14px 20px;border-radius:14px;background:rgba(12,11,12,.88);box-shadow:0 0 0 1px rgba(240,185,11,.3);text-align:center}
   .tile.free .big{font:700 clamp(1.1rem,2.6vw,2rem)/1.1 'Space Grotesk',Inter,sans-serif;color:var(--text)}
@@ -205,13 +206,17 @@
     // the living ads: each in a frame with no network, storage, cookie or wallet, under a clear link
     wall.querySelectorAll('.tile.ad a').forEach((a) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.title = 'Living ad'; { const tw = a.clientWidth - 4, th = a.clientHeight - 4, s = Math.min(1, th / 200, tw / 260); if (s < 1) { f.style.cssText = `width:${tw / s}px;height:${th / s}px;transform:scale(${s});transform-origin:0 0`; a.parentElement.classList.add('adz'); } } /* 23.11.: a living ad is laid out at least 260 x 200 px and scaled down, never squeezed (a phone's 136 px tile ran its chart through its text) */ f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[a.parentElement.dataset.agent]}</body></html>`; a.prepend(f); });
     for (const [agent, cls] of Object.entries(CHECKS)) wall.querySelectorAll(`.ck[data-agent="${agent}"]`).forEach((c) => (c.className = 'ck ' + cls));
+    jump();
   }
 
   // CHECKED HERE: each logo hashed against the signed hash; each signature recovered; the holdings read from BNB Chain
   const LOGOS = {}, CHECKS = {}, ADS = {};
   async function rpc(batch) { for (const u of RPCS) { try { const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(batch) }); const j = await r.json(); if (Array.isArray(j) && j.every((x) => x && !x.error)) return j.sort((a, b) => a.id - b.id).map((x) => x.result); } catch {} } return null; }
+  // 24.11.: the logos come first (fetched, hashed, shown at once), the signatures and holdings after; the crypto libraries
+  // load meanwhile, and when they cannot (a blocked CDN) the mark stays grey - not checked here - never red on a valid tile
   async function check(list) {
-    let L = null; try { const [s, h] = await Promise.all([import('https://cdn.jsdelivr.net/npm/@noble/secp256k1@2.1.0/+esm'), import('https://cdn.jsdelivr.net/npm/@noble/hashes@1.4.0/sha3/+esm')]); L = { secp: s, keccak: h.keccak_256 }; } catch {}
+    const libs = Promise.all([import('https://cdn.jsdelivr.net/npm/@noble/secp256k1@2.1.0/+esm'), import('https://cdn.jsdelivr.net/npm/@noble/hashes@1.4.0/sha3/+esm')]).then(([s, h]) => ({ secp: s, keccak: h.keccak_256 })).catch(() => null);
+    let L = null;
     const hex = (u) => Array.from(u, (x) => x.toString(16).padStart(2, '0')).join(''), enc = new TextEncoder();
     // two envelopes for the same text (23.11.): personal_sign, or EIP-712 Signed{string message} in the domain BOBAI Agent Wall / 1 / 56 (the Binance Agentic Wallet signs typed data only); the hash is rebuilt here either way
     const cat = (...a) => { const o = new Uint8Array(a.reduce((n, x) => n + x.length, 0)); let p = 0; for (const x of a) { o.set(x, p); p += x.length; } return o; }, u256 = (n) => { const o = new Uint8Array(32); let v = BigInt(n); for (let i = 31; i >= 0; i--) { o[i] = Number(v & 255n); v >>= 8n; } return o; };
@@ -219,18 +224,28 @@
     const recover = (msg, sig, type, dom) => { const s = sig.slice(2); let v = parseInt(s.slice(128, 130), 16); if (v >= 27) v -= 27; const pub = L.secp.Signature.fromCompact(s.slice(0, 128)).addRecoveryBit(v).recoverPublicKey(hex(digest(msg, type, dom))).toRawBytes(false); return '0x' + hex(L.keccak(pub.slice(1))).slice(-40); };
     const word = (a) => BigInt(a).toString(16).padStart(64, '0');
     const calls = []; list.forEach((e) => { for (const a of [e.owner, e.wallet && e.wallet !== e.owner ? e.wallet : null]) calls.push(a ? { jsonrpc: '2.0', id: calls.length, method: 'eth_call', params: [{ to: BOBAI, data: '0x70a08231' + word(a) }, 'latest'] } : { jsonrpc: '2.0', id: calls.length, method: 'eth_blockNumber', params: [] }); });
-    const bal = calls.length ? await rpc(calls) : null;
-    await Promise.all(list.map(async (e, i) => {
+    const balP = calls.length ? rpc(calls) : Promise.resolve(null), seen = {};
+    await Promise.all(list.map(async (e) => {
       let logoOk = false;
       try { const buf = await (await fetch(e.logo_url, { cache: 'no-store' })).arrayBuffer(); const h = await sha256(buf); logoOk = h === e.logo_sha256 && e.message.includes(`Logo sha256: ${h}\n`) && e.message.includes(`Link: ${e.link}\n`); if (logoOk) LOGOS[e.agent] = URL.createObjectURL(new Blob([buf], { type: e.logo_type })); } catch {}
       let adOk = !e.ad_url;
       if (e.ad_url) { try { const txt = await (await fetch(e.ad_url, { cache: 'no-store' })).text(); const h = await sha256(new TextEncoder().encode(txt)); adOk = h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`); if (adOk) ADS[e.agent] = txt; } catch {} }
+      seen[e.agent] = { logoOk, adOk };
+    }));
+    draw(); // the logos at once
+    let bal; [L, bal] = await Promise.all([libs, balP]);
+    list.forEach((e, i) => {
+      const { logoOk, adOk } = seen[e.agent] || {};
       let sigOk = false; try { sigOk = !!L && recover(e.message, e.signature, e.sig_type, e.via === 'join' ? 'BOBAI Join' : undefined) === e.signer; } catch {}
       let held = null; if (bal) { const a = e.owner ? Number(BigInt(bal[i * 2]) / 10n ** 14n) / 1e4 : 0, b = e.wallet && e.wallet !== e.owner ? Number(BigInt(bal[i * 2 + 1]) / 10n ** 14n) / 1e4 : 0; held = a + b; }
-      CHECKS[e.agent] = logoOk && adOk && sigOk && held != null ? 'ok' : logoOk && sigOk && held == null ? '' : 'bad';
-    }));
+      CHECKS[e.agent] = !logoOk || !adOk ? 'bad' : !L ? '' : sigOk && held != null ? 'ok' : sigOk ? '' : 'bad';
+    });
     draw();
   }
+  // #agent-<id> in the address: that tile scrolled into view and lit once (the tiles are drawn late, so the browser's own jump missed it)
+  let jumped = '', litUntil = 0;
+  function jump() { const m = /^#agent-(\d+)$/.exec(location.hash), t = m && document.getElementById('agent-' + m[1]); if (!t) return; if (Date.now() < litUntil) t.classList.add('lit'); if (jumped === location.hash) return; jumped = location.hash; litUntil = Date.now() + 2600; t.classList.add('lit'); t.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(() => document.querySelectorAll('.tile.lit').forEach((x) => x.classList.remove('lit')), 2700); }
+  addEventListener('hashchange', () => { jumped = ''; jump(); });
 
   // LIVE IN THE SANDBOX (23.11., operator: "every illustration must be live in the sandbox"): the sandbox keeps no network;
   // the PAGE reads public numbers itself (our on-chain price API, the DeFi agent's public portfolio) and hands them to every

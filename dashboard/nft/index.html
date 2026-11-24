@@ -334,17 +334,17 @@ footer a:hover{color:var(--gold)}
   <div class="hero-inner">
     <!-- 6 motifs as the hero visual -->
     <div class="hero-motifs">
-      <div class="motif-card"><img src="motifs/nice-buy-sm.webp" data-full="motifs/nice-buy.webp" width="384" height="384" alt="NICE BUY motif" decoding="async"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1,000 max</div></div></div>
-      <div class="motif-card"><img src="motifs/big-buy-sm.webp" data-full="motifs/big-buy.webp" width="384" height="384" alt="BIG BUY motif" decoding="async"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500 max</div></div></div>
-      <div class="motif-card"><img src="motifs/huge-buy-sm.webp" data-full="motifs/huge-buy.webp" width="384" height="384" alt="HUGE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250 max</div></div></div>
-      <div class="motif-card"><img src="motifs/whale-buy-sm.webp" data-full="motifs/whale-buy.webp" width="384" height="384" alt="WHALE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100 max</div></div></div>
-      <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1,000+ · 50 max</div></div></div>
-      <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2,500+ · 25 max</div></div></div>
+      <div class="motif-card"><img src="motifs/nice-buy-sm.webp" data-full="motifs/nice-buy.webp" width="384" height="384" alt="NICE BUY motif" decoding="async"><div class="motif-meta"><div class="e">💰</div><div class="l">NICE BUY</div><div class="t">$100+ · 1,000</div></div></div>
+      <div class="motif-card"><img src="motifs/big-buy-sm.webp" data-full="motifs/big-buy.webp" width="384" height="384" alt="BIG BUY motif" decoding="async"><div class="motif-meta"><div class="e">💎</div><div class="l">BIG BUY</div><div class="t">$150+ · 500</div></div></div>
+      <div class="motif-card"><img src="motifs/huge-buy-sm.webp" data-full="motifs/huge-buy.webp" width="384" height="384" alt="HUGE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🚀</div><div class="l">HUGE BUY</div><div class="t">$250+ · 250</div></div></div>
+      <div class="motif-card"><img src="motifs/whale-buy-sm.webp" data-full="motifs/whale-buy.webp" width="384" height="384" alt="WHALE BUY motif" decoding="async"><div class="motif-meta"><div class="e">🐋</div><div class="l">WHALE BUY</div><div class="t">$500+ · 100</div></div></div>
+      <div class="motif-card"><img src="motifs/thunder-buy-sm.webp" data-full="motifs/thunder-buy.webp" width="384" height="384" alt="THUNDER BUY motif" decoding="async"><div class="motif-meta"><div class="e">⚡</div><div class="l">THUNDER BUY</div><div class="t">$1,000+ · 50</div></div></div>
+      <div class="motif-card"><img src="motifs/kraken-buy-sm.webp" data-full="motifs/kraken-buy.webp" width="384" height="384" alt="KRAKEN BUY motif" decoding="async"><div class="motif-meta"><div class="e">🦑</div><div class="l">KRAKEN BUY</div><div class="t">$2,500+ · 25</div></div></div>
     </div>
     <h1>BOBAI <em>Buy Drops</em></h1>
     <!-- THE START (2026-11-03): the shared .hx sentence and line (eco.css), every fact of the old paragraph kept -->
     <div class="hx"><div class="hx-claim">Every $BOBAI buy of <em>$100 or more</em> mints a collectible NFT to the buyer&rsquo;s wallet. No claim, no extra cost.</div>
-    <div class="hx-trust"><span><span class="hx-dot"></span>The buy size picks one of 6 motifs</span><span>A rarity drawn from a weighted matrix: 7 rarities</span><span>1,925 in total</span></div></div>
+    <div class="hx-trust"><span><span class="hx-dot"></span>The buy size picks one of 6 motifs</span><span>A rarity drawn from a weighted matrix: 7 rarities</span><span id="hx-minted">1,925 at most</span></div></div>
     <div class="hero-meta">
       <a href="https://bscscan.com/address/0xd56226b3b8297a57f4361fca28aa43babdc9789d" target="_blank" rel="noopener"><code id="contract-addr">0xd56226b3b8297a57f4361fca28aa43babdc9789d</code></a>
       <span class="hm-dot" aria-hidden="true">·</span>
@@ -676,6 +676,10 @@ document.querySelectorAll('.motif-meta .e, .tier-cell .e').forEach(e => e.setAtt
 // public BNB Chain node — the current owner, so a card passed on shows with its new holder), and each one the wallet
 // holds is drawn with its tier and rarity from its own tokenURI. BscScan's view stays one link away.
 const NFT_CA = '0xd56226b3b8297a57f4361fca28aa43babdc9789d', NFT_RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io'];
+// C15 (A-Z 24.11.): '1,925 in total' read as the number minted; it is the cap. The minted count and the last drop, live
+fetch('/api/nft-drop').then(r => r.json()).then(j => { const t = j && j.total, el = document.getElementById('hx-minted'); if (!t || !el) return;
+  const h = j.last_mint && j.last_mint.time_utc ? (Date.now() - Date.parse(j.last_mint.time_utc)) / 36e5 : null;
+  el.textContent = Number(t.minted).toLocaleString('en-US') + ' of ' + Number(t.cap).toLocaleString('en-US') + ' minted' + (h != null ? ' · last drop ' + (h < 48 ? Math.max(1, Math.round(h)) + ' h ago' : Math.round(h / 24) + ' days ago') : ''); }).catch(() => {});
 document.getElementById('fa-copy').addEventListener('click', e => { const b = e.currentTarget, v = 'https://brainonbnb.com/api/nft-drop';
   (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(() => { b.textContent = 'Copied ✓'; setTimeout(() => { b.textContent = 'Copy'; }, 1600); }, () => {}); });
 document.getElementById('find-form').addEventListener('submit', async e => {

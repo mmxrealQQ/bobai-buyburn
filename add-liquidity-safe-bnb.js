@@ -5,7 +5,9 @@
 // LP to dead — the add, the minimums, the burn, the 808.41 that stay and the record in liq-runs.json are those of
 // add-liquidity-safe.js. Nothing of the BOBAI already on the wallet (808.41) is touched.
 //
-// Usage: node add-liquidity-safe-bnb.js
+// Usage: node add-liquidity-safe-bnb.js            (buy, add, burn)
+//        node add-liquidity-safe-bnb.js --resume   (a run that stopped after its buy: add the BOBAI over 808.41 with the
+//                                                    BNB on the wallet, burn the LP — no new buy, nothing sold)
 // Requires: PRIVATE_KEY in .env or environment
 
 require('dotenv').config();
@@ -95,6 +97,12 @@ async function readReserves(publicClient) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// RESUME, NOT SELL (Liste B 3, 2026-11-24): a run that stopped after buying told the operator to start
+// add-liquidity-safe.js — which SELLS 51% of the BOBAI for BNB first. The BNB for the add is already on the wallet; selling
+// the bought BOBAI back costs the 3% tax twice and the slippage. --resume skips the buy and adds what was bought.
+const RESUME = process.argv.includes('--resume');
+const RESUME_HINT = 'start  node add-liquidity-safe-bnb.js --resume  to add it (no new buy, nothing sold; the dev sweep waits up to 6 h while BOBAI lies here)';
+
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) { console.log('[ERROR] No PRIVATE_KEY in .env'); process.exit(1); }
@@ -129,6 +137,11 @@ async function main() {
   console.log(`BNB balance:   ${formatEther(bnbStart)}`);
   // BOBAI over 808.41 already on the wallet is added too (it belongs in the pool, like add-liquidity-safe.js does);
   // under 808.41 nothing is taken from it — the run only adds what it buys.
+  let BUY_AMOUNT = 0n;
+  if (RESUME) {
+    if (bobaiStart <= KEEP_BOBAI + parseEther('1')) { console.log(`[ERROR] --resume: no BOBAI over ${formatEther(KEEP_BOBAI)} on the wallet — nothing to add. Nothing was sent.`); process.exit(1); }
+    console.log(`--resume: no buy — adding the ${formatEther(bobaiStart - KEEP_BOBAI)} BOBAI over ${formatEther(KEEP_BOBAI)} with the BNB on the wallet\n`);
+  } else {
   const spendable = bnbStart > GAS_RESERVE ? bnbStart - GAS_RESERVE : 0n;
   if (spendable < MIN_SPEND) {
     console.log(`[ERROR] Only ${formatEther(spendable)} BNB above the ${formatEther(GAS_RESERVE)} gas reserve; send at least ${formatEther(MIN_SPEND)} BNB first. Nothing was sent.`);
@@ -137,7 +150,7 @@ async function main() {
 
   let r0;
   try { r0 = await readReserves(publicClient); } catch (e) { console.log(`[ERROR] The pair's reserves could not be read: ${e.message} — nothing was sent.`); process.exit(1); }
-  const BUY_AMOUNT = buyShare(spendable, r0.reserveToken, r0.reserveBnb);
+  BUY_AMOUNT = buyShare(spendable, r0.reserveToken, r0.reserveBnb);
   if (BUY_AMOUNT <= 0n) { console.log('[ERROR] No buy amount could be worked out — nothing was sent.'); process.exit(1); }
   console.log(`BNB for the run: ${formatEther(spendable)} -> buy ${formatEther(BUY_AMOUNT)} (${(Number((BUY_AMOUNT * 10000n) / spendable) / 100).toFixed(2)}%), the rest goes into the add\n`);
 
@@ -165,9 +178,12 @@ async function main() {
       console.log('  Swap done!');
     } catch (e) {
       console.log(`  [ERROR] Swap chunk ${i + 1} failed: ${e.message}`);
+      if (i > 0) console.log(`  What the first ${i} chunk(s) bought stays on the wallet — ${RESUME_HINT}.`);
       process.exit(1);
     }
     if (i < SWAP_CHUNKS - 1) { console.log('  Waiting 5s for next chunk...'); await sleep(5000); }
+  }
+
   }
 
   // Step 2: Approve Router for the BOBAI to add
@@ -200,10 +216,10 @@ async function main() {
     }
     mins = liqMins(LIQUIDITY_BOBAI, bnbForLiquidity, reserveToken, reserveBnb);
   } catch (e) {
-    console.log(`[ERROR] The pair's reserves could not be read: ${e.message} — nothing was added, the BOBAI stays on the wallet; start add-liquidity-safe.js to add it.`);
+    console.log(`[ERROR] The pair's reserves could not be read: ${e.message} — nothing was added, the BOBAI stays on the wallet; ${RESUME_HINT}.`);
     process.exit(1);
   }
-  if (!mins || bnbForLiquidity <= 0n) { console.log('[ERROR] No BNB available for liquidity — the bought BOBAI stays on the wallet; start add-liquidity-safe.js to add it.'); process.exit(1); }
+  if (!mins || bnbForLiquidity <= 0n) { console.log(`[ERROR] No BNB available for liquidity — the bought BOBAI stays on the wallet; ${RESUME_HINT}.`); process.exit(1); }
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 300);
   console.log(`BOBAI for liquidity: ${formatEther(LIQUIDITY_BOBAI)}`);
   console.log(`BNB for liquidity:   ${formatEther(bnbForLiquidity)}`);
@@ -220,7 +236,7 @@ async function main() {
     const receipt = mustSucceed(await publicClient.waitForTransactionReceipt({ hash: addLiqTx }), 'the liquidity add');
     console.log(`Liquidity added in block ${receipt.blockNumber}!`);
   } catch (e) {
-    console.log(`[ERROR] Add liquidity failed: ${e.message} — the bought BOBAI stays on the wallet; start add-liquidity-safe.js to add it.`);
+    console.log(`[ERROR] Add liquidity failed: ${e.message} — the bought BOBAI stays on the wallet; ${RESUME_HINT}.`);
     process.exit(1);
   }
 
@@ -261,7 +277,7 @@ async function main() {
 
   console.log('\n============================================');
   console.log('DONE!');
-  console.log(`Bought:   ${formatEther(BUY_AMOUNT)} BNB → BOBAI`);
+  console.log(RESUME ? "Bought:   nothing (--resume)" : `Bought:   ${formatEther(BUY_AMOUNT)} BNB → BOBAI`);
   console.log(`Added:    ${formatEther(bobaiAdded)} BOBAI + ${formatEther(mins.bnbUsed)} BNB`);
   console.log(`LP Burned: ${formatEther(lpBalance)} Cake-LP → Dead`);
   console.log('============================================');

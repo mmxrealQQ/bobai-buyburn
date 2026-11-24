@@ -471,6 +471,60 @@ console.log('\nthe liquidity hand script (add-liquidity-safe.js: a copy, on a th
   }
 }
 
+// ── the BNB liquidity script's --resume (Liste B 3, 2026-11-24), a copy on a throwaway wallet ─────────────────────
+// A run that stopped after its buy told the operator to start add-liquidity-safe.js, which SELLS 51% of the BOBAI first.
+// --resume adds the BOBAI over 808.41 with the BNB on the wallet: no buy, nothing sold, the LP burned, 808.41 kept.
+console.log('\nthe BNB liquidity script, --resume (add-liquidity-safe-bnb.js: a copy, on a throwaway wallet)');
+{
+  const bnbSrc = fs.readFileSync(path.join(ROOT, 'add-liquidity-safe-bnb.js'), 'utf8');
+  ok('no failure after the buy points at the selling script any more: each says --resume', !/start add-liquidity-safe\.js to add it/.test(bnbSrc) && (bnbSrc.match(/\$\{RESUME_HINT\}/g) || []).length >= 4);
+  const k = generatePrivateKey(), acct = privateKeyToAccount(k);
+  const runsCopy = path.join(ROOT, 'temp', 'liq-runs-bnb-fork.json'), scriptCopy = path.join(ROOT, 'temp', 'add-liquidity-bnb-fork.js');
+  const realRuns = fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8');
+  fs.writeFileSync(runsCopy, JSON.stringify({ dev: { burns: 0 }, runs: [] }));
+  const copySrc = bnbSrc
+    .replace("require('dotenv').config();", '')
+    .replace(/const CREATOR_WALLET = '0x[0-9a-fA-F]{40}';/, `const CREATOR_WALLET = '${acct.address}';`)
+    .replace('return m >= 55 || m < 3;', 'return false;')
+    .replace("require('path').join(__dirname, 'dashboard', 'liq-runs.json')", JSON.stringify(runsCopy));
+  const safeCopy = !/dotenv/.test(copySrc) && copySrc.includes(acct.address) && !/0x15Ba17075ef5E0736292b030e3715d9100fe3d38/i.test(copySrc) && copySrc.includes('liq-runs-bnb-fork.json');
+  ok('the copy reads no .env, knows only the throwaway wallet and writes its record to temp/', safeCopy);
+  if (safeCopy) {
+    fs.writeFileSync(scriptCopy, copySrc);
+    const { spawnSync } = await import('node:child_process');
+    const runIt = (args) => { const r = spawnSync(process.execPath, [scriptCopy, ...args], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k, BSC_RPC_URL: LOCAL } }); return { status: r.status, said: `${r.stdout || ''}${r.stderr || ''}` }; };
+    // nothing over 808.41 on the wallet: --resume refuses and sends nothing
+    await test.setBalance({ address: acct.address, value: parseEther('0.05') });
+    const n0 = await pub.getTransactionCount({ address: acct.address });
+    const none = runIt(['--resume']);
+    ok('--resume with no BOBAI over 808.41: it says so and sends nothing', none.status === 1 && /--resume: no BOBAI over/.test(none.said) && (await pub.getTransactionCount({ address: acct.address })) === n0, none.said.slice(-200));
+    // a run that stopped after its buy: BOBAI bought on the fork, BNB on the wallet
+    const wallet = createWalletClient({ account: acct, chain, transport: http(LOCAL, { timeout: 120000 }) });
+    const BUY = parseAbi(['function swapExactETHForTokensSupportingFeeOnTransferTokens(uint amountOutMin, address[] path, address to, uint deadline) payable']);
+    const ROUTER_ADDR = addr('PANCAKE_ROUTER_V2'), WBNB_ADDR = addr('WBNB'), PAIR_ADDR = addr('BOBAI_WBNB_PAIR');
+    const buy = await wallet.writeContract({ address: ROUTER_ADDR, abi: BUY, functionName: 'swapExactETHForTokensSupportingFeeOnTransferTokens', args: [0n, [WBNB_ADDR, BOBAI], acct.address, BigInt(Math.floor(Date.now() / 1000) + 600)], value: parseEther('0.02') });
+    await pub.waitForTransactionReceipt({ hash: buy });
+    const had = await tok(BOBAI, acct.address), n1 = await pub.getTransactionCount({ address: acct.address });
+    const LP = parseAbi(['function balanceOf(address) view returns (uint256)']);
+    const deadLp0 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
+    const res = runIt(['--resume']);
+    const rec = JSON.parse(fs.readFileSync(runsCopy, 'utf8')).runs[0];
+    ok('--resume runs to its end: liquidity added, LP burned', res.status === 0 && /BURNED [0-9.]+ LP tokens/.test(res.said) && !!rec, res.said.slice(-300));
+    ok('no buy and nothing sold: no swap step, three transactions only (approve, add, burn)', !/Step 1: Swap/.test(res.said) && !/Chunk 1\//.test(res.said) && /--resume: no buy/.test(res.said) && (await pub.getTransactionCount({ address: acct.address })) - n1 <= 3, `${(await pub.getTransactionCount({ address: acct.address })) - n1} tx`);
+    const left = await tok(BOBAI, acct.address), deadLp1 = await pub.readContract({ address: PAIR_ADDR, abi: LP, functionName: 'balanceOf', args: [DEAD] });
+    ok('the BOBAI it had over 808.41 went into the pool, 808.41 stay, the dead address holds the LP the record names', rec && left <= parseEther('808.41') + parseEther('1') && left >= parseEther('808.41') && deadLp1 - deadLp0 === parseEther(rec.lp) && rec.from === 'bnb', `had ${formatEther(had)}, left ${formatEther(left)}`);
+    // and the plain run, from BNB alone (the path --resume skips is still whole): it buys in three chunks, adds, burns
+    const k2 = generatePrivateKey(), acct2 = privateKeyToAccount(k2);
+    fs.writeFileSync(runsCopy, JSON.stringify({ dev: { burns: 0 }, runs: [] }));
+    fs.writeFileSync(scriptCopy, bnbSrc.replace("require('dotenv').config();", '').replace(/const CREATOR_WALLET = '0x[0-9a-fA-F]{40}';/, `const CREATOR_WALLET = '${acct2.address}';`).replace('return m >= 55 || m < 3;', 'return false;').replace("require('path').join(__dirname, 'dashboard', 'liq-runs.json')", JSON.stringify(runsCopy)));
+    await test.setBalance({ address: acct2.address, value: parseEther('0.05') });
+    const plain = spawnSync(process.execPath, [scriptCopy], { cwd: path.join(ROOT, 'temp'), encoding: 'utf8', timeout: 300000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot || '', PRIVATE_KEY: k2, BSC_RPC_URL: LOCAL } });
+    const ps = `${plain.stdout || ''}${plain.stderr || ''}`, prec = JSON.parse(fs.readFileSync(runsCopy, 'utf8')).runs[0];
+    ok('the plain run from BNB: three chunks bought, liquidity added, LP burned, recorded as from bnb', plain.status === 0 && /Chunk 3\/3/.test(ps) && /BURNED [0-9.]+ LP tokens/.test(ps) && !!prec && prec.from === 'bnb', ps.slice(-300));
+    ok('the real dashboard/liq-runs.json was not touched', fs.readFileSync(path.join(ROOT, 'dashboard', 'liq-runs.json'), 'utf8') === realRuns);
+  }
+}
+
 // ── the dev sweep, same fork ────────────────────────────────────────────────
 console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 2026-10-10, back 2026-11-09 on the operator\'s word)');
 {

@@ -1226,16 +1226,19 @@ function fillLpPortfolio(){
     const tiles =
       '<div class="pf-date">' + esc(day(m.checked_at || m.date, true)) + '</div>' +
       tile('Put in', bnb(m.put_in.bnb), [m.put_in.usd != null ? usd(m.put_in.usd) : null, 'since ' + esc(day(p.since, true))].filter(Boolean).join(' · ')) +
-      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost (' + (Array.isArray(m.worth.beside_parts) && m.worth.beside_parts.length ? m.worth.beside_parts.map(function(p){return esc(String(p.label).replace(', at cost',''))}).join(', ') : '$BOBAI held, fees') + ')' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ')) +
+      tile('Worth now', bnb(m.worth.bnb), [m.worth.usd != null ? usd(m.worth.usd) : null, esc(m.pool.label || ''), width, m.worth.beside_bnb > 0 ? '<br>+ ' + bnb(m.worth.beside_bnb) + ' beside it at cost (' + (Array.isArray(m.worth.beside_parts) && m.worth.beside_parts.length ? m.worth.beside_parts.map(function(p){return esc(String(p.label).replace(', at cost',''))}).join(', ') : '$BOBAI held, fees') + ')' + (m.holdings && m.holdings.bobai_usd != null ? ' — the $BOBAI is worth ' + usd(m.holdings.bobai_usd) + ' today' : '') : null].filter(Boolean).join(' · ').replace(' · <br>', '<br>')) +
       tile('Result', signed(p.profit_bnb), [p.profit_usd != null ? usd(p.profit_usd) : null, p.change_text ? esc(p.change_text) : pct + ' on the capital'].filter(Boolean).join(' · '), dir(p.profit_bnb))
       // THE RANGE STANDING NOW, AS BIG AS THE TOTAL (7.11., operator: "show the figure since the range"): the result above
       // carries every range since 3 Sep, the narrow September ones too; whether the agent works today is this one
       + (p.since_range && p.since_range.vs_holding_pct != null ? (() => { const r = p.since_range, v = Number(r.vs_holding_pct);
-        return tile('This range vs holding', (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(2) + '%', [signed(r.vs_holding_bnb) + ' against holding 50/50', (r.width_pct ? '±' + esc(r.width_pct) + '%' : 'this range') + ' since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days', 'fees ' + signed(r.fees_bnb) + ', price ' + signed(r.price_bnb)].join(' · '), dir(r.vs_holding_bnb)); })() : '');
+        // C11 (A-Z 24.11.): the tile showed only this range (+1.77 %) while the whole run against holding (−1.2 %) stood in
+        // small print below - it read as picking the better figure. Both now, the whole run first
+        const vh = p.vs_holding && p.vs_holding.vs_holding_pct != null ? Number(p.vs_holding.vs_holding_pct) : null, sg = (x, d) => '<span style="color:' + (x > 0 ? '#3fe09a' : x < 0 ? '#ff8f6b' : 'inherit') + '">' + (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toFixed(d) + '%</span>';
+        return tile('Against holding 50/50', (vh != null ? sg(vh, 1) + ' <small style="font-size:.5em;opacity:.75">overall</small> · ' : '') + sg(v, 2) + ' <small style="font-size:.5em;opacity:.75">this range</small>', [(vh != null ? 'overall ' + signed(p.vs_holding.vs_holding_bnb) + ', this range ' : '') + signed(r.vs_holding_bnb) + ' against holding 50/50', (r.width_pct ? '±' + esc(r.width_pct) + '%' : 'this range') + ' since ' + esc(day(r.since)) + ', ' + esc(r.days) + ' days', 'fees ' + signed(r.fees_bnb) + ', price ' + signed(r.price_bnb)].join(' · '), vh != null && Math.sign(vh) !== Math.sign(v) ? '' : dir(r.vs_holding_bnb)); })() : '');
     const split = p.from_market_bnb != null && p.from_range_bnb != null; // the price in its two causes (2026-10-09)
     const sources = '<div class="pf-eq">Result = ' + (split ? 'market + range' : 'price') + ' + fees − gas</div><div class="pf-src">'
-      + (split ? src('📈 Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src('📈 Range, before fees', signed(p.from_range_bnb), dir(p.from_range_bnb))
-        : src('📈 Price', signed(p.from_price_bnb), dir(p.from_price_bnb)))
+      + (split ? src((n(p.from_market_bnb) < 0 ? '📉' : '📈') + ' Market (held 50/50)', signed(p.from_market_bnb), dir(p.from_market_bnb)) + src((n(p.from_range_bnb) < 0 ? '📉' : '📈') + ' Range, before fees', signed(p.from_range_bnb), dir(p.from_range_bnb))
+        : src((n(p.from_price_bnb) < 0 ? '📉' : '📈') + ' Price', signed(p.from_price_bnb), dir(p.from_price_bnb)))
       + src('🧾 Fees', signed(p.from_fees_bnb), dir(p.from_fees_bnb))
       + src('⛽ Gas', n(p.gas_bnb) > 0 ? '−' + bnb(p.gas_bnb) : '0 BNB', n(p.gas_bnb) > 0 ? 'down' : '')
       + '</div>'
@@ -1330,7 +1333,7 @@ function lpCurve(pts){
   const last = P[P.length - 1], pc = (last.v / last.c - 1) * 100;
   box.innerHTML = '<div class="lpc-h"><b>Worth vs put in, every run since ' + d(t0) + '</b><span><i class="lpc-v"></i>worth <i class="lpc-c"></i>put in (steps at each deposit)</span></div>'
     + '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Position worth against capital put in, ' + P.length + ' runs; now ' + last.v.toFixed(3) + ' of ' + last.c.toFixed(3) + ' BNB">'
-    + ticks + band + '<path d="' + line('c') + '" fill="none" stroke="#a0a2c0" stroke-width="1.6" stroke-dasharray="4 3"/><path d="' + line('v') + '" fill="none" stroke="#f0b90b" stroke-width="2"/>'
+    + ticks + '<text x="' + (L + 4) + '" y="' + (T + 9) + '" opacity=".7">BNB</text>' /* C17: the axis had no unit */ + band + '<path d="' + line('c') + '" fill="none" stroke="#a0a2c0" stroke-width="1.6" stroke-dasharray="4 3"/><path d="' + line('v') + '" fill="none" stroke="#f0b90b" stroke-width="2"/>'
     + '<text x="' + L + '" y="' + (H - 6) + '">' + d(t0) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + d(t1) + '</text></svg>'
     + '<p class="agt-note" data-nousd>At the last run (' + new Date(last.t).toISOString().slice(0, 16).replace('T', ' ') + ' UTC) the position alone was worth <b>' + last.v.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.v + '"></span> of <b>' + last.c.toFixed(4) + ' BNB</b><span class="cv-usd" data-bnb="' + last.c + '"></span> put in: <b style="color:' + (pc >= 0 ? '#35e07a' : '#ff4d6d') + '">' + (pc >= 0 ? '+' : '−') + Math.abs(pc).toFixed(2) + '%</b>. The portfolio above is the same money now, and it also counts the $BOBAI bought from fees and the fees owed, so its result differs.</p>';
   box.hidden = false;

@@ -30,8 +30,16 @@ async function loadAgents() {
   const r = await fetch(AGENTS_URL, { signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('agent list unavailable');
   const j = await r.json();
+  // the work each agent was paid for, beside it (C30, A-Z 24.11.): a result carried a text match and nothing on whether
+  // the agent works; the same file /registry reads, a failure leaves the evidence out, never the answer
+  j._jobs = await fetch(JOBS_URL, { signal: AbortSignal.timeout(6000) }).then((x) => (x.ok ? x.json() : null)).then((x) => x?.agents || null).catch(() => null);
   cache = { at: Date.now(), data: j };
   return j;
+}
+const JOBS_URL = 'https://brainonbnb.com/api-agent-jobs.json';
+export function evidenceOf(id, jobs) {
+  const t = jobs?.[String(id)]?.totals;
+  return { profile: `https://brainonbnb.com/agent/${id}`, ...(t ? { paid_out_by_others: t.paid_out_outside ?? 0, buyers_outside: t.buyers_outside ?? 0, ...(t.delivery_rate_outside_pct != null ? { delivered_pct_outside: t.delivery_rate_outside_pct } : {}), ...(t.last_delivery ? { last_delivery: t.last_delivery } : {}) } : { paid_out_by_others: 0, note: 'no ERC-8183 job on the kernel names it yet' }) };
 }
 
 // Words that match everything and therefore mean nothing here.
@@ -49,6 +57,9 @@ export const STOP = new Set(['the', 'a', 'an', 'and', 'or', 'for', 'with', 'that
 // A term matches a whole word (a plural counts as its singular): as a
 // substring "out" matched "route" and "about", and every agent with long
 // descriptions matched everything (2026-09-24, P6).
+// A WORD AND ITS FORMS (C31, A-Z 24.11.: 'liquidation' did not find an agent that says 'liquidate'): a long word is cut to
+// its stem, which then matches as the start of a word - liquidation/liquidate/liquidating, rebalance/rebalancing
+export const stem = (t) => { if (t.length < 6) return t; for (const x of ['ions', 'ion', 'ings', 'ing', 'ed', 'es', 'e', 's']) if (t.endsWith(x) && t.length - x.length >= 5) return t.slice(0, -x.length); return t; };
 const WORD_RE = new Map();
 const hasWord = (text, t) => {
   let re = WORD_RE.get(t);
@@ -56,7 +67,7 @@ const hasWord = (text, t) => {
     // A word of four letters or more also matches as the start of a longer
     // one ("safe" finds "safety", "scan" finds "scanner"); a shorter one must
     // stand alone, or "out" is back in "outcome".
-    const body = t.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+    const body = stem(t).replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
     re = new RegExp('(^|[^a-z0-9])' + body + (t.length >= 4 ? '' : '(s|es)?(?![a-z0-9])'));
     WORD_RE.set(t, re);
   }
@@ -214,11 +225,21 @@ export async function handleFind(url, env = null) {
   const asked = wantCategory ? null : (NAMED.find(([re]) => re.test(q)) || [])[1] || null;
   const inAsked = new Map();
   const fits = (a) => { if (!asked) return true; if (!inAsked.has(a.id)) inAsked.set(a.id, classifyAgent(a).some((m) => m.category === asked)); return inAsked.get(a.id); };
-  let scored = pool
+  // EVERY WORD FIRST (C31, A-Z 24.11.: 'venus health' matched 264 of 1,012 - any one word was enough): the words that say
+  // something (weight 0.5 or more, else all) must all be found; only when no agent has them all, any of them, said so
+  const must = ts.filter((t) => (weights?.[t] ?? 1) >= 0.5), need = must.length ? must : ts;
+  const covers = (a) => { const h = hayOf(a); return need.every((t) => hasWord(h, t)); };
+  let scored0 = pool
     .map((a) => ({ a, s: score(a, ts, weights), f: fits(a) }))
-    .filter((x) => (ts.length ? x.s > 0 : true))
+    .filter((x) => (ts.length ? x.s > 0 : true));
+  // first, not only (a whole sentence - 'plan a grid for a token' - lost Lattice, filed under grid, to a strict AND)
+  for (const x of scored0) x.all = need.length <= 1 || covers(x.a);
+  const nAll = scored0.filter((x) => x.all).length, matchedAll = need.length <= 1 || nAll > 0;
+  // ?sort=evidence (C30): the agents others paid for delivered work first, the match breaks the tie
+  const jobs = list._jobs, paid = (a) => Number(jobs?.[String(a.id)]?.totals?.paid_out_outside) || 0, byEvidence = /^evidence$/i.test(url.searchParams.get('sort') || '');
+  let scored = scored0
     // at an equal match other operators' agents stand before ours, as on the Plaza page (2026-10-05)
-    .sort((x, y) => (y.f - x.f) || y.s - x.s || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id);
+    .sort((x, y) => (y.f - x.f) || (y.all - x.all) || (byEvidence ? paid(y.a) - paid(x.a) : 0) || y.s - x.s || paid(y.a) - paid(x.a) || OWN.has(Number(x.a.id)) - OWN.has(Number(y.a.id)) || x.a.id - y.a.id);
   // ONE FLEET, ONE PLACE (2026-10-27, the same stranger: "Grid Agent 1 by 4LPHA" four times in one answer). The same name
   // on the same host is one operator's fleet: its best-matching id stands, the others are named under fleet.
   // A name that differs only in its numbers is the same fleet too (2026-10-28: "Grid Agent 1/2/3 by 4LPHA" took three places).
@@ -266,6 +287,8 @@ export async function handleFind(url, env = null) {
       category: wantCategory ? { id: wantCategory, label: categoryOf(wantCategory)?.label } : null,
       categories_available: CATEGORY_IDS,
       searched: pool.length,
+      ...(need.length > 1 ? { every_word: matchedAll ? `${nAll} hold every word (${need.join(', ')}); they stand first, each marked every_word: true` : `no agent holds every word (${need.join(', ')}); these hold some of them` } : {}),
+      sorted_by: byEvidence ? 'delivered work paid for by others, then the match (sort=evidence)' : 'the match; at an equal match, delivered work paid for by others (add &sort=evidence to put that first)',
       returned: scored.length,
       // the rest is one parameter away, and says so (2026-10-05: a category of 19 showed 10 and no way on)
       ...(more > 0 ? { not_shown: more, more: `add &limit=25 (the most one answer carries); ${more} more matched` } : {}),
@@ -274,7 +297,7 @@ export async function handleFind(url, env = null) {
       escrow_note: 'escrow.answer per result: "quotes" — it answered with a price (escrow.price) the last time it was asked; "input" — it answered but wanted something not sent (escrow.said, its own words); "none" — it did not answer; "not asked". escrow.asked_at dates it. Add &hireable=1 for the first kind only.',
       note: 'Matched against the tools each agent returned when asked, the skills on its agent card, and the description in its own on-chain registration. Ordering reflects how well the query matched — it is not a rating, a ranking, or an endorsement. Task history is kept separately at /sessions (every task this broker has routed, failures included) and is not folded into this ordering.',
       measured_at: list.measured_at || null,
-      results: scored.map(({ a, s }) => ({
+      results: scored.map((x) => { const { a, s } = x; return {
         id: a.id,
         name: a.name,
         description: a.description || null,
@@ -287,6 +310,8 @@ export async function handleFind(url, env = null) {
         // the escrow answer the Plaza page shows, so an agent can choose from /find alone (2026-10-27)
         ...(a.escrow ? { escrow: a.escrow } : { escrow: { answer: 'not asked' } }),
         match: Math.round(s * 10) / 10,
+        evidence: evidenceOf(a.id, jobs),
+        ...(need.length > 1 ? { every_word: !!x.all } : {}),
         ...(OWN.has(Number(a.id)) ? { ours: true } : {}),
         ...((fleets.get(fleetKey(a)) || []).length ? { fleet: { size: fleets.get(fleetKey(a)).length + 1, other_ids: fleets.get(fleetKey(a)), note: 'the same name on the same host: one operator, counted once here' } } : {}),
         ...(listedRec.has(String(a.id)) ? { listed: listedRec.get(String(a.id)) } : {}),
@@ -298,10 +323,10 @@ export async function handleFind(url, env = null) {
           // that answered 'seller declined'; dead deployments too): quotes or input, else why not
           ...(['quotes', 'input'].includes(a.escrow?.answer) ? { hire: `https://agent.brainonbnb.com/hire?agent=${a.id}&task=${encodeURIComponent(q || '')}` } : { hire_not_offered: a.escrow?.answer === 'none' ? 'it did not answer the last time it was asked to quote' : 'it was not asked to quote, or it sells nothing' }),
         },
-      })),
+      }; }),
       next: { dispatch: `https://agent.brainonbnb.com/dispatch?task=${encodeURIComponent(q || '')}`, sessions: 'https://agent.brainonbnb.com/sessions' },
       ...(scored.length === 0 && ts.length ? {
-        nothing_found: 'Nothing in the census exposes that yet. The registry is growing fast — hundreds of new agents a day — and this index picks up anything with a callable surface automatically. If you build one, you are in it on the next pass: https://brainonbnb.com/registry',
+        nothing_found: 'Nothing in the census exposes that yet. New agents register on BNB Chain every day, and this index picks up anything with a callable surface on its next pass. If you build one, you are in it on the next pass: https://brainonbnb.com/registry',
       } : {}),
     },
   };

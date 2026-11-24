@@ -56,5 +56,13 @@ is('FC7 a query that reads like an error points first at the library (/learn/<th
   const bad = r.filter((x) => x.next?.hire && !['quotes', 'input'].includes(x.escrow?.answer)).map((x) => x.id);
   const own = r.filter((x) => [49467, 421197, 391841].includes(Number(x.id)));
   is('FC8 no hire link without an answered quote ask; the reason instead; our ids marked ours', r.length > 0 && bad.length === 0 && r.some((x) => x.hire_not_offered || x.next?.hire_not_offered) && own.every((x) => x.ours === true), `hire on ${bad.join(',')} · ours ${own.map((x) => x.id + ':' + x.ours).join(',')}`); }
+// C30/C31 (A-Z 24.11.): a word's forms, every word first, the evidence beside the match
+{ const m = await import(pathToFileURL(FILE).href), stem = m.stem || ((w) => w);
+  is('FC9 a long word matches its forms (liquidation ~ liquidate), not a neighbour (liquidity)', stem('liquidation') === stem('liquidate') && !stem('liquidity').startsWith(stem('liquidation')) && stem('rebalancing') === stem('rebalance'));
+  const vh = await find('q=' + encodeURIComponent('venus health') + '&limit=25'), firstOff = vh.results.findIndex((r) => !r.every_word);
+  is('FC10 "venus health": the agents holding both words stand first, marked, the rest after', vh.results[0]?.every_word === true && (firstOff < 0 || vh.results.slice(firstOff).every((r) => !r.every_word)) && /hold every word/.test(vh.every_word || ''), JSON.stringify(vh.every_word));
+  const ev = await find('q=rebalance&sort=evidence&limit=25'), p = ev.results.map((r) => r.evidence?.paid_out_by_others ?? -1);
+  is('FC11 every result carries evidence (profile, paid out by others); sort=evidence puts the most paid first', ev.results.length > 0 && ev.results.every((r) => /\/agent\/\d+$/.test(r.evidence?.profile || '')) && p[0] === Math.max(...p), p.slice(0, 6).join(','));
+}
 console.log(`\n${pass} PASS, ${fail} FAIL`);
 process.exit(fail ? 1 : 0);

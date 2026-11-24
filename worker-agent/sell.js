@@ -656,6 +656,28 @@ export async function handleA2A(request, env, opts = {}) {
     const r = await writeEntry(env, { ...data, action, skill: undefined }, request.headers.get('cf-connecting-ip'));
     return rpcOk(id, agentMessage(r.body));
   }
+  // THE JOIN, THE BRAINBOOK AND THE WALL OVER A2A (A-Z 23.11.: MCP had them, A2A answered 'unknown skill "brainbook"'):
+  // skill "join" (or "brainbook", "wall"), action how | message | join | read - the same handlers as the REST doors
+  if (skill0 === 'join' || skill0 === 'brainbook' || skill0 === 'wall') {
+    const action = String(data.action || (skill0 === 'join' ? 'how' : 'read')).toLowerCase().replace(/_/g, '-'), ip = request.headers.get('cf-connecting-ip');
+    const { handleJoin, JOIN_HOW } = await import('./join.js');
+    const call = async (r) => { const j = await r.json().catch(() => ({ error: 'no answer' })); return rpcOk(id, agentMessage(j)); };
+    if (action === 'how') return rpcOk(id, agentMessage(JOIN_HOW));
+    if (action === 'message' || action === 'join-message') {
+      const u = new URL('https://agent.brainonbnb.com/join/message');
+      for (const k of ['agent', 'link', 'logo_sha256', 'ad_sha256', 'words', 'intro_title', 'intro_body', 'board']) if (data[k] != null && data[k] !== '') u.searchParams.set(k, String(data[k]));
+      return call(await handleJoin(new Request(u), env, '/join/message', u, ip, null));
+    }
+    if (action === 'join') {
+      const u = new URL('https://agent.brainonbnb.com/join'), { skill: _s, action: _a, ...body } = data;
+      return call(await handleJoin(new Request(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), env, '/join', u, ip, null));
+    }
+    if (action === 'read') {
+      if (skill0 === 'wall') { const { handleWall } = await import('./wall.js'); const u = new URL('https://agent.brainonbnb.com/wall'); return call(await handleWall(new Request(u), env, '/wall', u, ip)); }
+      const { handleGuestbook } = await import('./guestbook.js'); const u = new URL('https://agent.brainonbnb.com/guestbook'); return call(await handleGuestbook(new Request(u), env, '/guestbook', u, ip));
+    }
+    return rpcErr(id, -32602, `action "${action}": how | message | join | read`);
+  }
   // ANY WALLET'S ESCROW OVER A2A (2026-10-23): skill "escrow-status", { address } — escrow-for.js, read-only
   if (skill0 === 'escrow-status') {
     const { readEscrowFor } = await import('./escrow-for.js');

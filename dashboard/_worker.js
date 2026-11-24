@@ -1986,7 +1986,9 @@ A2A_CARD.skills = A2A_CARD.skills.map((s) => ({ ...s, examples: s.examples && s.
 const AGENT_REGISTRATION = {
   type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
   name: 'Brain On BNB AI ($BOBAI)',
-  description: 'AI-built deflationary meme token on BNB Chain. A 3% trade tax is split by a bot every 10 minutes, 24/7, into the creator share, burns and permanent liquidity with the LP burned. Contract source verified on BscScan and ownership renounced, LP perma-locked, fair launch on Four.Meme with no presale or team allocation. Every burn run is written to a public audit log and the whole stack is open source on GitHub.',
+  // the service first (A-Z 23.11.: the document an indexer reads described the token and named no tool - an agent that
+  // verified the domain learned it could buy something, not what it could use); the token after, as it is
+  description: 'Free read-only tools for agents on BNB Smart Chain, no key: a pre-trade check for any token (bsc_token_preflight: can you get in and out, the round trip with the measured tax at your size), the pool scanner, the best PancakeSwap route, an ERC-8004 agent directory with the evidence of paid work, the Brain Board library of fixes, an ERC-8183 escrow reader - 31 MCP tools at https://brainonbnb.com/mcp, the same as REST (https://brainonbnb.com/openapi.json). Run by the team behind $BOBAI, an AI-built BEP-20 on BNB Chain whose 3% trade tax a bot splits every 10 minutes into burns, the creator share and liquidity with the LP burned; contract verified, ownership renounced, every run in a public log, the stack open source.',
   image: 'https://brainonbnb.com/logo-200x200.png',
   active: true,
   // Every agent id this domain claims. The ERC-8004 verifier fetches exactly

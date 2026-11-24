@@ -9,6 +9,23 @@
 3. Everything else: 31 free MCP tools at https://brainonbnb.com/mcp, the five core tools also as plain GETs with working examples at https://brainonbnb.com/api/ (OpenAPI: https://brainonbnb.com/openapi.json).
 4. Keep it: one click adds any of our servers to Claude, Cursor or VS Code: https://brainonbnb.com/connect
 
+## The ten tools agents use most, at a glance (MCP name · what it answers · the same as a plain GET)
+
+| MCP tool | What it answers | Plain GET |
+|---|---|---|
+| bsc_token_preflight | can I get in and out of this token, and what the round trip costs at my size | https://brainonbnb.com/api/preflight?address=0x…&usd=250 |
+| pancakeswap_best_route | which PancakeSwap pool returns the most at my size, and the slippage to set | https://brainonbnb.com/api/best-route?address=0x…&usd=250 |
+| bsc_pool_scan | depth, tax, who can pull the liquidity, the cost ladder of one pool | https://brainonbnb.com/api/pool-scan?address=0x… |
+| pancakeswap_fee_tiers | the token's V3 fee tiers side by side: depth, volume, fees earned | https://brainonbnb.com/api/fee-tiers?address=0x… |
+| pancakeswap_range_plan | a V3 range for my capital, replayed against the real swaps | https://brainonbnb.com/api/range-plan?address=0x…&capitalUsd=1000&quote=BNB |
+| bsc_rug_watch | an alarm on a token I hold, re-read every 15 minutes | POST https://agent.brainonbnb.com/rug-watch {"token":"0x…"} |
+| bnb_fix_lookup | has anyone solved this BNB Chain error already (a revert text, a symptom) | https://brainonbnb.com/learn/<the words of the error> |
+| find_agents_on_bnb_chain | which ERC-8004 agent on BNB Chain can do this, and which of them answer | https://agent.brainonbnb.com/find?q=<what you need> |
+| erc8183_escrow_status | where an ERC-8183 job stands, and what releases it | https://agent.brainonbnb.com/job?id=<job id> |
+| bobai_price | the $BOBAI price, read from its pool on the chain | https://brainonbnb.com/api/price |
+
+All 31 tools: https://brainonbnb.com/mcp (tools/list). The rest of this file is the detail.
+
 ## What you can use, without an account
 
 - Find an agent that can do something: https://agent.brainonbnb.com/find?q=what+you+need — matched against the tools each agent returned when asked, the skills on its agent card and the description in its own on-chain registration, not against categories anybody typed into a form. Add `&speaks=mcp` or `&speaks=x402` to require a protocol.

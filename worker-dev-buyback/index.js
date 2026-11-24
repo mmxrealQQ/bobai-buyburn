@@ -5,9 +5,10 @@
 // 3. Splits: 80% personal (Binance), 4% builder #1-#4, 2% builder #5 + #6 (#5 out 2026-10-10, back 2026-11-09 on the operator's word)
 // Log goes to Workers KV (dev-buyback-log.json), served via logs.brainonbnb.com
 
-import { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, formatEther, parseEther, parseAbi } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { resolvePending, mayStillLand } from '../shared/dev-pending.js';
 
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -51,6 +52,13 @@ async function mined(publicClient, hash, what) {
   if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
   if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
   return rc;
+}
+// ONE NODE WAS THE WHOLE SWEEP (Liste B 2, 2026-11-24) — the tax bot's fallback (worker/index.js), to the letter: the
+// public BNB Chain nodes stand behind the first one, asked only when it fails, in this order; 'none' on a fork.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
 }
 function say(e) {
   return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
@@ -117,13 +125,13 @@ async function runBot(env) {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -152,6 +160,8 @@ async function runBot(env) {
   }
 
   // the owed shares (see the split below), kept in KV between runs
+  const loadPending = async () => { try { const j = JSON.parse((await env.LOGS.get('dev-pending')) || '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
+  const savePending = async (o) => { try { if (Object.keys(o).length) await env.LOGS.put('dev-pending', JSON.stringify(o)); else await env.LOGS.delete('dev-pending'); } catch (e) { console.log(`pending transfers not kept: ${say(e)}`); } };
   const loadOwed = async () => { try { const j = JSON.parse((await env.LOGS.get('dev-owed')) || '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
   const saveOwed = async (o) => { try { if (Object.keys(o).length) await env.LOGS.put('dev-owed', JSON.stringify(o)); else await env.LOGS.delete('dev-owed'); } catch (e) { console.log(`owed shares not saved (${say(e)}): ${JSON.stringify(o)}`); } };
 
@@ -188,7 +198,19 @@ async function runBot(env) {
   // WHAT A BUILDER IS STILL OWED IS PAID FIRST (A-Z 2026-11-21). A builder's transfer that failed left its share on the
   // wallet, and the next run split that BNB again: 80% of the builder's money went to the first wallet. Now a failed share
   // is written down by address, the next run pays it on top of the builder's new share, and only the rest is split.
+  // TRANSFERS OF EARLIER RUNS WHOSE FATE WAS UNKNOWN (Liste B 2, shared/dev-pending.js): asked of the chain before anything
+  // is paid — landed: paid; reverted or dropped: owed; still in the pool or no clear answer: this run waits
+  {
+    const pendingIn = await loadPending();
+    if (Object.keys(pendingIn).length) {
+      const rp = await resolvePending(pendingIn, await loadOwed(), publicClient);
+      for (const n of rp.notes) console.log('  pending: ' + n);
+      await saveOwed(rp.owed); await savePending(rp.pending);
+      if (rp.waiting) { console.log('A builder transfer of an earlier run is not settled yet — waiting, nothing paid.'); return; }
+    }
+  }
   const owed = await loadOwed();
+  const pendingNow = {};
   const owedTotal = Object.values(owed).reduce((a, v) => a + BigInt(v), 0n);
   if (owedTotal > 0n) console.log(`Owed from earlier runs: ${formatEther(owedTotal)} BNB`);
   if (owedTotal >= available) {
@@ -228,8 +250,9 @@ async function runBot(env) {
   const txs = {}, failed = [];
   for (const s of sends) {
     console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
+    let hash = null;
     try {
-      const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
+      hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
       console.log(`  TX: https://bscscan.com/tx/${hash}`);
       await mined(publicClient, hash, s.label);
       console.log('  Payment sent!');
@@ -245,11 +268,14 @@ async function runBot(env) {
         }
         return;
       }
+      // sent, but no receipt: it may still land — pending, asked of the chain next run, never owed blind (Liste B 2)
+      if (hash && mayStillLand(e)) { pendingNow[s.to.toLowerCase()] = { hash, value: String(s.value) }; failed.push(`${s.label} (pending)`); continue; }
       owed[s.to.toLowerCase()] = String(s.value);
       failed.push(s.label);
     }
   }
   await saveOwed(owed);
+  await savePending(pendingNow);
 
   // Step 3: Log to KV
   await kvAppend(env, 'dev-buyback-log.json', {

@@ -77,3 +77,4 @@ prof-*/
 
 # the local buyback fallback's owed shares (shared/tax-owed.js, 24.11.)
 buyback-owed.json
+dev-pending.json

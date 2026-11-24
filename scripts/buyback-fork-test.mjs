@@ -477,6 +477,9 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 20
   const devSrc = fs.readFileSync(path.join(ROOT, 'worker-dev-buyback', 'index.js'), 'utf8');
   const twin = fs.readFileSync(path.join(ROOT, 'dev-buyback.js'), 'utf8');
   const loop = (t) => t.slice(t.indexOf('  let personalTxHash;'), t.indexOf('  // Step 3: Log'));
+  // Liste B 2 (2026-11-24): the sweep has the tax bot's node fallback, to the letter, and both twins import the pending check
+  { const fb = (t) => t.slice(t.indexOf('const FALLBACK_RPCS'), t.indexOf('\n}\n', t.indexOf('function rpcTransport(')) + 3); const devLocal = fs.readFileSync(path.join(ROOT, 'dev-buyback.js'), 'utf8');
+    ok('the dev sweep asks the same fallback nodes as the tax bot, and both twins keep a no-receipt transfer as pending', fb(devSrc).length > 300 && fb(devSrc) === fb(workerSrc) && fb(devLocal) === fb(workerSrc) && devSrc.includes('mayStillLand(e)') && devLocal.includes('mayStillLand(e)') && devSrc.includes('resolvePending(') && devLocal.includes('resolvePending(')); }
   ok('the worker and its local twin carry the same send loop', loop(devSrc).length > 400 && loop(devSrc) === loop(twin));
   const dAddr = (name) => (devSrc.match(new RegExp(`const ${name} = '(0x[0-9a-fA-F]{40})'`)) || [])[1];
   // builder #5 (0xa295…fBB2) is back since 2026-11-09 (operator: "set the builder back as he was"): 80% and six builders
@@ -491,7 +494,7 @@ console.log('\nthe dev sweep (80% / 4 / 4 / 4 / 4 / 2 / 2; builder #5 removed 20
     await test.setBalance({ address: w, value: opts.value ?? parseEther('0.103') });
     const b0 = await Promise.all(who.map(bal));
     const keep = console.log; console.log = () => {};
-    try { await dev.scheduled({}, { PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, LOGS: { get: async (x) => (store.has(x) ? store.get(x) : null), put: async (x, v) => { store.set(x, v); }, delete: async (x) => { store.delete(x); }, list: async ({ prefix }) => ({ keys: [...store.keys()].filter((x) => x.startsWith(prefix)).map((name) => ({ name })) }) } }, {}); } finally { console.log = keep; }
+    try { await dev.scheduled({}, { PRIVATE_KEY: k, BSC_RPC_URL: LOCAL, BSC_RPC_FALLBACKS: 'none', LOGS: { get: async (x) => (store.has(x) ? store.get(x) : null), put: async (x, v) => { store.set(x, v); }, delete: async (x) => { store.delete(x); }, list: async ({ prefix }) => ({ keys: [...store.keys()].filter((x) => x.startsWith(prefix)).map((name) => ({ name })) }) } }, {}); } finally { console.log = keep; }
     const b1 = await Promise.all(who.map(bal));
     return { got: b1.map((v, i) => v - b0[i]), log: JSON.parse(store.get('dev-buyback-log.json') || '[]'), left: await bal(w), store, k, w };
   };

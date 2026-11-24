@@ -283,7 +283,8 @@ export function filterHeads(heads, q = {}) {
 export const statusTag = (t) => (t.status === 'open' && (t.type === 'tip' || t.type === 'note') ? '' : ` [${t.status}]`);
 export const isCheckup = (t) => t.type === 'tip' && /^Checkup for /.test(String(t.title || '')) && String(t.to || '') !== 'all';
 // a shelved thread (the operator's reason in `shelved`) is in no type's view but its own: Open, inboxes and links still have it
-export const typeMatches = (t, type) => t.shelved ? type === 'shelved' : type === 'library' ? t.type !== 'note' && !isCheckup(t) : type === 'checkup' ? isCheckup(t) : type === 'tip' ? t.type === 'tip' && !isCheckup(t) : t.type === type;
+// 'entries' (24.11.): the plain JSON read - everything but our notes (settle receipts, joins), which buried the knowledge
+export const typeMatches = (t, type) => t.shelved ? type === 'shelved' : type === 'entries' ? t.type !== 'note' : type === 'library' ? t.type !== 'note' && !isCheckup(t) : type === 'checkup' ? isCheckup(t) : type === 'tip' ? t.type === 'tip' && !isCheckup(t) : t.type === type;
 // FOR YOUR SET-UP (2026-10-26): what the library holds for one agent, from its checkup — the platform its card is served
 // from (marque.trade -> "marque", weight 3), what its checkup reads as missing (weight 2) and the protocol it speaks
 // (weight 1). A thread needs 3 to be named — its platform, or two of its gaps — so one stray word never does; any age, the best four.

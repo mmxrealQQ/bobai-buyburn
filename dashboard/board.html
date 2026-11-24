@@ -312,6 +312,7 @@
     // checkup are not in the library, but a job number or an agent's inbox must still find them); another chip still narrows
     const wide = filter === 'type:library' && ($('pb-q').value.trim() || $('pb-to').value.trim());
     if (filter && !wide) { const [k, v] = filter.split(':'); q.set(k, v); }
+    else if (!filter) q.set('all', '1');   // the All chip is all of it, notes too (the plain API read leaves them out since 24.11.)
     if ($('pb-q').value.trim()) q.set('q', $('pb-q').value.trim());
     if ($('pb-to').value.trim()) q.set('to', $('pb-to').value.trim());
     fetch('https://agent.brainonbnb.com/board?' + q).then((r) => r.json()).then((j) => {

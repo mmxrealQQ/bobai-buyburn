@@ -858,8 +858,27 @@ function paintDetail(k) {
 function setFocus(k) {
   focusK = k;
   win.classList.toggle('has-detail', !!k); // the chart steps back behind an open board
-  if (k) { paintDetail(k); detail.classList.add('on'); }
+  if (k) { paintDetail(k); detail.classList.add('on'); placeDetail(k); }
   else detail.classList.remove('on'); // a board opening is no reason for a move (one figure, one flow)
+}
+// THE BOARD NEVER LIES ON THE NAME THAT OPENED IT (A-Z 24.11., operator 25.11.): on a desktop the board stands top left, where
+// the bots circle on the brain - hovering DEV BOT opened it over DEV BOT itself. It steps right of the name (or left of it),
+// and stays where it is when there is no room either side (the label's pointerleave then keeps it open, see bindFocus).
+// keep = the 2-s repaint: a bot circles on under an open board, so it looks again and glides (.detail left .35s) only if
+// the name went under it
+function placeDetail(k, keep) {
+  if (portrait) { detail.style.left = ''; return; }
+  const el = k === 'core' ? coreLab : k === 'src' ? srcLab : (DEST.find(d => d.k === k) || WORKERS.find(w => w.k === k) || {}).el;
+  if (!el) { detail.style.left = ''; return; }
+  const W = win.getBoundingClientRect(), q = el.getBoundingClientRect(), hit = r => q.width && !(q.right < r.left - 8 || q.left > r.right + 8 || q.bottom < r.top || q.top > r.bottom);
+  if (keep && !hit(detail.getBoundingClientRect())) return;
+  if (keep) { detail.classList.add('glide'); clearTimeout(placeDetail.t); placeDetail.t = setTimeout(() => detail.classList.remove('glide'), 500); }
+  detail.style.left = '';
+  const r = detail.getBoundingClientRect();
+  if (!hit(r)) return;
+  const w = detail.offsetWidth, right = q.right - W.left + 16, left = q.left - W.left - 16 - w;
+  if (right + w <= W.width - 18) detail.style.left = right + 'px';
+  else if (left >= 18) detail.style.left = left + 'px';
 }
 function unpin() { pinnedK = null; setFocus(null); }
 // A TAP ON A PART OF HIM PLAYS ITS MOVE (operator, 2026-09-27: "click burn, liq, DeFi, Giggle on the right and no
@@ -944,13 +963,15 @@ function clickMove(k) {
 function bindFocus(el, k) {
   el.classList.add('hot');
   el.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse' && !pinnedK && !gameRuns()) { setFocus(k); hoverMove(k); } });
-  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hoverMove(null); if (e.pointerType === 'mouse' && !pinnedK) setFocus(null); });
+  /* onto the board itself it stays open (A-Z 24.11.: where the board lay on the name, leaving the name for the board closed it,
+     the name was free again and opened it - it flickered 8 times in 2.4 s); leaving the board for the scene closes it (pointermove) */
+  el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hoverMove(null); if (e.pointerType === 'mouse' && !pinnedK && !(e.relatedTarget && detail.contains(e.relatedTarget))) setFocus(null); });
   el.addEventListener('click', e => { e.stopPropagation(); if (gameRuns()) return; pinnedK = pinnedK === k ? null : k; setFocus(pinnedK); if (pinnedK) clickMove(k); });
 }
 for (const d of DEST) bindFocus(d.el, d.k);
 for (const w of WORKERS) bindFocus(w.el, w.k);
 bindFocus(coreLab, 'core'); bindFocus(srcLab, 'src');
-setInterval(() => { if (focusK && detail.classList.contains('on')) paintDetail(focusK); }, 2000);
+setInterval(() => { if (focusK && detail.classList.contains('on')) { paintDetail(focusK); placeDetail(focusK, true); } }, 2000);
 
 // ================= phone: four views instead of one crowded one =================
 // BRAIN is the scene. MONEY and BOTS put every figure the scene carries into a readable list

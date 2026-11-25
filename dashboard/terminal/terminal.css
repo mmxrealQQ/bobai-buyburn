@@ -1604,3 +1604,5 @@
    its 8.5 px stations (operator 26.9.: smaller, so BOBAI can be larger); the bots' depth dimming behind the brain stays. */
 #bt .bt-win:not(.portrait) .dest .pc,#bt .bt-win:not(.portrait) .core .n,#bt .bt-win:not(.portrait) .src .n,#bt .bt-win:not(.portrait) .wk b,#bt .bt-win:not(.portrait) .wk i,#bt .bt-win:not(.portrait) .mdc,#bt .bt-win:not(.portrait) .scn,#bt .bt-win:not(.portrait) .term .hd,#bt .bt-win:not(.portrait) .tl .tlw button{font-size:max(10px,.625rem)}
 #bt .bt-win:not(.portrait) .ttl small,#bt .bt-win:not(.portrait) .wk i{color:#a3a3ba}
+/* the board steps aside when a circling bot's name goes under it (A-Z 24.11., terminal.js placeDetail keep): it glides */
+#bt .detail.glide{transition:opacity .35s,transform .35s,left .35s}

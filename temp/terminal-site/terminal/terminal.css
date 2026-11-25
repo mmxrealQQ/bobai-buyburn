@@ -420,6 +420,8 @@
 #bt .moment.story .bar,#bt .moment.story .card,#bt .moment.story .meter{display:none!important}
 #bt .story-on .fig{opacity:.3!important;transition:opacity .6s}
 #bt .fig{transition:opacity .6s}
+/* C38 (A-Z 24.11.): the phone still stood by the page's inline script glides, never jumps, into the place layout() measures */
+#bt .fig.pre{transition:opacity .6s,left .45s,top .45s,width .45s,height .45s}
 #bt .portrait .moment.story .mc{top:30%}
 /* phone: the scene's words sit on glass above the bar, below him — never over his face */
 #bt .portrait .moment .mc{top:auto;bottom:calc(178px + 64px);width:calc(100% - 24px);padding:12px 14px 14px;border-radius:16px;

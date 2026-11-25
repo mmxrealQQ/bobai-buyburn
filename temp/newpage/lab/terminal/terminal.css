@@ -420,6 +420,8 @@
 #bt .moment.story .bar,#bt .moment.story .card,#bt .moment.story .meter{display:none!important}
 #bt .story-on .fig{opacity:.3!important;transition:opacity .6s}
 #bt .fig{transition:opacity .6s}
+/* C38 (A-Z 24.11.): the phone still stood by the page's inline script glides, never jumps, into the place layout() measures */
+#bt .fig.pre{transition:opacity .6s,left .45s,top .45s,width .45s,height .45s}
 #bt .portrait .moment.story .mc{top:30%}
 /* phone: the scene's words sit on glass above the bar, below him — never over his face */
 #bt .portrait .moment .mc{top:auto;bottom:calc(178px + 64px);width:calc(100% - 24px);padding:12px 14px 14px;border-radius:16px;
@@ -711,13 +713,14 @@
 #bt .scn-b small{font:600 9.5px var(--mono);color:var(--muted);white-space:nowrap}
 #bt .in-moment .scnl{display:none}
 /* phone: a square button under the share button, the list across the scene */
-#bt .portrait .scn{position:absolute;right:12px;top:58px;height:32px;padding:0 9px;margin:0;font-size:.52rem;letter-spacing:.1em}
+/* MOMENTS on a phone (operator, 23.11.: "MOMENTS beside, between BOBAI BRAIN TERMINAL and the arrow"): in the title row, before the arrow */
+#bt .portrait .scn{position:static;flex:none;margin:0 0 0 auto;height:32px;padding:0 9px;font-size:.52rem;letter-spacing:.1em}
 #bt .portrait .scnl{left:8px;right:8px;top:100px;width:auto;max-height:calc(100% - 100px - 190px)}
 #bt .portrait .scn-h span{display:none}
 #bt .portrait.cx-on .scn{visibility:hidden}
 #bt .scn,#bt .shr{white-space:nowrap}
 #bt .scn-h b{white-space:nowrap}
-#bt .portrait .hud .scn + .shr{margin-left:auto}
+#bt .portrait .hud .scn + .shr{margin-left:0}
 /* THE LABELS NAME, THE PAGE COUNTS (operator, 2026-09-27: "take the white numbers out — the page shows them cleanly,
    and the terminal gets more room and a nicer view"): each destination keeps its name and its share of the tax;
    its figures are one tap away on its board and in the windows around the terminal. */
@@ -816,7 +819,10 @@
 #bt .portrait .say.top{z-index:6}
 /* the chip lives inside the title row, which hides while he speaks: the row goes invisible, the chip alone stays at half */
 #bt .portrait.talking .ttl{opacity:1;visibility:hidden}
-#bt .portrait.talking .ttl .mdc{visibility:visible} /* above the HUD (z 5): the dimmed chip and MOMENTS lie under his line, never over it */
+/* 23.11. (operator: "nothing is set in stone"): the half-seen chip peeked out from under the edge of his line on a tablet — on a stacked screen it steps out while he speaks, the title row is his */
+#bt .portrait.talking .ttl .mdc{visibility:hidden}
+/* the ROT and WALL switches under the LIVE pill went on showing through a long line's edge: they step out with LIVE while he speaks */
+#bt .portrait.talking .hw-sw,#bt .portrait.talking .bt-wall{opacity:0;pointer-events:none;transition:opacity .25s ease}
 #bt .portrait .scn{transition:opacity .4s ease .3s} /* a scene of the chain has the stage: its title runs where the chip sits (2026-09-30) */
 @media (prefers-reduced-motion:reduce){#bt .mdc .mi,#bt .mdc.turn{animation:none!important}}
 /* loud hours glow and bounce quicker, quiet ones slow down and dim a little */

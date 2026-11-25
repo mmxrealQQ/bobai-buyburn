@@ -556,6 +556,9 @@ function applyPhase() {
 
 // ================= layout =================
 const fig = $('fig');
+// C38 (A-Z 24.11.): on a phone the page's own inline script stands BOBAI's still in his place before this module arrives
+// (class "pre": the terminal was black for 5-8 s); he then stays visible, the intro does not fade him out and in again
+const FIG_PRE = fig.classList.contains('pre');
 // TELL ME A JOKE (operator, 2026-09-29: "a nice button under BOBAI, below the yellow shadow: click it and he tells a
 // joke and laughs — one of the two videos"). It stands on its own in the window (the figure layer lets clicks through
 // and fades while a clip plays) and follows his feet in placeLabels(). The click is handled by jokeTap().
@@ -6155,7 +6158,7 @@ function frame(now) {
   cam.look.x += (cam.push.x * 0.6 - cam.look.x) * 0.025; cam.look.y += (cam.push.y * 0.6 - cam.look.y) * 0.025;
   camera.lookAt(cam.look.x, cam.look.y, 0);
   // figure
-  const fk = clamp((introK - 0.45) / 0.35, 0, 1);
+  const fk = FIG_PRE ? 1 : clamp((introK - 0.45) / 0.35, 0, 1);
   const lean = smx * 3;
   fig.style.opacity = REDUCED ? 1 : fk;
   // a hop when a move lands: up and back down, stretched in the air, squashed on landing
@@ -6220,6 +6223,7 @@ export async function open() {
   bt.classList.add('on'); bt.classList.toggle('calm', REDUCED); if (!EMBED) document.body.style.overflow = 'hidden';
   await new Promise(r => requestAnimationFrame(r));
   loadExtraPoses(); faceInit(); vidInit();
+  if (FIG_PRE) setTimeout(() => fig.classList.remove('pre'), 3000); /* C38: the still's glide into the measured place (.fig.pre) is only for the start */
   // no hint box any more (operator, 2026-09-26): BOBAI's own greeting bubble already says to tap him
   LIFE.next = performance.now() + 15000; // let the intro, the greeting and the first numbers land first
   // the greeting waits for the terminal to be live (2026-09-30: on a slow phone it was not yet at 3.6 s, the one try was

@@ -326,6 +326,9 @@
     // Brain Pop out of the window's icons (operator, 2026-11-22: "take Brain Pop out — eight stay on 04"), the Brainbook in;
     // its card stays on the page below
     const cards = $$('#w04 .ec').filter((c) => !c.closest('.ec-every') && !c.hasAttribute('data-pop')); if (!cards.length) return;
+    // the lasting apps first, a season (data-until: Xmas) after them (2026-11-23, operator: "the wall belongs on 04 too"): the
+    // card has room for eight; the Agent Wall was the ninth and never showed, while a season app took a place
+    cards.sort((x, y) => (x.hasAttribute('data-until') ? 1 : 0) - (y.hasAttribute('data-until') ? 1 : 0));
     // with their names (2026-09-28): eight bare 26 px icons left the biggest card half empty and said nothing
     const SHORT = { 'NFT Buy Drops': 'NFT Drops', 'Pool Scanner': 'Scanner', 'Agent Services': 'Services', 'Burn & Add Liq': 'Burn & Liq', "Worldcup '26": 'Worldcup' };
     const nm = (c) => { const t = (c.querySelector('h3')?.textContent || '').trim(); const d = document.createElement('i'); d.textContent = SHORT[t] || t; return d.innerHTML; };

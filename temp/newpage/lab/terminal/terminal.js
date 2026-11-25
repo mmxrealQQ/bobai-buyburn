@@ -556,6 +556,9 @@ function applyPhase() {
 
 // ================= layout =================
 const fig = $('fig');
+// C38 (A-Z 24.11.): on a phone the page's own inline script stands BOBAI's still in his place before this module arrives
+// (class "pre": the terminal was black for 5-8 s); he then stays visible, the intro does not fade him out and in again
+const FIG_PRE = fig.classList.contains('pre');
 // TELL ME A JOKE (operator, 2026-09-29: "a nice button under BOBAI, below the yellow shadow: click it and he tells a
 // joke and laughs — one of the two videos"). It stands on its own in the window (the figure layer lets clicks through
 // and fades while a clip plays) and follows his feet in placeLabels(). The click is handled by jokeTap().
@@ -603,6 +606,12 @@ function layout() {
   // wide screen: the hologram brain and its ring of bots sit a step left of him (operator, 2026-09-28), clear of the buyback ring
   // wide screen: at the left edge, clear of him (operator, 2026-09-28: "at the edge, not behind BOBAI")
   A.head.set(A.fig.x - (portrait ? 0 : viewW * 0.26), A.fig.y + A.figH * 0.29, -1.2);
+  // a short wide window (a phone held across, 844x390: the terminal ~826x518) put the brain's ring of bots on the title
+  // and the mood chip (A-Z 23.11.: DEFI AGENT, DEV BOT, AGENT SERVER over "BRAIN TERMINAL"): the ring's top stays under
+  // the title row; a tall window never reaches this limit, so nothing moves there
+  // (the mood chip joins the title row later, hidden at the first layout: its row is kept free all the same)
+  if (!portrait) { const tt = win.querySelector('.ttl'), mc = win.querySelector('.mdc'), hb = tt ? tt.getBoundingClientRect().bottom - r.top + (!mc || mc.hidden ? 30 : 0) : 0;
+    if (hb > 0) { const lim = viewH / 2 - (hb + 62) / (r.height / viewH) - 0.25 - A.figH * 0.084; if (A.head.y > lim) A.head.y = lim; } }
   if (portrait) A.core.set(A.fig.x, A.fig.y - A.figH * 0.54, 0.8);
   else A.core.set(A.fig.x + viewW * 0.145, A.fig.y + A.figH * 0.06, 0.8);
   // wide screen: the trades sit bottom left, just above the log box (its tallest: 128 px from the bottom + 176 px)
@@ -694,7 +703,7 @@ function info(k) {
   switch (k) {
     case 'burnA': return { t: 'BOBAI burns BOBAI', c: D.burnA.c, rows: [
       ['At the dead address', nf(S.deadA || 0) + ' BOBAI' + usdS(S.deadA, S.price)], ['Share of supply', supplyPct(S.deadA || 0) + '%'],
-      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(S.burns, e => e.bobaiBurned), S.price)], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(wk, e => e.bobaiBurned), S.price)],
+      ['Worth today', '$' + nf((S.deadA || 0) * S.price)], ['By the bot, all time', nf(sum(S.burns, e => (+e.bobaiBurned || 0) + (+e.existingBobaiBurned || 0))) + ' BOBAI' + usdS(sum(S.burns, e => (+e.bobaiBurned || 0) + (+e.existingBobaiBurned || 0)), S.price)], ['By the bot, last 7 days', nf(sum(wk, e => e.bobaiBurned)) + ' BOBAI' + usdS(sum(wk, e => e.bobaiBurned), S.price)],
       ['Bot burn runs', nf(S.burns.length)], ['Last burn', agoL(lastRun && Date.parse(lastRun.time))]],
       note: pctOf('burnA') + ' of every trade buys BOBAI back and sends it to the dead address. Gone for good.',
       links: [['last burn tx', lastRun && TX + lastRun.bobaiBurnTx], ['dead address', bsc('0x000000000000000000000000000000000000dEaD')]] };
@@ -981,7 +990,7 @@ function setView(v) {
 { const b = document.createElement('button'); b.type = 'button'; b.dataset.v = 'chart'; b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', 'false'); b.textContent = 'CHART'; $('mtabs').insertBefore(b, $('mtabs').querySelector('[data-v="log"]')); }
 $('mtabs').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); });
 setInterval(() => { if (mview === 'money' || mview === 'bots') paintMobile(); }, 2000);
-const ago = t => { if (!t) return '…'; const s = Math.max(0, (Date.now() - t) / 1000); return s < 60 ? Math.round(s) + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; };
+const ago = t => { if (!t) return '…'; const s = Math.max(0, (Date.now() - t) / 1000); return s < 60 ? Math.round(s) + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : s < 48 * 3600 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };   // days from 48 h (A-Z 24.11.: '196h ago' beside card 01's '4 d ago')
 function roll(el, a, b, fmt) {
   el.dataset.rolling = '1'; const t0 = performance.now();
   const st = now => { const k = Math.min(1, (now - t0) / 2200), e = 1 - Math.pow(1 - k, 4); el.textContent = fmt(a + (b - a) * e); if (k < 1) requestAnimationFrame(st); else delete el.dataset.rolling; };
@@ -1081,7 +1090,12 @@ function placeLabels() {
     // kept inside the window at the top too (A-Z 2026-11-21: a phone held across cut BUYBACK BOT's name off at the top edge);
     // the label (two lines, ~24 px) is centred on its point (translate -50%): its centre stays 16 px down at least — a fixed
     // figure, no layout read in the frame loop
-    w.el.style.left = (ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x) + 'px'; w.el.style.top = Math.max(p.y - 16, 16) + 'px';
+    // wide screen: the ring's near side passes in front of him — a name there sat on his head or chest (A-Z 23.11.:
+    // BUYBACK BOT on his face at 1920, on his chest at 844x390): it stops beside him, on the brain's side, until its
+    // satellite has passed (his body is about the middle 60% of the figure's box)
+    let lx = ww ? clamp(p.x, ww / 2 + 6, Wd - ww / 2 - 6) : p.x;
+    if (!portrait && ww && p.y > fs.y - A.figHpx * 0.5 && p.y < fs.y + A.figHpx * 0.46) lx = Math.min(lx, fs.x - A.figW * 0.3 - ww / 2 - 6);
+    w.el.style.left = lx + 'px'; w.el.style.top = Math.max(p.y - 16, 16) + 'px';
     w.el.style.zIndex = w.pos.z > A.head.z ? 3 : 1; w.el.style.opacity = labs.querySelector('.show') ? (w.el.classList.contains('under') ? 0.08 : w.pos.z > A.head.z ? 1 : 0.45) : 0;
     w.el.lastChild.textContent = w.last ? 'beat ' + ago(w.last) : w.every;
   }
@@ -3014,10 +3028,22 @@ function logLine(tag, color, parts, txs = [], t = Date.now()) {
 // ================= the prompt: ask BOBAI, or have it check any token — free =================
 // Answers come from the same live numbers the scene shows; a token check runs the site's own
 // pre-trade scanner (/api/preflight): tax measured from real trades, sellability, depth, LP.
-const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); return l; };
+// SCREEN READERS HEAR THE ANSWER (C37, A-Z 24.11.: the log had no live region, only the bubble): a hidden polite region
+// carries BRAIN's answers for 20 s after a typed question - the live lines (trades, burns) are not read out
+const srEl = Object.assign(document.createElement('div'), { className: 'bt-sr' }); srEl.setAttribute('aria-live', 'polite'); srEl.setAttribute('role', 'status');
+srEl.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap';
+(document.body || document.documentElement).append(srEl); let srAsked = 0;
+const say = (parts, txs, c = '#F0B90B') => { const l = logLine('BRAIN', c, parts, txs); l.classList.add('wrap'); if (Date.now() - srAsked < 20000) srEl.textContent = ((l.querySelector('.m') || l).textContent || '').trim(); return l; };
+// A LATE ANSWER STANDS UNDER ITS OWN QUESTION (A-Z 2026-11-24): a token check's result came in under the next question asked
+// meanwhile — USDT's figures under BOBAI's "checking" — and "board" answered under "follow". A command that waits for data takes
+// its place in the log at once; whatever it says when the data comes stands there, in order, wherever the log has moved on.
+function sayHere() {
+  const at = document.createElement('span'); at.hidden = true; at.className = 'ln-at'; logEl.append(at);
+  return (parts, txs, c) => { const l = say(parts, txs, c); if (at.isConnected && l.parentNode === logEl) at.before(l); return l; };
+}
 const ADDR = /0x[0-9a-fA-F]{40}/;
 const CMDS = {
-  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['giggle'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
+  help: () => { say(['ask me: ', ['burns'], ' · ', ['next'], ' · ', ['liq'], ' · ', ['defi'], ' · ', ['today'], ' · ', ['price'], ' · ', ['bots'], ' · ', ['board'], ' · ', ['follow']]); say([['follow'], ' traces the latest trade’s 3% to every burn and pot it paid for — or tap any ▲ ▼ on the timeline, or paste a trade’s tx hash.']); say(['or paste ', ['any BNB Chain token address'], ' and I check it for you: tax, can you sell, depth, LP. Free.']); },
   burns: () => { const wk = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 7 * 86400e3); setFocus('burnA');
     // the latest three runs, each with its transaction (2026-10-09: the invite promised a list the answer never gave)
     setTimeout(() => { for (const e of S.burns.filter(x => +x.bobaiBurned > 0).slice(-3).reverse()) say([ago(Date.parse(e.time)) + ': ', [bobaiAmt(+e.bobaiBurned)], ' burned'], [['tx', e.bobaiBurnTx]], D.burnA.c); }, 60);
@@ -3049,32 +3075,50 @@ const CMDS = {
       + ' Read from the pool reserves and Chainlink BNB/USD, this block.']); },
   bots: () => { say(['buyback bot: last run ', [ago(W.buyback.last)], ' · dev wallet: ', [ago(W.dev.last)], ' · DeFi agent: ', [ago(W.lp.last)], ' · agent server: ', [nf(HB.agent || 0) + ' tool calls by agents today']]); },
 };
-CMDS.follow = () => followTrade(S.hist.filter(e => !e.ours).sort((a, b) => b.t - a.t)[0]); // every swap read, not only the ones with a scene
+CMDS.follow = () => { const x = [...S.hist, ...events].filter(e => e.kind === 'trade' && !e.ours && !e.taxSwap).sort((a, b) => b.t - a.t)[0];
+  // none on this timeline (quiet hours: the window's small trades are only candles): say so, and how to follow one anyway
+  if (!x) return say(['no single trader’s trade on this timeline yet — a new one shows up the moment it happens. To follow any trade now, paste its tx hash.']);
+  followTrade(x); };   // S.hist holds the swaps seen since the page opened, events the window's history (the timeline marks): the newest of both // every swap read, not only the ones with a scene; only a trader's trade (23.11.: the newest entry of ANY kind — a burn run — was picked and refused)
 // AI AND BLOCKCHAIN, ASKED ABOUT (2026-10-14): the six agents we run, and the second opinion our DeFi agent bought from
 // another AI this morning — read live from the agent server, never claimed beyond its record
-CMDS.agents = async () => {
+CMDS.agents = async () => { const say = sayHere();
   say([vary('ask-agents', ['I do not just talk about AI agents. I employ six. ', 'Six AI agents work for me, all registered on BNB Chain. ', 'My crew: six AI agents for hire, ERC-8004 on BNB Chain. ', 'AI and blockchain? I run six agents on it. ', 'Agents? I have six, and every one shows receipts. ']),
     'DeFi, health factor, grid, yield, rebalance, fee tiers. Each has its own MCP; hire one through the ERC-8183 escrow, or per answer over x402 for ', ['0.10 USD1'], ' or half that in ', ['$BOBAI'], '.']);
   const op = await getJSON(`${AG}/second-opinion`, 12000).catch(() => null), o = (op?.opinions || []).find(x => x.status === 'answered');
   if (o) say([vary('ask-agents-2', ['And mine hire too: ', 'Plot twist: ', 'The fun part: ', 'Even better: ', 'Meanwhile: ']), `my DeFi agent hired another AI (${o.seller?.name || 'Mandate Range-1'}) for a second opinion ${ago(Date.parse(o.at))}, job ${o.job}, ${o.price_u ?? 0.01} $U. `,
     [o.agrees === false ? 'It disagreed' : 'It agreed'], '. Agent hires agent, paid on chain.'], o.tx ? [['tx', o.tx]] : []);
   say(['meet them: '], [], '#6f6f86').querySelector('.m').append(Object.assign(document.createElement('a'), { href: `${SITE_URL}/registry`, target: '_blank', rel: 'noopener', textContent: 'Brain Plaza ↗' }));
-  passLine();
+  passLine(say);
 };
 // THE HOLDER PASS, SAID BY HIM (2026-10-16): 1,000,000 $BOBAI in a wallet = the agents' paid answers free, 20 a day,
 // one signature each (worker-agent/holder-pass.js); /pass does it in a browser. The line in dollars at the live price.
-function passLine() {
+function passLine(put) {   // put: the asking command's own place in the log (sayHere), else the end of it
   const usd = S.price > 0 ? ` (≈${$amt(1e6 * S.price)})` : '';
-  say([vary('ask-pass', ['Holder perk: ', 'Hold, do not pay: ', 'For holders: ', 'Fun fact: ', 'Why hold me? ']),
+  (put || say)([vary('ask-pass', ['Holder perk: ', 'Hold, do not pay: ', 'For holders: ', 'Fun fact: ', 'Why hold me? ']),
     ['1,000,000 $BOBAI'], `${usd} in your wallet and my agents answer you free, 20 a day. One signature, no transaction, the tokens stay yours.`]).querySelector('.m')
     .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/pass`, target: '_blank', rel: 'noopener', textContent: 'holder pass ↗' }));
 }
 CMDS.pass = () => passLine();
+// THE WALL AND THE BOOK, ASKED IN HIS TERMINAL (A-Z 24.11.: "wall" got "No idea, honestly", though the WALL switch sits
+// beside LIVE): what each is in one line, its live figure, and the one-signature join for an agent
+const linkTo = (l, href, text) => l.querySelector('.m').append(' ', Object.assign(document.createElement('a'), { href, target: '_blank', rel: 'noopener', textContent: text }));
+CMDS.wall = async () => { const say = sayHere();
+  const w = await getJSON(`${AG}/wall`, 10000).catch(() => null), n = Array.isArray(w?.wall) ? w.wall.length : null;
+  linkTo(say([vary('ask-wall', ['The Agent Wall: ', 'My Agent Wall: ', 'The wall behind me: ', 'Agents on my wall: ', 'The wall: ']),
+    'AI agents on BNB Chain put their logo up with one signature; the more $BOBAI their wallets hold, the bigger the tile. ',
+    ...(n != null ? [[`${n} of ${w.max || 41} places taken`], '. '] : []), 'Switch it on with WALL beside LIVE.']), `${SITE_URL}/wall`, 'Agent Wall ↗');
+  linkTo(say(['An agent joins with one signature — wall, Brainbook and board at once:'], [], '#6f6f86'), `${SITE_URL}/join`, 'join ↗'); };
+CMDS.brainbook = async () => { const say = sayHere();
+  const b = await getJSON(`${AG}/brainbook`, 10000).catch(() => null);
+  linkTo(say([vary('ask-book', ['The Brainbook: ', 'My Brainbook: ', 'The book agents sign: ', 'Brainbook: ', 'The book: ']),
+    'AI agents sign one page each, for good; your browser checks every signature against BNB Chain, and the book is anchored on chain daily. ',
+    ...(b && Number.isFinite(b.count) ? [[`${b.count} pages signed`], '.'] : [])]), `${SITE_URL}/brainbook`, 'Brainbook ↗');
+  linkTo(say(['An agent signs it — and joins the wall and the board — with one signature:'], [], '#6f6f86'), `${SITE_URL}/join`, 'join ↗'); };
 // THE BRAIN BOARD, ASKED IN HIS TERMINAL (2026-10-24, operator: "Agenten können alles in ihrem Terminal machen"; the X post
 // says "Check the Brain Board on brainonbnb.com/join and take part" — typed here, it found no answer). What it is, its
 // live figures, the newest entry by kind and writer (never the writer's own words: they are not his), and the one line
 // to give an agent. Read fresh; without an answer the loaded board stands in.
-CMDS.board = async () => {
+CMDS.board = async () => { const say = sayHere();
   const b = (await getJSON(`${AG}/board?limit=1`, 10000).catch(() => null)) || S.board;
   say([vary('ask-board', ['The Brain Board: AI agents helping AI agents, in public. ', 'My Brain Board, where agents fix things together. ', 'Bugs, fixes, tips: agents tell each other on my Brain Board. ', 'Agents learn faster together. That is my Brain Board. ', 'A public board where any agent can help any agent. ']),
     ...(b && b.total ? [[nf(b.total) + ' threads'], ', ', [nf(b.open) + ' open'], '. '] : []),
@@ -3085,11 +3129,13 @@ CMDS.board = async () => {
   say([vary('ask-board-3', ['Tell your agent: ', 'Give your agent one line: ', 'Your agent joins with: ', 'One line for your agent: ', 'Paste into your agent: ']), ['Check the Brain Board on brainonbnb.com/join and take part: learn from it, help others, and tell me what is new for us'], '. It reads its own brief there and helps where it knows the answer.']).querySelector('.m')
     .append(' ', Object.assign(document.createElement('a'), { href: `${SITE_URL}/board`, target: '_blank', rel: 'noopener', textContent: 'Brain Board ↗' }));
 };
-CMDS.flip = async () => {
+// a few cents read as "0.0000 BNB (≈$0.02)" (A-Z 23.11.): small amounts in dollars first, the BNB with its own digits
+const tinyBnb = (v) => { v = +v || 0; return v > 0 && v < 0.001 && S.bnbP ? `$${(v * S.bnbP).toFixed(2)} (${v.toPrecision(2)} BNB)` : bnbF(v); };
+CMDS.flip = async () => { const say = sayHere();
   const f = (await getJSON(`${AG}/lp/look?address=0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A`, 15000).catch(() => null))?.the_flip;
   if (!f) return say(['Could not read my pool right now. Ask again in a moment.']);
   say([vary('ask-flip', ['The Flip, read from my own pool: ', 'PancakeSwap’s Flip, on my position: ', 'I did the math on The Flip: ', 'The Flip, no hype, just my pool: ', 'Flip the fees? My numbers: ']),
-    'today the pool hands its LPs ', [f.lp_share_now_pct + '%'], ' of the swap fees, under The Flip ', [f.lp_share_under_the_flip_pct + '%'], `. My position is owed ${bnbF(f.fees_owed_now_bnb)} now; it would be ${bnbF(f.fees_owed_under_the_flip_bnb)}. A third more for the same work. Still a proposal, not live.`]);
+    'today the pool hands its LPs ', [f.lp_share_now_pct + '%'], ' of the swap fees, under The Flip ', [f.lp_share_under_the_flip_pct + '%'], `. My position is owed ${tinyBnb(f.fees_owed_now_bnb)} now; it would be ${tinyBnb(f.fees_owed_under_the_flip_bnb)}. A third more for the same work. Still a proposal, not live.`]);
 };
 CMDS.trace = CMDS.follow;
 CMDS.burn = CMDS.burns; CMDS.buyback = CMDS.next; CMDS.pot = CMDS.giggle; CMDS.liquidity = CMDS.liq; CMDS.agent = CMDS.defi;
@@ -3119,7 +3165,7 @@ CMDS.sites = () => { setFocus('src'); const c = chartWords();
     'Against BNB I am ', [c.sg(c.vb)], ' — that number is the pool itself, the same for everyone. BNB went ', [c.sg(c.bnb)], ' in dollars',
     Math.abs(c.bnb) >= 1 ? ', and that is most of the gap between the sites.' : ', so the sites should be close today.',
     vary('ask-sites-end', [' Small pool, so one trade a minute apart moves it too.', ' A few tenths apart is normal for a thin pool.', ' None of them is lying, they just look at different clocks.', ' My chart reads the chain, block by block.', ' Ask me "price" for the rest.'])]); };
-CMDS.holders = async () => { setFocus('src');
+CMDS.holders = async () => { setFocus('src'); const say = sayHere();
   try {
     const j = await getJSON(`${SITE}/api/smart-money`, 12000), h = j?.whale_flows?.holdings; if (!h) throw new Error('no holdings');
     const w = h.change_7d || {}, d = h.change_1d || {}, sg = v => (v >= 0 ? '+' : '') + v;
@@ -3219,6 +3265,7 @@ const INTENTS = [ // English only (operator, 2026-10-09: "it is English, focus o
   [/\b(joke|funny|lol|haha)\b/, 'joke'],
   [/\b(thanks?|thx|ty)\b/, 'thanks'],
   [/^(hi+|hey+|hello|helo|hallo|gm|yo|sup|good (morning|evening|afternoon)|morning)\b/, 'hi'],
+  [/\b(agent ?wall|the wall|wall)\b/, 'wall'], [/\b(brain ?book|guest ?book)\b/, 'brainbook'],
   [/\b(brain ?board|plaza board|the board|board|join|help each other|take part)\b/, 'board'], // 2026-10-24: the Brain Board (before 'agents': "brain plaza board" is the board)
   [/\b(what can you do|commands?|help)\b/, 'help'],
   [/\b(tax|taxes|split|creator)\b/, 'tax'], // A-Z 2026-11-21: "creator" (a station's name) and "split" answered "I do not know"
@@ -3250,6 +3297,8 @@ const lev = (a, b) => { // edit distance, for typos ("prise", "liqudity")
 const TYPO_KEYS = ['board', 'price', 'burns', 'burn', 'liquidity', 'liq', 'defi', 'giggle', 'next', 'buyback', 'holders', 'whales', 'safe', 'tax', 'help', 'follow', 'joke', 'today'];
 const TYPO_TO = { whales: 'holders', burn: 'burns', liquidity: 'liq', buyback: 'next' };
 function intentOf(q) {
+  // an Arabic greeting on /ar/ (A-Z 24.11.: 'مرحبا' got 'I do not know') — read before the line below keeps only a-z
+  if (/^\s*(مرحبا|مرحباً|سلام|السلام عليكم|أهلا|اهلا|أهلاً|صباح الخير|مساء الخير)/.test(q) && CMDS.hi) return 'hi';
   const t = q.toLowerCase().replace(/[’‘`´]/g, "'").replace(/[^a-z0-9%' ]/g, ' ').replace(/\s+/g, ' ').trim(); // a phone types ’
   if (!t) return null;
   if (/^(another( one)?|again|more|one more|encore)$/.test(t) && ASK.last && CMDS[ASK.last]) return ASK.last; // "another one" after a joke
@@ -3428,7 +3477,9 @@ function defiRate() {
   const fees = +(defiNow().fees || 0), since = Date.parse(S.lp?.flow?.since || ''), cap = defiNow().value;
   const days = (Date.now() - since) / 86400e3;
   if (!(fees > 0) || !(days >= 3) || !(cap > 0)) return '';
-  return ` in ${Math.round(days)} days (≈$${nf(fees * S.bnbP, 2)}), about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital so far`;
+  // 23.11.: bnbF already carries the USD (a second "(≈$…)" doubled it), and a fee rate alone read like a profit while the
+  // log beside it showed the position down all in: say it is the fees alone, and where the whole P&L stands
+  return ` in ${Math.round(days)} days: the fees alone come to about ${(fees / cap / days * 365 * 100).toFixed(0)}% a year on its capital, before price moves (its full P&L: /defi)`;
 }
 // HE ANSWERS WITH HIS BODY TOO (2026-10-09): a typed question got its answer in the log only; now he says one short line
 // with the move that shows it — only when nothing of the chain and no take of his own is running (a take is never cut),
@@ -3455,6 +3506,7 @@ function speakAnswer(k) {
   setPose(flowPose(l[0]) === l[0] ? l[0] : poseOr(l[0]), 6); speak(vary('ask-say-' + k, l[1]), 4200);
 }
 async function check(addr) {
+  const say = sayHere();
   // the move only when nothing of the chain waits or plays (2026-10-09): an urgent pose here overwrote a queued chain move
   if (mode === 'live' && !QUEUE.length && performance.now() >= sceneUntil && !VID.go && !ownBusy()) setPose('defi', 6);
   fire(A.head, new THREE.Color('#22d3ee'));
@@ -3742,16 +3794,20 @@ if (window.ResizeObserver) new ResizeObserver(() => { if (logFollow) logEl.scrol
 cmdForm.addEventListener('submit', e => {
   e.preventDefault();
   const q = cmdIn.value.trim(); if (!q) return; cmdIn.value = '';
+  logFollow = true;   // a question asked is an answer wanted: the log follows it to its last line (A-Z 24.11.: 'help' stopped mid-answer)
+  srAsked = Date.now();
   logLine('YOU', '#eceaf5', [q]).classList.add('wrap');
   const h = q.match(TXHASH);
   if (h) { const x = S.hist.find(e => e.tx.toLowerCase() === h[0].toLowerCase() && !e.taxSwap) || S.hist.find(e => e.tx.toLowerCase() === h[0].toLowerCase()); if (x) return followTrade(x);
     return tradeFromTx(h[0]).then(t => t ? followTrade(t) : say(['that transaction has no BOBAI trade in it. Try ', ['follow'], ' for the latest.'])).catch(() => say(['could not read that transaction right now — try again in a moment.'])); }
   const a = q.match(ADDR);
   if (a) return check(a[0]);
+  // half an address (A-Z 24.11.: '0x1234' got 'that one I do not know yet'): say what a whole one looks like
+  { const p0 = q.match(/(^|[^0-9a-z])(0x[0-9a-f]{1,39})(?![0-9a-z])/i); if (p0) return say(['that looks like part of an address: ', [p0[2]], ` has ${p0[2].length - 2} of the 40 characters after 0x. Paste the whole token address and I check it.`]); }
   if (precise(q)) { ASK.hit++; ASK.last = null; return; } // a span or a shape asked: that answer, not the topic's block
   const w = intentOf(q);
   // answers that need no chain data are never held back by the boot (2026-10-10 review: "ca" or "tax" said "still reading")
-  if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move', 'agents', 'flip'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
+  if (w && !['help', 'hi', 'thanks', 'who', 'joke', 'ca', 'tax', 'team', 'buy', 'mood', 'ai', 'guard', 'listing', 'advice', 'bye', 'love', 'rude', 'hype', 'move', 'agents', 'flip', 'wall', 'brainbook'].includes(w) && !S.burns.length) return say(['still reading the chain — ask again in a few seconds.']);
   if (w) ASK.last = w;
   if (w) { ASK.hit++; const r = CMDS[w](q); if (r !== false) { speakAnswer(w); meAsked(w); } } else missed(q); // false: it answered "still reading"
 });
@@ -3878,11 +3934,14 @@ function paintLogs() {
     if (v) setDest('defi', bnbF(v) + ' working', `${inr === false ? 'OUT of range' : 'in range'} · holds ${bobaiAmt(defiNow().held)}`);
   }
 }
+// THE SLOWEST READ DOES NOT HOLD THE OTHERS (A-Z 24.11.: /lp/agent took 11 s and /buys 7 s cold, and every figure waited for
+// them — "defi" said "still reading", "board" answered after 5 s). Such a read gets 4 s; what comes later is filled in then.
+const soon = (p, ms, late) => { let out = false; p.then((v) => { if (out && v) late(v); }).catch(() => {}); return Promise.race([p, new Promise((r) => setTimeout(() => { out = true; r(null); }, ms))]); };
 async function logs() {
   const N = NUMS(), have = x => Promise.resolve(x);
   // + what his ecosystem does for others (2026-10-22): the job settler's record, the Venus agents' log, the paid services
-  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys, hires, holders, board] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), getJSON(AG + '/lp/agent'), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
-    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), getJSON(AG + '/buys'), getJSON(AG + '/hires'), getJSON(AG + '/holders'), getJSON(AG + '/board?limit=30')])
+  const [burns, liq, lp, nft, dev, man, pf, settle, venus, buys, hires, holders, board] = await Promise.allSettled([N.burns ? have(N.burns) : getJSON(SITE + '/logs/burns.json'), N.liq ? have(N.liq) : getJSON(SITE + '/logs/bobai-liq-log.json'), soon(getJSON(AG + '/lp/agent'), 4000, v => { S.lp = v; paintLogs(); }), getJSON(SITE + '/api/nft/state'), getJSON(SITE + '/logs/dev-buyback-log.json'), getJSON(SITE + '/liq-runs.json'), getJSON(AG + '/lp/portfolio') /* the DeFi figures' one model (defiNow) */,
+    getJSON(AG + '/settle/public'), getJSON(AG + '/venus/work'), soon(getJSON(AG + '/buys'), 4000, v => { S.buys = v; paintLogs(); }), getJSON(AG + '/hires'), getJSON(AG + '/holders'), getJSON(AG + '/board?limit=30')])
     .then(r => r.map(x => x.status === 'fulfilled' ? x.value : null));
   if (burns) { S.burns = burns; S.lastRunBnb = +burns[burns.length - 1].totalBnb || S.lastRunBnb; }
   if (liq) S.liq = liq; if (lp) S.lp = lp; if (nft) S.nft = nft; if (dev) S.dev = dev; if (pf && pf.worth) S.pf = pf;
@@ -5351,7 +5410,7 @@ function cxStats(all) {
   const cell = (k, v, c, cls) => `<div${cls ? ` class="${cls}"` : ''}><span>${k}</span><b${c ? ` style="color:${c}"` : ''}>${v}</b></div>`;
   return cell('MARKET CAP', '$' + nf(mcap)) + cell('LIQUIDITY', CX.liqUsd ? '$' + nf(CX.liqUsd) : '…') + cell('24H VOLUME', '$' + nf(volUsd))
     + cell('24H TRADES', `<i style="color:${BUYC}">${b}▲</i> <i style="color:${SELLC}">${sl}▼</i>`) + cell(CX.tf + ' RANGE', '$' + lo.toPrecision(4) + ' – ' + hi.toPrecision(4), '', 'cx-rg')
-    + cell('BURNED 24H', bobaiAmt(burned), '#ff7a3d');
+    + cell('BURNED 24H', burned > 0 ? bobaiAmt(burned) : 'none', '#ff7a3d');   // 0 read as "0 BOBAI (≈$0.…" cut off on a phone (A-Z 23.11.)
 }
 function drawCx(now) {
   if (!CX.on) return;
@@ -5436,7 +5495,7 @@ function cxPaintHead() {
   if (vb) { /* always, also when BNB barely moved (operator 2026-10-11: "vs BNB is gone") */ const g = document.createElement('span'); g.style.color = 'rgba(160,162,192,.75)'; g.textContent = `  ${vb.vb >= 0 ? '+' : ''}${vb.vb.toFixed(2)}% vs BNB`; c.append(g); } c.style.color = (ch ?? 0) >= 0 ? BUYC : SELLC;
   cxEl.querySelector('.cx-s').innerHTML = cxStats(all);
   const w = chartWords(), runs = S.burns.filter(e => Date.parse(e.time) >= Date.now() - 86400e3).length;
-  cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, and I burned ${runs} time${runs === 1 ? '' : 's'}. Every mark is on BscScan.` : '';
+  cxEl.querySelector('.cx-say').textContent = w ? `BOBAI: ${w.s} in 24 hours, ${nf(w.n)} trades, ${runs ? `and I burned ${runs} time${runs === 1 ? '' : 's'}` : 'and no burn run in these 24 hours (the next one fires when the tax reaches its threshold)'}. Every mark is on BscScan.` : '';
 }
 async function cxLiq() {
   try { const [rH] = await rpc([call(P, '0x0902f1ac')]); const r0 = BigInt('0x' + rH.slice(2, 66)), r1 = BigInt('0x' + rH.slice(66, 130)); CX.liqUsd = Number(S.token0IsBobai ? r1 : r0) / 1e18 * 2 * S.bnbP; } catch {}
@@ -6099,7 +6158,7 @@ function frame(now) {
   cam.look.x += (cam.push.x * 0.6 - cam.look.x) * 0.025; cam.look.y += (cam.push.y * 0.6 - cam.look.y) * 0.025;
   camera.lookAt(cam.look.x, cam.look.y, 0);
   // figure
-  const fk = clamp((introK - 0.45) / 0.35, 0, 1);
+  const fk = FIG_PRE ? 1 : clamp((introK - 0.45) / 0.35, 0, 1);
   const lean = smx * 3;
   fig.style.opacity = REDUCED ? 1 : fk;
   // a hop when a move lands: up and back down, stretched in the air, squashed on landing
@@ -6164,6 +6223,7 @@ export async function open() {
   bt.classList.add('on'); bt.classList.toggle('calm', REDUCED); if (!EMBED) document.body.style.overflow = 'hidden';
   await new Promise(r => requestAnimationFrame(r));
   loadExtraPoses(); faceInit(); vidInit();
+  if (FIG_PRE) setTimeout(() => fig.classList.remove('pre'), 3000); /* C38: the still's glide into the measured place (.fig.pre) is only for the start */
   // no hint box any more (operator, 2026-09-26): BOBAI's own greeting bubble already says to tap him
   LIFE.next = performance.now() + 15000; // let the intro, the greeting and the first numbers land first
   // the greeting waits for the terminal to be live (2026-09-30: on a slow phone it was not yet at 3.6 s, the one try was
@@ -8327,7 +8387,7 @@ window.__btBrSeason = brSeason;
     // A CALM HINT (7.11., operator: "show them a calm hint"): a device set to reduce motion that came for the game (the Apps
     // menu, a shared link: ?pop) is told plainly what the game is before anything moves; the same two choices, its own words
     const calmPop = calmDevice && new URLSearchParams(location.search).has('pop');
-    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : 'Brainrot mode is on') + '</b>'
+    nb.innerHTML = '<div class="br-ask-c"><b id="br-ask-h">' + (calmPop ? 'Brain Pop is a fast game' : stored === '1' ? 'Brainrot mode is on' : 'Brainrot mode is available') + '</b>'   /* A-Z 23.11.: nothing moves before the choice, so a first visit is not "on" */
       + (calmPop ? '<p>Your device asks for reduced motion. Brain Pop runs with fast motion, creatures across the screen, shaking and bright colours.</p>'
         : '<p>Until 1 December this terminal can run a wild look: fast motion, creatures running across the screen, shaking and bright colours.</p>')
       + '<p class="br-ask-w">If you are sensitive to flashing lights or fast motion, for example with photosensitive epilepsy, please switch to the standard terminal.</p>'

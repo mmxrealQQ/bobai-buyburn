@@ -155,7 +155,8 @@
   const mirror = () => { for (const v of $$('[data-mirror]')) { const s = document.getElementById(v.dataset.mirror); const t = s && s.textContent.trim(); if (t && t !== '--' && v.textContent !== t) v.textContent = t; } };
   mirror(); setInterval(mirror, 2000);
   // the windows' images load quietly once the terminal has started, so a window opens complete
-  setTimeout(() => $$('.bw-win img[loading="lazy"]').forEach((i) => { i.loading = 'eager'; }), 6000);
+  // (A-Z 23.11.: not what sits in a closed <details> such as the archive, and nothing when the visitor asked to save data)
+  setTimeout(() => { if (navigator.connection && navigator.connection.saveData) return; $$('.bw-win img[loading="lazy"]').forEach((i) => { if (!i.closest('details:not([open])')) i.loading = 'eager'; }); }, 6000);
   // a reload on a layer step (or a return from another site) finds nothing open: step off it quietly
   if (layer()) history.replaceState(null, '');
   // A LINK WITH AN ANCHOR opens its window (2026-09-27): brainonbnb.com/#tokenomics, #faq, #giggle … are linked from
@@ -197,6 +198,18 @@
     // Esc: a window or the share dialog open over it close first (they take the key themselves)
     addEventListener('keydown', (e) => { if (e.key === 'Escape' && isBig() && !open && !$('#bt-shm.on')) set(false); });
   }
+})();
+
+// BRAIN.LOG SMALL (2026-11-23, operator: "on the desktop let brain.log be made smaller"): a button in its head folds the
+// log to its head and the input line (typing still works), a second click opens it; remembered. On a phone the log is a
+// tab of its own and stays whole.
+(() => {
+  const term = document.querySelector('#bt .term'), hd = term && term.querySelector('.hd'); if (!hd) return;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'lg-min'; hd.appendChild(b);
+  let min = false; try { min = localStorage.getItem('bt-logmin') === '1'; } catch {}
+  const set = (v) => { min = v; term.classList.toggle('lg-min-on', v); b.textContent = v ? '+' : '–'; b.title = v ? 'Show brain.log' : 'Make brain.log small';
+    b.setAttribute('aria-label', b.title); b.setAttribute('aria-expanded', String(!v)); try { localStorage.setItem('bt-logmin', v ? '1' : '0'); } catch {} };
+  set(min); b.addEventListener('click', (e) => { e.stopPropagation(); set(!min); });
 })();
 
 // THE AGENT WALL BEHIND THE TERMINAL (2026-11-22, operator: "the background of the terminal, like the Million Dollar
@@ -265,11 +278,33 @@
   { let n = 0; const t = setInterval(() => { place(); if (++n > 40) clearInterval(t); }, 500); } // ROT settles in its first seconds
   addEventListener('resize', place);
   let DATA = null; const LOGOS = {}, ADS = {};
+  // LIVE IN THE SANDBOX (23.11., operator: "every illustration must be live in the sandbox"): the sandbox keeps no network;
+  // this page reads public numbers itself (our on-chain price API, the DeFi agent's public portfolio) and hands them to
+  // every living ad as a message { wall: 1, live: {...} } (the same feed as /wall); an ad may show them, it sends nothing
+  const FEED = { at: 0, live: null };
+  async function feedLive() {
+    if (FEED.live && Date.now() - FEED.at < 60e3) return FEED.live;
+    const [p, d] = await Promise.all([fetch('/api/price', { cache: 'no-store' }).then((r) => r.json()).catch(() => null), fetch('https://agent.brainonbnb.com/lp/portfolio', { cache: 'no-store' }).then((r) => r.json()).catch(() => null)]);
+    if (!p && !d) return FEED.live;
+    FEED.live = { at: new Date().toISOString(),
+      bobai: p ? { price_usd: p.price_usd, change_24h_pct: p.market_24h?.change_pct ?? null, market_cap_usd: p.market_cap_usd, burned_pct: p.circulating_supply ? +(100 - Number(p.circulating_supply) / 1e7).toFixed(2) : null } : null,
+      defi: d ? { worth_usd: d.worth?.usd ?? null, in_range: d.pool?.in_range ?? null, pool: d.pool?.label || null, bobai_held: d.holdings?.bobai_units ?? null, bobai_held_usd: d.holdings?.bobai_usd ?? null, last: d.day?.last?.what || null } : null };
+    FEED.at = Date.now(); return FEED.live;
+  }
+  async function pushLive(f) { if (!on) return; const live = await feedLive(); if (!live) return; for (const fr of f ? [f] : layer.querySelectorAll('iframe[sandbox]')) { try { fr.contentWindow.postMessage({ wall: 1, live }, '*'); } catch {} } }
+  setInterval(() => { if (on && !document.hidden) pushLive(); }, 120e3);
   function draw() {
     if (!DATA) return;
     // the board ends above the chart strip (operator, 23.11.: "the Brain On BNB logo can't be seen, it is under the chart"):
     // no tile hides under it; the strip itself is thin glass while the wall is on
     { const tl = win.querySelector('.tl'), tb = tl && getComputedStyle(tl).display !== 'none' ? tl.offsetHeight : 0; if (layer.style.bottom !== tb + 'px') layer.style.bottom = tb + 'px'; }
+    // on a phone the board starts under the top bar (operator, 23.11.: "texts and symbols cut over each other", on phones
+    // too): title, LIVE, WALL and MOMENTS stood on the ad's own words; on a wide window the bar has room beside the tiles
+    { let tp = 0; if (win.classList.contains('portrait')) { const y0 = win.getBoundingClientRect().top;
+        // the title counts by its own line (its box keeps room for the mood chip, invisible with the wall on)
+        for (const e of win.querySelectorAll('.hud > :not(.ttl), .hud .bt-wall, .hud .ttl > b')) { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); if (r.width && r.height && cs.visibility !== 'hidden' && cs.display !== 'none') tp = Math.max(tp, r.bottom - y0); }
+        tp = Math.ceil(tp + 6); }
+      if (layer.style.top !== tp + 'px') layer.style.top = tp + 'px'; }
     const W = layer.clientWidth, H = layer.clientHeight, list = DATA.wall || [];
     if (!W || !H) return;
     // the floor keeps a small holder (or one holding none, while places are free) visible and shrinks with the crowd (at most half the wall): all 41 fit
@@ -288,16 +323,18 @@
       if (t.free) { const n = Math.max(1, MAX - list.length), sz = Math.sqrt((t.w * t.h) / n), cols = Math.max(1, Math.round(t.w / sz)), rows = Math.ceil(n / cols);
         return `<div class="bw-t free" style="${st}"><i style="background-size:${(t.w / cols).toFixed(2)}px ${(t.h / rows).toFixed(2)}px"></i></div>`; }
       const e = t.e, size = t.w < 36 || t.h < 36 ? ' small tiny' : t.w < 120 || t.h < 90 ? ' small' : '', ad = ADS[e.agent] && t.w >= 150 && t.h >= 120;
-      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">${Number(e.bobai).toLocaleString('en-US', { maximumFractionDigits: 0 })} $BOBAI</span></i></div>`;
+      return `<div class="bw-t${size}${ad ? ' ad' : ''}" style="${st}" data-agent="${esc(e.agent)}"><i>${LOGOS[e.agent] ? `<img src="${LOGOS[e.agent]}" alt="">` : `<span class="ph">${esc((String(e.name || '?').replace(/[^A-Za-z0-9]/g, '')[0] || '?').toUpperCase())}</span>`}<span class="nm">${esc(e.name)}</span><span class="hd">ERC-8004 #${esc(e.agent)}</span></i></div>`;
     }).join('');
     // a living ad plays in its tile as on /wall: its own frame, no network, storage, cookie or wallet (it can show, never track)
-    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
+    layer.querySelectorAll('.bw-t.ad > i').forEach((el) => { const f = document.createElement('iframe'); f.addEventListener('load', () => pushLive(f)); f.setAttribute('sandbox', 'allow-scripts'); f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1; f.setAttribute('aria-hidden', 'true');
       f.srcdoc = `<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;overflow:hidden;background:#0b090a;color:#f3ece6;font-family:system-ui,sans-serif}</style></head><body>${ADS[el.parentElement.dataset.agent]}</body></html>`; el.prepend(f); });
   }
   let loading = null;
   function load() {
     if (loading) return loading;
-    loading = fetch(API).then((r) => r.json()).then(async (j) => {
+    loading = fetch(API, { cache: 'no-store' }).then((r) => r.json()).then(async (j) => {
+      // only a changed board is drawn again (23.11.: asked every 2 min now; a redraw restarted every living ad)
+      const sig = JSON.stringify([(j.wall || []).map((a) => [a.agent, a.bobai, a.logo_sha256, a.ad_sha256 || '']), j.max]); if (DATA && sig === load.sig) return; load.sig = sig;
       DATA = j; draw(); layer.classList.add('built');
       await Promise.all((j.wall || []).filter((e) => e.ad_url && e.ad_sha256).map(async (e) => { try { const txt = await (await fetch(e.ad_url)).text(); const h = await sha256(new TextEncoder().encode(txt)); if (h === e.ad_sha256 && e.message.includes(`Living ad sha256: ${h}\n`)) ADS[e.agent] = txt; else delete ADS[e.agent]; } catch {} }));
       await Promise.all((j.wall || []).map(async (e) => { if (LOGOS[e.agent + ':' + e.logo_sha256]) { LOGOS[e.agent] = LOGOS[e.agent + ':' + e.logo_sha256]; return; } try { const buf = await (await fetch(e.logo_url)).arrayBuffer(); const h = await sha256(buf); if (h === e.logo_sha256 && e.message.includes(`Logo sha256: ${h}\n`)) LOGOS[e.agent] = LOGOS[e.agent + ':' + h] = URL.createObjectURL(new Blob([buf], { type: e.logo_type })); else delete LOGOS[e.agent]; } catch {} }));
@@ -309,5 +346,6 @@
   // the terminal's own start comes first (not on 'load': the terminal's clips keep that event waiting for long)
   if (on) setTimeout(load, 2500);
   new ResizeObserver(() => { clearTimeout(draw.t); draw.t = setTimeout(draw, 150); }).observe(layer);
-  setInterval(() => { if (on && !document.hidden) load(); }, 10 * 60e3);
+  // 23.11. (operator: "faster than 10 min"): every 2 minutes while the wall is on and the page is in view
+  setInterval(() => { if (on && !document.hidden) load(); }, 2 * 60e3);
 })();

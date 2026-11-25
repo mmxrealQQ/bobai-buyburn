@@ -1570,7 +1570,7 @@
 <script src="app.js?v=152" defer></script>
 <!-- BOBAI BRAIN TERMINAL. The popup's shell is here; the 3D scene, three.js and the figure (≈1 MB)
      load on the first click only, so the homepage itself carries none of it. -->
-<link rel="stylesheet" href="terminal/terminal.css?v=1795471481">
+<link rel="stylesheet" href="terminal/terminal.css?v=1795580994">
 <div class="bt" id="bt" role="dialog" aria-modal="true" aria-label="BOBAI Brain Terminal">
   <div class="bt-back" data-close></div>
   <div class="bt-win" id="bt-win"><script>/* the phone layout before terminal.js arrives (2026-09-27: on a slow line the desktop layout showed for seconds) */(()=>{const w=document.getElementById("bt-win"),r=w.getBoundingClientRect();if(r.width&&r.height>r.width*1.05)w.classList.add("portrait")})()</script>
@@ -1584,7 +1584,7 @@
       <img data-p="defi" data-src="fig/defi.webp" alt="">
       <img data-p="giggle" data-src="fig/giggle.webp" alt="">
       <img class="rgb r" alt=""><img class="rgb b" alt="">
-    </div>
+    </div><script>/* C38 (A-Z 24.11.): BOBAI's still in his place at once on a phone - the terminal was black for 5-8 s until terminal.js arrived; same place as layout(): top 11 %, height min(42 % of the window, 115 % of its width), centred */(()=>{const w=document.getElementById("bt-win"),f=document.getElementById("bt-fig"),r=w.getBoundingClientRect();if(!r.width||!(r.height>r.width*.95||r.width<680))return;const h=Math.min(r.height*.42,r.width*1.15),x=h*683/1024,i=f.querySelector('img[data-p="idle"]');i.src="/terminal/fig/idle.webp";f.style.width=x+"px";f.style.height=h+"px";f.style.left=(r.width-x)/2+"px";f.style.top=r.height*.11+"px";f.style.opacity="1";f.classList.add("pre")})()</script>
     <div id="bt-labs"></div>
     <div class="detail" id="bt-detail" aria-live="polite"></div>
     <div class="shm" id="bt-shm" role="dialog" aria-label="Share this moment">
@@ -1621,7 +1621,7 @@
 let mod = null;
 async function go() {
   const bt = document.getElementById('bt');
-  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795523247'); }
+  if (!mod) { bt.classList.add('on'); document.getElementById('bt-intro').textContent = 'BOOTING THE BRAIN…'; mod = import('./terminal/terminal.js?v=1795580994'); }
   try { (await mod).open(); }
   catch (e) { mod = null; document.getElementById('bt-intro').textContent = 'BRAIN OFFLINE · TAP TO RETRY'; }
 }

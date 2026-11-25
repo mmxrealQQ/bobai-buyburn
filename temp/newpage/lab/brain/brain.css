@@ -567,7 +567,8 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 .bp-buyline{height:34px;display:flex;align-items:center;gap:14px;padding:0 14px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;
   scrollbar-width:none;border-bottom:1px solid var(--bp-line);background:rgba(240,185,11,.05);font:600 12px/1 'Space Grotesk',Inter,sans-serif;color:var(--bp-text)}
 .bp-buyline::-webkit-scrollbar{display:none}
-.bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-right:5px}
+.bp-buyline .k{font:700 9px var(--bp-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--bp-muted);margin-inline-end:5px}
+.bp-buyline .ar-p .k{margin-right:0;margin-left:5px} /* Arabic: the label stands right of its figure (plaintext bidi in an ltr box), the gap goes left of it (A-Z 23.11.: "$0.00016595السعر") */
 .bp-buyline .f{flex:0 0 auto}
 .bp-buyline .ca{flex:0 0 auto;font:600 11px var(--bp-mono);color:var(--bp-text);background:none;border:1px solid var(--bp-muted);border-radius:6px;padding:2px 7px;cursor:pointer}
 .bp-buyline .ca span{color:var(--bp-muted);margin-left:4px}
@@ -691,6 +692,40 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 #bt .bw-on:not(.br-on):not(.xm-on) .tl{background:linear-gradient(180deg,rgba(14,11,12,.3),rgba(6,5,6,.46));backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}
 #bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within){background:linear-gradient(180deg,rgba(14,11,12,.34),rgba(10,8,9,.5));backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px)}
 #bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within) .bd{text-shadow:0 1px 3px #000,0 0 6px rgba(0,0,0,.8)}
+/* THE WALL SEEN (operator, 23.11. later: "with the wall on, the ads must be easier to see, on phones too, without removing
+   anything — work with transparency"; "in the wall the standard terminal keeps the minimum: BOBAI, the brain, the bots;
+   not the mood, not ROT"; "texts and symbols cut over each other"): with the wall on
+   - the board is drawn at full strength and the darkening over it (vignette, mood wash) steps aside;
+   - the extras turn invisible but keep their place (visibility, so nothing moves and all comes back with WALL off):
+     mood chip, ROT, the clock, the title's second line, the bots' small status lines;
+   - chart strip and brain.log are frosted glass: the tiles' colours come through, their words blur, so no text stands
+     on text. Typing or hovering the log still brings its dark glass back. */
+#bt .bw-on:not(.br-on):not(.xm-on) .bp-wall.built{opacity:1}
+/* THE TERMINAL THROUGH THE ADS (operator, 23.11. later: "the ads more transparent so the standard terminal shows: the
+   brain and the bots circling"): the board goes UNDER the 3D scene, and the scene is laid over it as light (screen): its
+   near-black ground vanishes, the brain, the bots, their orbits and flows glow on top of the ads, the ads stay readable */
+#bt .bw-on:not(.br-on):not(.xm-on){isolation:isolate}
+#bt .bw-on:not(.br-on):not(.xm-on) .bp-wall{z-index:0}
+#bt .bw-on:not(.br-on):not(.xm-on) #bt-gl{position:absolute;z-index:1;mix-blend-mode:screen}
+#bt .bw-on.portrait:not(.br-on):not(.xm-on) .bp-wall.built{opacity:.88}
+/* brain.log small (desktop): the fold button in its head; folded = head + input line */
+#bt .term .hd .lg-min{margin-left:auto;width:22px;height:18px;padding:0;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:var(--dim,#8a8299);font:700 12px/1 var(--mono,monospace);cursor:pointer;pointer-events:auto}
+#bt .term .hd .lg-min:hover,#bt .term .hd .lg-min:focus-visible{color:var(--gold,#f0b90b);border-color:rgba(240,185,11,.5);outline:none}
+#bt .term.lg-min-on .bd{display:none}
+#bt .term.lg-min-on .hd{border-bottom-color:transparent}
+#bt .portrait .term .hd .lg-min{display:none}
+#bt .portrait .term.lg-min-on .bd{display:flex}
+#bt .bw-on:not(.br-on):not(.xm-on) .vign,#bt .bw-on:not(.br-on):not(.xm-on) .mood{opacity:0;transition:opacity .6s}
+#bt .bw-on:not(.br-on):not(.xm-on) .mdc,#bt .bw-on:not(.br-on):not(.xm-on) #bt-br,#bt .bw-on:not(.br-on):not(.xm-on) .hud .clk,
+#bt .bw-on:not(.br-on):not(.xm-on) .ttl small{visibility:hidden}   /* the bots keep their standard labels and status lines (operator, 23.11.: "the circles at the brain must be labelled") */
+#bt .bw-on:not(.br-on):not(.xm-on) .ttl,#bt .bw-on:not(.br-on):not(.xm-on) .lab{text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.9)}
+/* the bots' names stand on the ads now: each on its own small dark pill, so no word runs into an ad's words */
+#bt .bw-on:not(.br-on):not(.xm-on) .tl{background:linear-gradient(180deg,rgba(14,11,12,.16),rgba(6,5,6,.3));backdrop-filter:blur(9px) saturate(1.2);-webkit-backdrop-filter:blur(9px) saturate(1.2)}
+#bt .bw-on:not(.br-on):not(.xm-on):not(.typing) .term:not(:hover):not(:focus-within){background:linear-gradient(180deg,rgba(14,11,12,.2),rgba(10,8,9,.34));backdrop-filter:blur(9px) saturate(1.2);-webkit-backdrop-filter:blur(9px) saturate(1.2)}
+/* the tiles: clearer glass, a brighter hairline, the logo and the ad lit; free places stay a faint grid */
+#bt .bw-on .bp-wall .bw-t:not(.free)>i{background:radial-gradient(100% 100% at 50% 30%,rgba(255,255,255,.09),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(240,185,11,.55),0 0 24px rgba(240,185,11,.08)}
+#bt .bw-on .bp-wall .bw-t img{filter:drop-shadow(0 4px 14px rgba(0,0,0,.6)) brightness(1.08)}
+#bt .bw-on .bp-wall .bw-t .nm,#bt .bw-on .bp-wall .bw-t .hd{text-shadow:0 1px 4px #000,0 0 10px rgba(0,0,0,.8)}
 /* the same tiles as /wall: glass, a gold hairline, the logo, the name and what it holds */
 #bt .bp-wall .bw-t{position:absolute;box-sizing:border-box;padding:2px}
 #bt .bp-wall .bw-t>i{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;box-sizing:border-box;border-radius:10px;overflow:hidden;font-style:normal;

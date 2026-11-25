@@ -1597,3 +1597,10 @@
 #bt .br-on .lab.dest.off{visibility:hidden}
 /* the names on the brainrot sky (2026-11-20, A-Z: "BURN $BOBAI" orange on an orange sunset): a dark rim keeps them readable */
 #bt .br-on .lab.dest .n,#bt .br-on .lab.dest .pc,#bt .br-on .lab.src .n{text-shadow:0 0 3px #000,0 0 6px rgba(0,0,0,.85),0 1px 2px #000}
+
+/* READABLE ON DESKTOP + LANDSCAPE (A-Z 24.11., operator 25.11.: "Desktop 10 px + heller"): every label at least 10 px - the
+   bot names were 8.96, the stations' %, NEXT BUYBACK, TRADES, mood, MOMENTS, the log head and 1H/6H/7D 9.6-9.92 - and the
+   subtitle and the bots' "beat ..." lines a lighter grey (#6f6f86 was ~3.6:1 on the scene, #a3a3ba ~6:1). The phone keeps
+   its 8.5 px stations (operator 26.9.: smaller, so BOBAI can be larger); the bots' depth dimming behind the brain stays. */
+#bt .bt-win:not(.portrait) .dest .pc,#bt .bt-win:not(.portrait) .core .n,#bt .bt-win:not(.portrait) .src .n,#bt .bt-win:not(.portrait) .wk b,#bt .bt-win:not(.portrait) .wk i,#bt .bt-win:not(.portrait) .mdc,#bt .bt-win:not(.portrait) .scn,#bt .bt-win:not(.portrait) .term .hd,#bt .bt-win:not(.portrait) .tl .tlw button{font-size:max(10px,.625rem)}
+#bt .bt-win:not(.portrait) .ttl small,#bt .bt-win:not(.portrait) .wk i{color:#a3a3ba}

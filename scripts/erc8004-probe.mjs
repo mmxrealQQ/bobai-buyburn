@@ -70,6 +70,10 @@ for (const line of (SELF_TEST ? '' : fs.readFileSync(HITS, 'utf8')).split('\n'))
 if (SELF_TEST) agents.push({
   id: 49467, name: 'Brain On BNB AI ($BOBAI)',
   endpoints: ['https://brainonbnb.com/', 'https://brainonbnb.com/mcp'],
+}, {
+  // and the other direction (A-Z 24.11.): an identity that names only the domain, which the domain's proof does not
+  // list, must NOT be lent the domain's card and tools
+  id: 421197, name: 'brainonbnb.ai', endpoints: ['https://brainonbnb.com'],
 });
 console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
 
@@ -147,6 +151,23 @@ const cardIsCallable = (j) => !!(
   && Array.isArray(j.skills) && j.skills.some((s) => s && typeof s === 'object' && (s.id || s.name))
 );
 
+// A DOMAIN THAT NAMES ITS AGENTS (A-Z 24.11.): the guesses below take a registered domain's well-known card and its /mcp
+// as the agent's own - but a domain can carry several identities. ERC-8004's domain proof
+// (/.well-known/agent-registration.json, "registrations") says which: #421197, the operator's Binance Agentic Wallet
+// agent, names brainonbnb.com as its web page and got #49467's card, tools and description, though that file lists
+// #49467 and not #421197. A domain whose file lists agents, but not this one, lends it nothing by guessing; what the
+// agent wrote down itself (a card URL, an /mcp endpoint) is still read. One read per origin per run.
+const DOMAIN_IDS = new Map();
+async function domainDisowns(origin, id) {
+  if (!DOMAIN_IDS.has(origin)) DOMAIN_IDS.set(origin, (async () => {
+    const res = await probeOne(origin + '/.well-known/agent-registration.json');
+    if (!res.ok || res.status >= 400) return null;
+    try { const j = await res.r.json(); const ids = Array.isArray(j?.registrations) ? j.registrations.map((x) => Number(x?.agentId)).filter(Number.isFinite) : []; return ids.length ? new Set(ids) : null; } catch { return null; }
+  })());
+  const ids = await DOMAIN_IDS.get(origin);
+  return !!ids && !ids.has(Number(id));
+}
+
 async function probeAgent(a) {
   const result = { id: a.id, name: a.name, endpoints: a.endpoints, reachable: false, live: {}, checked: [] };
 
@@ -187,6 +208,7 @@ async function probeAgent(a) {
   if (result.reachable && !result.live.card) {
     const hosts = [...new Set(a.endpoints.map((e) => { try { return new URL(e).origin; } catch { return null; } }).filter(Boolean))];
     for (const origin of hosts.slice(0, 2)) {
+      if (await domainDisowns(origin, a.id)) continue;
       for (const p of ['/.well-known/agent-card.json', '/.well-known/agent.json', '/.well-known/ai-agent.json']) {
         const res = await probeOne(origin + p);
         if (!res.ok || res.status >= 400) continue;
@@ -214,10 +236,11 @@ async function probeAgent(a) {
   // MCP is spoken to rather than assumed from the URL shape. Same reasoning as
   // the card lookup: an agent that runs MCP at /mcp on its own domain will
   // usually have registered only the domain.
-  const mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
+  let mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
     || (result.reachable ? (() => {
       try { return new URL(a.endpoints[0]).origin + '/mcp'; } catch { return null; }
     })() : null);
+  if (mcpUrl && !a.endpoints.includes(mcpUrl)) { try { if (await domainDisowns(new URL(mcpUrl).origin, a.id)) mcpUrl = null; } catch { mcpUrl = null; } }
   if (mcpUrl) {
     const res = await probeOne(mcpUrl, {
       method: 'POST',
@@ -281,13 +304,16 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 await new Promise((resolve) => out.end(resolve));
 
 if (SELF_TEST) {
-  const r = JSON.parse(fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n')[0]);
+  const rows = fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const r = rows.find((x) => Number(x.id) === 49467), lent = rows.find((x) => Number(x.id) === 421197);
   console.log('\n--- self-test against our own agent ---');
   console.log('  reachable  :', r.reachable);
   console.log('  MCP        :', !!r.live.mcp, r.live.mcpTools ? `(${r.live.mcpTools} tools)` : '');
   console.log('  agent card :', !!r.live.a2a, r.live.cardUrl || '');
   console.log('  tools      :', (r.live.tools || []).slice(0, 5).map((t) => t.name).join(', ') || '(none)');
-  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10;
+  const lentNothing = !!lent && lent.reachable && !lent.live.mcp && !lent.live.card;
+  console.log('  #421197 (names only the domain, not in its proof): card', !!lent?.live?.card, '· MCP', !!lent?.live?.mcp, lentNothing ? '- nothing lent, right' : '- LENT the domain\'s surface');
+  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10 && lentNothing;
   console.log(good
     ? '\n  DETECTOR WORKS — a zero elsewhere is a finding, not a bug\n'
     : '\n  DETECTOR BROKEN — fix this before publishing any count\n');

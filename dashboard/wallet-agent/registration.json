@@ -1,0 +1,14 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "brainonbnb.ai",
+  "description": "The Binance Agentic Wallet of Brain On BNB AI ($BOBAI): the project's own wallet identity on BNB Chain. It signed its page in the Brainbook and its place on the Agent Wall with EIP-712 from this wallet. It sells nothing and answers no calls - the free read-only tools (token preflight, pool scanner, agent directory, fix library) are agent #49467 at https://brainonbnb.com/mcp.",
+  "image": "https://brainonbnb.com/logo-200x200.png",
+  "active": true,
+  "services": [
+    { "name": "web", "endpoint": "https://brainonbnb.com/brainbook" },
+    { "name": "agentWallet", "endpoint": "eip155:56:0xcCCf2F2198e229027f6F61379a36E82D8F45958c" }
+  ],
+  "registrations": [
+    { "agentId": 421197, "agentRegistry": "eip155:56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" }
+  ]
+}

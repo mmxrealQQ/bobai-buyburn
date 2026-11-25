@@ -602,6 +602,19 @@ function layout() {
     A.figH = Math.min(viewH * 0.61, viewW * 0.40); // a little larger since the labels carry no figures (2026-09-27)
     // a step right, and in a short window (tight) a step up: his legs stay clear of the log box (2026-09-27)
     A.fig.set(0, -viewH / 2 + tlH + A.figH / 2 + viewH * (r.height < 700 ? 0.19 : 0.12), 0);
+    // HIS HEAD STAYS UNDER THE HEAD ROW (A-Z 24.11., operator 25.11.): a phone held across (740x360..932x430: the terminal
+    // ~826x518) stood his picture 8 px above the window's top edge, his hair on the clock and the ROT switch. Whatever of the
+    // head row stands over his column (clock, switch, LIVE, chips) sets the ceiling; his feet stay, he is only as much smaller
+    // as that takes. A taller window (1280x720 up: 114+ px of room) never reaches it, so nothing changes there.
+    const ppu = r.height / viewH, cw = A.figH * ppu * (683 / 1024) / 2, cx = r.width / 2 + A.fig.x * ppu;
+    let hb = 0;
+    for (const e of win.querySelectorAll('#bt-live, #bt-clk, #bt-shr, .hud > .x, .scn, .hw-sw')) {
+      const q = e.getBoundingClientRect();
+      if (e.checkVisibility && !e.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+      if (q.height > 0 && q.height < 60 && q.top - r.top < r.height * 0.2 && q.right > r.left + cx - cw && q.left < r.left + cx + cw) hb = Math.max(hb, q.bottom - r.top);
+    }
+    const ceil = viewH / 2 - (hb + 4) / ppu, foot = A.fig.y - A.figH / 2;
+    if (hb && A.fig.y + A.figH / 2 > ceil && ceil - foot > A.figH * 0.6) { A.figH = ceil - foot; A.fig.y = foot + A.figH / 2; }
   }
   // wide screen: the hologram brain and its ring of bots sit a step left of him (operator, 2026-09-28), clear of the buyback ring
   // wide screen: at the left edge, clear of him (operator, 2026-09-28: "at the edge, not behind BOBAI")

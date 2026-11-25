@@ -247,10 +247,10 @@
     addEventListener('pageshow',function(e){if(e.persisted)top()});
   })();</script>
 
-<link rel="stylesheet" href="brain/brain.css?v=1795585179008">
+<link rel="stylesheet" href="brain/brain.css?v=1795586783598">
 <!-- BOBAI himself first (2026-09-30): his still was asked for only when the scene opened, after three.js — 6.7 s on a slow phone -->
 <link rel="preload" href="terminal/fig/idle.webp" as="image" fetchpriority="high">
-<link rel="stylesheet" href="terminal/terminal.css?v=1795585178">
+<link rel="stylesheet" href="terminal/terminal.css?v=1795586783">
 </head>
 <body class="brainpage">
 <div class="bp-h" role="banner">
@@ -1563,10 +1563,10 @@
 <script>/* C38 (A-Z 24.11.): BOBAI's still in his place at once on a phone - the terminal was black for 5-8 s until terminal.js arrived; same place as layout(): top 11 %, height min(42 % of the window, 115 % of its width), centred */(()=>{const w=document.getElementById("bt-win"),f=document.getElementById("bt-fig"),r=w.getBoundingClientRect();if(!r.width||!(r.height>r.width*.95||r.width<680))return;const h=Math.min(r.height*.42,r.width*1.15),x=h*683/1024,i=f.querySelector('img[data-p="idle"]');i.src="/terminal/fig/idle.webp";f.style.width=x+"px";f.style.height=h+"px";f.style.left=(r.width-x)/2+"px";f.style.top=r.height*.11+"px";f.style.opacity="1";f.classList.add("pre")})()</script>
 <script type="module">
 // the terminal opens with the page: it IS the page
-(async () => { try { (await import('./terminal/terminal.js?v=1795585178')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
+(async () => { try { (await import('./terminal/terminal.js?v=1795586783')).open(); } catch (e) { const i = document.getElementById('bt-intro'); if (i) i.textContent = 'BRAIN OFFLINE · RELOAD'; } })();
 </script>
-<script src="brain/brain.js?v=1795585179008" defer></script>
-<script src="brain/cards.js?v=1795585179008" defer></script>
-<script src="brain/hero.js?v=1795585179008" defer></script>
-<script src="brain/check.js?v=1795585179008" defer></script>
+<script src="brain/brain.js?v=1795586783600" defer></script>
+<script src="brain/cards.js?v=1795586783600" defer></script>
+<script src="brain/hero.js?v=1795586783600" defer></script>
+<script src="brain/check.js?v=1795586783600" defer></script>
 </body></html>

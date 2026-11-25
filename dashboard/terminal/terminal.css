@@ -1606,3 +1606,11 @@
 #bt .bt-win:not(.portrait) .ttl small,#bt .bt-win:not(.portrait) .wk i{color:#a3a3ba}
 /* the board steps aside when a circling bot's name goes under it (A-Z 24.11., terminal.js placeDetail keep): it glides */
 #bt .detail.glide{transition:opacity .35s,transform .35s,left .35s}
+/* A PHONE HELD ACROSS FITS ITS SCREEN (operator 25.11., terminal.js layout "short": a wide window under 430 px): a flatter
+   timeline, the log down to its head and prompt until it is touched or typed in, close above the timeline */
+#bt .bt-win.short .tl{height:76px}
+#bt .bt-win.short .term{bottom:84px}
+#bt .bt-win.short .dest{transform:translate(var(--off,26px),-50%)} /* the old pop-up's 12 px (max-width:820px) put 800x360's names on their orbs */
+#bt .bt-win.short .chart-open{bottom:56px} /* on the flatter timeline's edge, as at 112 px (bottom 92) */
+#bt .bt-win.short .term:not(:hover):not(:focus-within){width:min(218px,calc(100% - 32px))} /* clear of OPEN CHART on the timeline's edge */
+#bt .bt-win.short .term:not(:hover):not(:focus-within) .bd{display:none}

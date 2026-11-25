@@ -590,7 +590,11 @@ function layout() {
   // a short wide window (a 1280x720 laptop: the terminal is ~570x480 in the new page) has no room for the grey second
   // line under each label: six of them overlapped their neighbours (2026-09-27). The figures stay, the detail goes.
   win.classList.toggle('tight', !portrait && r.height < 700);
-  const tlH = (portraitNow(r) ? 170 : 112) / r.height * viewH; // phone: timeline + view tabs // timeline eats the bottom
+  // A PHONE HELD ACROSS FITS ITS SCREEN (operator 25.11.: "mach das Scrollen im Querformat"): the page gives the terminal
+  // the screen's height (brain.css, ~374 px at 844x390, it was 518 and the log and the chart needed a scroll); "short"
+  // makes room: a flatter timeline (76 px), the log down to its head and prompt until touched, BOBAI's feet nearer to it
+  const short = !portrait && r.height < 430; win.classList.toggle('short', short);
+  const tlH = (portraitNow(r) ? 170 : short ? 76 : 112) / r.height * viewH; // phone: timeline + view tabs // timeline eats the bottom
   if (portrait) {
     // The two rows of destinations must end above the view tabs and the timeline on every phone: on a 360x640 screen
     // the second row (DeFi agent, Giggle pot, creator) sat 54 px under the tabs (measured 2026-09-26). So BOBAI and
@@ -601,7 +605,7 @@ function layout() {
   } else {
     A.figH = Math.min(viewH * 0.61, viewW * 0.40); // a little larger since the labels carry no figures (2026-09-27)
     // a step right, and in a short window (tight) a step up: his legs stay clear of the log box (2026-09-27)
-    A.fig.set(0, -viewH / 2 + tlH + A.figH / 2 + viewH * (r.height < 700 ? 0.19 : 0.12), 0);
+    A.fig.set(0, -viewH / 2 + tlH + A.figH / 2 + viewH * (short ? 0.06 : r.height < 700 ? 0.19 : 0.12), 0);
     // HIS HEAD STAYS UNDER THE HEAD ROW (A-Z 24.11., operator 25.11.): a phone held across (740x360..932x430: the terminal
     // ~826x518) stood his picture 8 px above the window's top edge, his hair on the clock and the ROT switch. Whatever of the
     // head row stands over his column (clock, switch, LIVE, chips) sets the ceiling; his feet stay, he is only as much smaller
@@ -614,7 +618,7 @@ function layout() {
       if (q.height > 0 && q.height < 60 && q.top - r.top < r.height * 0.2 && q.right > r.left + cx - cw && q.left < r.left + cx + cw) hb = Math.max(hb, q.bottom - r.top);
     }
     const ceil = viewH / 2 - (hb + 4) / ppu, foot = A.fig.y - A.figH / 2;
-    if (hb && A.fig.y + A.figH / 2 > ceil && ceil - foot > A.figH * 0.6) { A.figH = ceil - foot; A.fig.y = foot + A.figH / 2; }
+    if (hb && A.fig.y + A.figH / 2 > ceil && ceil - foot > A.figH * 0.4) { A.figH = ceil - foot; A.fig.y = foot + A.figH / 2; }
   }
   // wide screen: the hologram brain and its ring of bots sit a step left of him (operator, 2026-09-28), clear of the buyback ring
   // wide screen: at the left edge, clear of him (operator, 2026-09-28: "at the edge, not behind BOBAI")
@@ -628,7 +632,7 @@ function layout() {
   if (portrait) A.core.set(A.fig.x, A.fig.y - A.figH * 0.54, 0.8);
   else A.core.set(A.fig.x + viewW * 0.145, A.fig.y + A.figH * 0.06, 0.8);
   // wide screen: the trades sit bottom left, just above the log box (its tallest: 128 px from the bottom + 176 px)
-  A.src.set(-viewW / 2 + (portrait ? 0.45 : viewW * 0.12), portrait ? A.fig.y + A.figH * 0.05 : -viewH / 2 + (r.height < 700 ? 250 : 345) / (r.height / viewH), 0);
+  A.src.set(-viewW / 2 + (portrait ? 0.45 : viewW * 0.12), portrait ? A.fig.y + A.figH * 0.05 : -viewH / 2 + (short ? 178 : r.height < 700 ? 250 : 345) / (r.height / viewH), 0);
   brain.position.copy(A.head);
   bMat.uniforms.uScale.value = A.figH * (portrait ? 0.34 : 0.37); // the bots' ring runs around it, not through it (2026-09-28) // wide screen: fits between the edge and him
   // EVENLY OVER THE STATIONS IN FORCE (operator, 17.11.: "burn, add liq and creator should be evenly spaced"): from 1 Dec
@@ -649,9 +653,9 @@ function layout() {
       // on 390 px BURN $BOBAI's name sat wholly behind BRAIN/MONEY/BOTS)
       d.pos.set((i % 3 - 1) * viewW * 0.325, A.core.y - (ORD ? 0.25 : 0.5) - Math.floor(i / 3) * (ORD ? 0.75 : 1.1), 0);
     } else {
-      const top = viewH / 2 - viewH * 0.16, bot = -viewH / 2 + tlH + viewH * 0.1;
+      const top = viewH / 2 - viewH * (short ? 0.27 : 0.16), bot = -viewH / 2 + tlH + viewH * 0.1; // short: the first station under the head row's buttons
       const y = top - i * (top - bot) / (n - 1);
-      const x = viewW * 0.255 + Math.sin(i / (n - 1) * Math.PI) * viewW * 0.03;
+      const x = viewW * (short ? 0.22 : 0.255) + Math.sin(i / (n - 1) * Math.PI) * viewW * 0.03; // short: a step left, so a name that must fit the edge is not pushed onto its orb (800x360)
       d.pos.set(x, y, 0);
     }
     d.orb.position.copy(d.pos); d.halo.position.copy(d.pos); if (d.obj) d.obj.position.copy(d.pos);
@@ -1045,6 +1049,9 @@ function placeLabels() {
     else {
       jy = Math.min(fs.y + A.figHpx * 0.52 + 6 + bh / 2, Hd - 120 - bh / 2); jx = fs.x;
       const lb = logBox(); if (lb.right && jy + bh / 2 > lb.top - 6 && jx - bw / 2 < lb.right + 10) jx = lb.right + 10 + bw / 2;
+      // short (a phone held across): BOBAI is smaller, so NEXT BUYBACK stands nearer - a joke that would cover it steps left
+      if (win.classList.contains('short')) { const W0 = win.getBoundingClientRect(), c = coreLab.getBoundingClientRect(), cl = c.left - W0.left;
+        if (c.width && jx + bw / 2 > cl - 8 && jy - bh / 2 < c.bottom - W0.top && jy + bh / 2 > c.top - W0.top) jx = Math.max(cl - 8 - bw / 2, (lb.right || 0) + 10 + bw / 2); }
     }
     jokeBtn.style.left = jx + 'px'; jokeBtn.style.top = jy + 'px'; }
   const pxU = win.getBoundingClientRect().height / viewH;

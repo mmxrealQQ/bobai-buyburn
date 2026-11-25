@@ -753,3 +753,13 @@ details.faq-item.faq-hit{box-shadow:0 0 0 1px var(--gold,#f0b90b),0 0 22px rgba(
 #bt .hud .bt-wall.bw-abs{position:absolute;margin:0;z-index:6}
 #bt .br-on .hud .bt-wall,#bt .xm-on .hud .bt-wall{display:none}
 @media (prefers-reduced-motion:reduce){#bt .bp-wall{transition:none}}
+/* A PHONE HELD ACROSS FITS ITS SCREEN (operator 25.11.: "mach das Scrollen im Querformat"): the terminal is exactly the
+   screen's height (it was at least 520 px on a 390 px screen, the log and the chart needed a scroll - terminal.js
+   "short" fits it), the header scrolls away with the page instead of covering it, and a swipe down snaps the terminal
+   to fill the screen. From 780 px across: narrower (667x375 iPhone SE/mini, 740x360) would get the stacked phone layout
+   or the trades on the bots' ring, and keep the 520 px with a scroll */
+@media (orientation:landscape) and (max-height:500px) and (min-width:780px){
+  html:has(body.brainpage){scroll-snap-type:y proximity}
+  .brainpage .bp-h{position:relative}
+  .bp-center{height:calc(100svh - 16px);scroll-snap-align:start;scroll-margin-top:8px}
+}

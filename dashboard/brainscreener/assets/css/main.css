@@ -1023,3 +1023,13 @@ img { max-width: 100%; height: auto; display: block; }
 
 /* 2026-10-28: .btn display:inline-flex showed the hidden 'Delete previous answers and restart' on every fresh intro */
 .btn[hidden] { display: none; }
+
+/* "About this test" under the intro (2026-11-26, from adhsiq): what the test measures, how it is scored, what the
+   result means. Once the test runs (#intro hidden) the block is gone; it is not printed. No JS involved. */
+.test-about { margin: 44px 0 0; padding: 0 48px; }
+#intro[hidden] ~ .test-about { display: none; }
+.test-about h2 { font-size: clamp(1.4rem, 2.4vw, 1.8rem); margin-bottom: 6px; }
+.test-about h3 { margin: 26px 0 8px; }
+.test-about p { font-size: 0.98rem; margin: 0; color: var(--ink-soft); }
+@media (max-width: 640px) { .test-about { padding: 0 8px; margin-top: 32px; } }
+@media print { .test-about { display: none; } }

@@ -63,7 +63,6 @@
     Gf: "Fluid intelligence (matrix reasoning, logical reasoning)",
     Gq: "Quantitative reasoning (number series)",
     Gc: "Crystallized intelligence (verbal analogies)",
-    Gv: "Visuospatial reasoning (position patterns)",
   };
   const subList = document.getElementById("subscaleList");
   const domains = Object.keys(result.byDomain).filter((k) => result.byDomain[k].total > 0);

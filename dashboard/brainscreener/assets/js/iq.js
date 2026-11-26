@@ -43,7 +43,6 @@
       Gf: "Matrix Reasoning · Fluide Intelligenz",
       Gq: "Zahlenreihe · Quantitatives Denken",
       Gc: "Verbale Analogie · Kristalline Intelligenz",
-      Gv: "Visuell-räumlich · Mustererkennung",
     },
   }, (D && D.ui) || {});
   // JS scrolling overrides the CSS reduced-motion rule, so it asks for itself.

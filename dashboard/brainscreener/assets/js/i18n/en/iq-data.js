@@ -191,7 +191,7 @@ window.IQ_DATA = (function () {
   // Sequence: N, NE, E, SE, S, SW, W, NW, then ?=N
   const rotSeq = ["N","NE","E","SE","S","SW","W","NW"];
   M.push({
-    id: "M5", type: "matrix", domain: "Gv", level: 2,
+    id: "M5", type: "matrix", domain: "Gf", level: 2,
     cells: rotSeq.map((p) => positionDot(p)).concat([null]),
     options: [positionDot("N"), positionDot("E"), positionDot("S"), positionDot("W"), positionDot("C"), positionDot("NE")],
     answer: 0,
@@ -238,7 +238,7 @@ window.IQ_DATA = (function () {
   // M8: Arrow rotates 90 degrees per cell, sequence: 0,90,180,270,...
   // Row 1: 0, 90, 180; Row 2: 90, 180, 270; Row 3: 180, 270, ?
   M.push({
-    id: "M8", type: "matrix", domain: "Gv", level: 2,
+    id: "M8", type: "matrix", domain: "Gf", level: 2,
     cells: [
       arrow(0), arrow(90), arrow(180),
       arrow(90), arrow(180), arrow(270),
@@ -397,7 +397,7 @@ window.IQ_DATA = (function () {
   // -------------------- Scoring --------------------
   function evaluate(answers) {
     // answers: { itemId: chosenIndex }
-    const byDomain = { Gf: { right: 0, total: 0 }, Gq: { right: 0, total: 0 }, Gc: { right: 0, total: 0 }, Gv: { right: 0, total: 0 } };
+    const byDomain = { Gf: { right: 0, total: 0 }, Gq: { right: 0, total: 0 }, Gc: { right: 0, total: 0 } };
     let correct = 0;
     const perItem = [];
     for (const it of ITEMS) {
@@ -466,7 +466,7 @@ window.IQ_DATA = (function () {
     confirmFinishOk: "Score anyway",
     confirmResetOk: "Delete answers",
     confirmCancel: "Cancel",
-    domainLabel: { Gf: "Matrix reasoning · Fluid intelligence", Gq: "Number series · Quantitative reasoning", Gc: "Verbal analogy · Crystallized intelligence", Gv: "Visuospatial · Pattern recognition" },
+    domainLabel: { Gf: "Matrix reasoning · Fluid intelligence", Gq: "Number series · Quantitative reasoning", Gc: "Verbal analogy · Crystallized intelligence" },
   };
 
   return { ITEMS, TOTAL, evaluate, gridSVG, optionSVG, ui };

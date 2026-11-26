@@ -2,7 +2,7 @@
 # The hourly one that pays out the creator share.
 #
 # This is the complete dev-sweep-bot bundle as a single file, so it can be read in
-# one fetch. 3 files, 540 lines.
+# one fetch. 3 files, 661 lines.
 # Download as a zip: https://brainonbnb.com/code/dev-sweep-bot.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -17,14 +17,15 @@
 // Dev Buyback Bot
 // Created autonomously by Claude Opus 4.6
 //
-// Runs every 1 hour via Cloudflare Worker + GitHub Actions:
+// The fallback for a day Cloudflare is down; the worker (worker-dev-buyback) does this every full hour:
 // 1. Checks creator wallet BNB balance
 // 2. Reserves gas (0.003 BNB)
 // 3. Splits: 80% personal (Binance), 4% builder #1-#4, 2% builder #5 + #6 (#5 out 2026-10-10, back 2026-11-09 on the operator's word)
 
-const { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } = require('viem');
+const { createPublicClient, createWalletClient, http, fallback, formatEther, parseEther, parseAbi } = require('viem');
 const { bsc } = require('viem/chains');
 const { privateKeyToAccount } = require('viem/accounts');
+const { resolvePending, mayStillLand } = require('./shared/dev-pending.js');
 
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -70,11 +71,64 @@ async function mined(publicClient, hash, what) {
   if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
   return rc;
 }
+// ONE NODE WAS THE WHOLE SWEEP (Liste B 2, 2026-11-24) — the tax bot's fallback (worker/index.js), to the letter: the
+// public BNB Chain nodes stand behind the first one, asked only when it fails, in this order; 'none' on a fork.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
+}
 function say(e) {
   return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
 }
 
+// THE WORKER RUNS — THEN THIS DOES NOT (Liste B 5, 2026-11-24), as buyback-bot.js does for the tax bot. This script is
+// the fallback for a day Cloudflare is down; nothing kept it from running beside the worker (worker-dev-buyback), two
+// processes splitting one balance. The worker sweeps at every full hour and writes its heartbeat; while that is under
+// 75 minutes old this script refuses. No answer from the heartbeat (Cloudflare down — the day this is for) lets it run;
+// --force overrides.
+const WORKER_HEALTH_URL = 'https://logs.brainonbnb.com/health';
+function devHeartbeatIsFresh(health, now = Date.now()) {
+  const t = Date.parse(health && health.devBuyback);
+  return Number.isFinite(t) && now - t < 75 * 60 * 1000 && now - t > -60 * 1000;
+}
+async function workerHeartbeat() {
+  try { const r = await fetch(WORKER_HEALTH_URL, { signal: AbortSignal.timeout(10000) }); return r.ok ? await r.json() : null; } catch (e) { return null; }
+}
+// THE WORKER'S OWN BOOKS (Liste B 5): what a builder is owed, the transfers still pending and the liquidity hold live in
+// the logs KV the worker reads and writes; this script used files of its own and saw none of it. Now it reads and writes
+// the same keys (wrangler, logged in on this machine). When the KV cannot be reached — Cloudflare down — it falls back to
+// the files beside it and says so, and a liquidity hold it cannot read counts as a hold (--force sweeps anyway).
+const LOGS_KV = '630df426f6d84503b40460f13ab4b9f3';
+function kvRun(words) {
+  const { spawnSync } = require('child_process');
+  return spawnSync(['npx', 'wrangler', 'kv', 'key', ...words, '--namespace-id', LOGS_KV, '--remote'].join(' '), { cwd: __dirname, encoding: 'utf8', shell: true, timeout: 120000 });
+}
+// the value, null when the key is not there; throws when the KV cannot be reached
+function kvGet(key) {
+  const r = kvRun(['get', key]);
+  if (r.status === 0) return String(r.stdout || '').trim();
+  if (/404: Not Found/.test(`${r.stdout || ''}${r.stderr || ''}`)) return null;
+  throw new Error(`the KV could not be read (${key})`);
+}
+function kvSet(key, obj) {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  if (!Object.keys(obj).length) { const r = kvRun(['delete', key]); if (r.status !== 0 && !/404/.test(`${r.stdout || ''}${r.stderr || ''}`)) throw new Error(`the KV could not be written (${key})`); return; }
+  const f = path.join(os.tmpdir(), `dev-${key}-${process.pid}.json`);
+  fs.writeFileSync(f, JSON.stringify(obj));
+  try { const r = kvRun(['put', key, '--path', `"${f}"`]); if (r.status !== 0) throw new Error(`the KV could not be written (${key})`); } finally { fs.rmSync(f, { force: true }); }
+}
+
 async function main() {
+  if (!process.argv.includes('--force')) {
+    const health = await workerHeartbeat();
+    if (devHeartbeatIsFresh(health)) {
+      console.error('[REFUSED] The Cloudflare worker is alive (heartbeat ' + health.devBuyback + ') and sweeps this wallet every full hour.');
+      console.error('  This script is the fallback for a day it is down. Nothing was read, nothing was sent. (--force overrides.)');
+      process.exitCode = 1;   // not process.exit(): on Windows it trips a libuv assertion while the fetch handle closes
+      return;
+    }
+  }
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) {
     console.log('[ERROR] No PRIVATE_KEY set');
@@ -93,13 +147,13 @@ async function main() {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, process.env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -127,9 +181,24 @@ async function main() {
     }
   }
 
-  // the owed shares (see the split below), kept in dev-owed.json beside the log (the worker keeps them in KV)
-  const loadOwed = async () => { try { return fs.existsSync('dev-owed.json') ? JSON.parse(fs.readFileSync('dev-owed.json', 'utf8')) : {}; } catch { return {}; } };
-  const saveOwed = async (o) => { try { if (Object.keys(o).length) fs.writeFileSync('dev-owed.json', JSON.stringify(o, null, 2)); else if (fs.existsSync('dev-owed.json')) fs.unlinkSync('dev-owed.json'); } catch (e) { console.log(`owed shares not saved (${e.message}): ${JSON.stringify(o)}`); } };
+  // THE WORKER'S BOOKS FIRST (Liste B 5): the liquidity hold, the owed shares and the pending transfers come from the logs
+  // KV the worker uses; the files beside this script only when the KV cannot be reached (and that is said)
+  let kvOk = true;
+  const fileGet = (f) => { try { return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {}; } catch { return {}; } };
+  const fileSet = (f, o) => { try { if (Object.keys(o).length) fs.writeFileSync(f, JSON.stringify(o, null, 2)); else if (fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { console.log(`${f} not kept (${e.message}): ${JSON.stringify(o)}`); } };
+  const offKv = (e) => { if (kvOk) console.log(`[WARN] The logs KV cannot be reached (${say(e)}): what the worker wrote down as owed or pending is NOT seen — the files beside this script are used.`); kvOk = false; };
+  let hold = null;
+  try { hold = kvGet('liq-hold'); } catch (e) { offKv(e); }
+  if (!process.argv.includes('--force') && (hold || !kvOk)) {
+    console.log(hold ? `A liquidity run was announced (${hold.slice(0, 40)}) — not swept (--force to sweep anyway).` : 'The liquidity hold cannot be read — not swept (--force to sweep anyway).');
+    return;
+  }
+  const loadBook = async (key, file) => { if (kvOk) { try { const v = kvGet(key); return v ? JSON.parse(v) : {}; } catch (e) { offKv(e); } } return fileGet(file); };
+  const saveBook = async (key, file, o) => { if (kvOk) { try { kvSet(key, o); return; } catch (e) { console.log(`[WARN] ${key} not kept in the KV (${say(e)}) — written to ${file}: ${JSON.stringify(o)}`); } } fileSet(file, o); };
+  const loadPending = () => loadBook('dev-pending', 'dev-pending.json');
+  const savePending = (o) => saveBook('dev-pending', 'dev-pending.json', o);
+  const loadOwed = () => loadBook('dev-owed', 'dev-owed.json');
+  const saveOwed = (o) => saveBook('dev-owed', 'dev-owed.json', o);
 
   // A liquidity run on this wallet is not swept away (the worker waits up to 6 h; by hand: --force sweeps anyway)
   const bobaiHere = await publicClient.readContract({ address: BOBAI_TOKEN, abi: WBNB_ABI, functionName: 'balanceOf', args: [account.address] }).catch(() => null);
@@ -153,7 +222,19 @@ async function main() {
   // WHAT A BUILDER IS STILL OWED IS PAID FIRST (A-Z 2026-11-21). A builder's transfer that failed left its share on the
   // wallet, and the next run split that BNB again: 80% of the builder's money went to the first wallet. Now a failed share
   // is written down by address, the next run pays it on top of the builder's new share, and only the rest is split.
+  // TRANSFERS OF EARLIER RUNS WHOSE FATE WAS UNKNOWN (Liste B 2, shared/dev-pending.js): asked of the chain before anything
+  // is paid — landed: paid; reverted or dropped: owed; still in the pool or no clear answer: this run waits
+  {
+    const pendingIn = await loadPending();
+    if (Object.keys(pendingIn).length) {
+      const rp = await resolvePending(pendingIn, await loadOwed(), publicClient);
+      for (const n of rp.notes) console.log('  pending: ' + n);
+      await saveOwed(rp.owed); await savePending(rp.pending);
+      if (rp.waiting) { console.log('A builder transfer of an earlier run is not settled yet — waiting, nothing paid.'); return; }
+    }
+  }
   const owed = await loadOwed();
+  const pendingNow = {};
   const owedTotal = Object.values(owed).reduce((a, v) => a + BigInt(v), 0n);
   if (owedTotal > 0n) console.log(`Owed from earlier runs: ${formatEther(owedTotal)} BNB`);
   if (owedTotal >= available) {
@@ -193,8 +274,9 @@ async function main() {
   const txs = {}, failed = [];
   for (const s of sends) {
     console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
+    let hash = null;
     try {
-      const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
+      hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
       console.log(`  TX: https://bscscan.com/tx/${hash}`);
       await mined(publicClient, hash, s.label);
       console.log('  Payment sent!');
@@ -210,11 +292,14 @@ async function main() {
         }
         return;
       }
+      // sent, but no receipt: it may still land — pending, asked of the chain next run, never owed blind (Liste B 2)
+      if (hash && mayStillLand(e)) { pendingNow[s.to.toLowerCase()] = { hash, value: String(s.value) }; failed.push(`${s.label} (pending)`); continue; }
       owed[s.to.toLowerCase()] = String(s.value);
       failed.push(s.label);
     }
   }
   await saveOwed(owed);
+  await savePending(pendingNow);
 
   // Step 3: Log
   try {
@@ -263,9 +348,10 @@ main().catch(console.error);
 // 3. Splits: 80% personal (Binance), 4% builder #1-#4, 2% builder #5 + #6 (#5 out 2026-10-10, back 2026-11-09 on the operator's word)
 // Log goes to Workers KV (dev-buyback-log.json), served via logs.brainonbnb.com
 
-import { createPublicClient, createWalletClient, http, formatEther, parseEther, parseAbi } from 'viem';
+import { createPublicClient, createWalletClient, http, fallback, formatEther, parseEther, parseAbi } from 'viem';
 import { bsc } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { resolvePending, mayStillLand } from '../shared/dev-pending.js';
 
 const WBNB = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
 const BOBAI_TOKEN = '0x245c386dcfed896f5c346107596141e5edcbffff';
@@ -309,6 +395,13 @@ async function mined(publicClient, hash, what) {
   if (!rc) throw new Error(`${what}: no receipt for ${hash} — it may still arrive`);
   if (rc.status !== 'success') throw new Error(`${what}: ${hash} reverted`);
   return rc;
+}
+// ONE NODE WAS THE WHOLE SWEEP (Liste B 2, 2026-11-24) — the tax bot's fallback (worker/index.js), to the letter: the
+// public BNB Chain nodes stand behind the first one, asked only when it fails, in this order; 'none' on a fork.
+const FALLBACK_RPCS = ['https://bsc-dataseed.binance.org/', 'https://bsc-dataseed1.bnbchain.org', 'https://bsc-dataseed2.bnbchain.org'];
+function rpcTransport(primary, fallbacks) {
+  const urls = [primary, ...(fallbacks === 'none' ? [] : FALLBACK_RPCS)].filter((u, i, all) => u && all.indexOf(u) === i);
+  return urls.length > 1 ? fallback(urls.map((u) => http(u)), { rank: false }) : http(urls[0]);
 }
 function say(e) {
   return String((e && e.message) || e).replace(/https?:[/][/][^ )"']+/g, '[rpc]');
@@ -375,13 +468,13 @@ async function runBot(env) {
 
   const publicClient = createPublicClient({
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   const walletClient = createWalletClient({
     account,
     chain: bsc,
-    transport: http(rpcUrl),
+    transport: rpcTransport(rpcUrl, env.BSC_RPC_FALLBACKS),
   });
 
   // Step 0: Unwrap any WBNB to native BNB
@@ -410,6 +503,8 @@ async function runBot(env) {
   }
 
   // the owed shares (see the split below), kept in KV between runs
+  const loadPending = async () => { try { const j = JSON.parse((await env.LOGS.get('dev-pending')) || '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
+  const savePending = async (o) => { try { if (Object.keys(o).length) await env.LOGS.put('dev-pending', JSON.stringify(o)); else await env.LOGS.delete('dev-pending'); } catch (e) { console.log(`pending transfers not kept: ${say(e)}`); } };
   const loadOwed = async () => { try { const j = JSON.parse((await env.LOGS.get('dev-owed')) || '{}'); return j && typeof j === 'object' ? j : {}; } catch { return {}; } };
   const saveOwed = async (o) => { try { if (Object.keys(o).length) await env.LOGS.put('dev-owed', JSON.stringify(o)); else await env.LOGS.delete('dev-owed'); } catch (e) { console.log(`owed shares not saved (${say(e)}): ${JSON.stringify(o)}`); } };
 
@@ -431,6 +526,16 @@ async function runBot(env) {
     await env.LOGS.delete('dev-hold-since').catch(() => {});
   }
 
+  // A LIQUIDITY RUN ANNOUNCED (Liste B 4, 2026-11-24): BNB sent here for add-liquidity-safe-bnb.js lies here as plain BNB
+  // until the run buys — the BOBAI check above cannot see it, and a full hour in between swept it 80/20. The run (or
+  // `node add-liquidity-safe-bnb.js --hold`, before the BNB is sent) sets liq-hold in this KV; while it stands, the sweep
+  // waits. It ends by itself after 6 h (its TTL) or when the run is done. Fail-closed: a hold that cannot be read is a hold.
+  {
+    let hold = null;
+    try { hold = await env.LOGS.get('liq-hold'); } catch (e) { console.log(`liq-hold could not be read (${say(e)}) — the sweep waits.`); return; }
+    if (hold) { console.log(`A liquidity run was announced (${String(hold).slice(0, 40)}) — the sweep waits; the hold ends by itself after 6 h.`); return; }
+  }
+
   // Step 1: Check BNB balance
   const balance = await publicClient.getBalance({ address: account.address });
   console.log(`BNB Balance: ${formatEther(balance)} BNB`);
@@ -446,7 +551,19 @@ async function runBot(env) {
   // WHAT A BUILDER IS STILL OWED IS PAID FIRST (A-Z 2026-11-21). A builder's transfer that failed left its share on the
   // wallet, and the next run split that BNB again: 80% of the builder's money went to the first wallet. Now a failed share
   // is written down by address, the next run pays it on top of the builder's new share, and only the rest is split.
+  // TRANSFERS OF EARLIER RUNS WHOSE FATE WAS UNKNOWN (Liste B 2, shared/dev-pending.js): asked of the chain before anything
+  // is paid — landed: paid; reverted or dropped: owed; still in the pool or no clear answer: this run waits
+  {
+    const pendingIn = await loadPending();
+    if (Object.keys(pendingIn).length) {
+      const rp = await resolvePending(pendingIn, await loadOwed(), publicClient);
+      for (const n of rp.notes) console.log('  pending: ' + n);
+      await saveOwed(rp.owed); await savePending(rp.pending);
+      if (rp.waiting) { console.log('A builder transfer of an earlier run is not settled yet — waiting, nothing paid.'); return; }
+    }
+  }
   const owed = await loadOwed();
+  const pendingNow = {};
   const owedTotal = Object.values(owed).reduce((a, v) => a + BigInt(v), 0n);
   if (owedTotal > 0n) console.log(`Owed from earlier runs: ${formatEther(owedTotal)} BNB`);
   if (owedTotal >= available) {
@@ -486,8 +603,9 @@ async function runBot(env) {
   const txs = {}, failed = [];
   for (const s of sends) {
     console.log(`--- Sending ${formatEther(s.value)} BNB to ${s.label} ---`);
+    let hash = null;
     try {
-      const hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
+      hash = await walletClient.sendTransaction({ to: s.to, value: s.value });
       console.log(`  TX: https://bscscan.com/tx/${hash}`);
       await mined(publicClient, hash, s.label);
       console.log('  Payment sent!');
@@ -503,11 +621,14 @@ async function runBot(env) {
         }
         return;
       }
+      // sent, but no receipt: it may still land — pending, asked of the chain next run, never owed blind (Liste B 2)
+      if (hash && mayStillLand(e)) { pendingNow[s.to.toLowerCase()] = { hash, value: String(s.value) }; failed.push(`${s.label} (pending)`); continue; }
       owed[s.to.toLowerCase()] = String(s.value);
       failed.push(s.label);
     }
   }
   await saveOwed(owed);
+  await savePending(pendingNow);
 
   // Step 3: Log to KV
   await kvAppend(env, 'dev-buyback-log.json', {

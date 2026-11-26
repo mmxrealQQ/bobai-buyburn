@@ -3699,7 +3699,7 @@ export function botBurnsFromLog(burns) {
   const n = (v) => parseFloat(v) || 0;
   return {
     runs: list.length,
-    bobai: list.reduce((a, x) => a + n(x && x.bobaiBurned), 0),
+    bobai: list.reduce((a, x) => a + n(x && x.bobaiBurned) + n(x && x.existingBobaiBurned), 0),   // + the 7.78M the 29 Mar run burned from the wallet, its own tx (A-Z 24.11.)
     bob: list.reduce((a, x) => a + n(x && (x.bob || x.bobBurned)), 0),
   };
 }

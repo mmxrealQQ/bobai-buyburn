@@ -21,7 +21,7 @@ environment at runtime, and the config files name the variables only.
 Buyback & Burn Bot
 ------------------
 The bot that has run every ten minutes since launch.
-3 files, 1919 lines
+3 files, 1975 lines
 needs:
   - A wallet with a little gas in it
       ours: one BSC wallet, topped up from the tax itself
@@ -70,7 +70,7 @@ txt: https://brainonbnb.com/code/defi-agent.txt
 Dev Sweep Bot
 -------------
 The hourly one that pays out the creator share.
-3 files, 540 lines
+3 files, 661 lines
 needs:
   - A wallet that receives the tax
       ours: the same wallet the buyback bot spends from
@@ -183,7 +183,7 @@ txt: https://brainonbnb.com/code/prize-pool-bot.txt
 Pool Scanner
 ------------
 Reads any BNB Chain pool, the measurement in your browser.
-6 files, 7988 lines
+6 files, 8067 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -200,7 +200,7 @@ txt: https://brainonbnb.com/code/pool-scanner.txt
 NFT Buy Drops
 -------------
 The contract, the metadata server and the collection page.
-10 files, 1391 lines
+10 files, 1397 lines
 needs:
   - A wallet with gas for the deployment
       ours: one transaction on BSC, a few cents
@@ -285,7 +285,7 @@ txt: https://brainonbnb.com/code/xmas-terminal.txt
 brainScreener
 -------------
 Thirteen self-tests. No accounts, no tracking, no backend.
-51 files, 10149 lines
+51 files, 10313 lines
 needs:
   - A static host
       ours: Cloudflare Pages
@@ -299,7 +299,7 @@ txt: https://brainonbnb.com/code/brainscreener.txt
 Agent Tools — MCP & llms.txt
 ----------------------------
 What an AI agent sees when it asks this project a question.
-5 files, 4533 lines
+5 files, 4667 lines
 needs:
   - A machine that can run Node 18+
       ours: the MCP server over stdio, locally
@@ -316,7 +316,7 @@ txt: https://brainonbnb.com/code/agent-tools.txt
 The Agent Service — x402, Broker & Census
 -----------------------------------------
 An agent that sells something, and gets paid without a human in the loop.
-80 files, 25691 lines
+83 files, 26147 lines
 needs:
   - A wallet to be paid into
       ours: one BSC wallet, separate from the bots
@@ -342,7 +342,7 @@ txt: https://brainonbnb.com/code/agent-service.txt
 The Census — reading a whole registry
 -------------------------------------
 Every agent id on BNB Chain, and every job they were ever paid for.
-7 files, 5103 lines
+7 files, 5139 lines
 needs:
   - Node 18+ and time
       ours: about three hours for the registry, twenty minutes for the jobs

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5103 lines.
+# one fetch. 7 files, 5139 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -269,6 +269,10 @@ for (const line of (SELF_TEST ? '' : fs.readFileSync(HITS, 'utf8')).split('\n'))
 if (SELF_TEST) agents.push({
   id: 49467, name: 'Brain On BNB AI ($BOBAI)',
   endpoints: ['https://brainonbnb.com/', 'https://brainonbnb.com/mcp'],
+}, {
+  // and the other direction (A-Z 24.11.): an identity that names only the domain, which the domain's proof does not
+  // list, must NOT be lent the domain's card and tools
+  id: 421197, name: 'brainonbnb.ai', endpoints: ['https://brainonbnb.com'],
 });
 console.log(`${agents.length.toLocaleString('en-US')} agents claim an endpoint`);
 
@@ -346,6 +350,23 @@ const cardIsCallable = (j) => !!(
   && Array.isArray(j.skills) && j.skills.some((s) => s && typeof s === 'object' && (s.id || s.name))
 );
 
+// A DOMAIN THAT NAMES ITS AGENTS (A-Z 24.11.): the guesses below take a registered domain's well-known card and its /mcp
+// as the agent's own - but a domain can carry several identities. ERC-8004's domain proof
+// (/.well-known/agent-registration.json, "registrations") says which: #421197, the operator's Binance Agentic Wallet
+// agent, names brainonbnb.com as its web page and got #49467's card, tools and description, though that file lists
+// #49467 and not #421197. A domain whose file lists agents, but not this one, lends it nothing by guessing; what the
+// agent wrote down itself (a card URL, an /mcp endpoint) is still read. One read per origin per run.
+const DOMAIN_IDS = new Map();
+async function domainDisowns(origin, id) {
+  if (!DOMAIN_IDS.has(origin)) DOMAIN_IDS.set(origin, (async () => {
+    const res = await probeOne(origin + '/.well-known/agent-registration.json');
+    if (!res.ok || res.status >= 400) return null;
+    try { const j = await res.r.json(); const ids = Array.isArray(j?.registrations) ? j.registrations.map((x) => Number(x?.agentId)).filter(Number.isFinite) : []; return ids.length ? new Set(ids) : null; } catch { return null; }
+  })());
+  const ids = await DOMAIN_IDS.get(origin);
+  return !!ids && !ids.has(Number(id));
+}
+
 async function probeAgent(a) {
   const result = { id: a.id, name: a.name, endpoints: a.endpoints, reachable: false, live: {}, checked: [] };
 
@@ -386,6 +407,7 @@ async function probeAgent(a) {
   if (result.reachable && !result.live.card) {
     const hosts = [...new Set(a.endpoints.map((e) => { try { return new URL(e).origin; } catch { return null; } }).filter(Boolean))];
     for (const origin of hosts.slice(0, 2)) {
+      if (await domainDisowns(origin, a.id)) continue;
       for (const p of ['/.well-known/agent-card.json', '/.well-known/agent.json', '/.well-known/ai-agent.json']) {
         const res = await probeOne(origin + p);
         if (!res.ok || res.status >= 400) continue;
@@ -413,10 +435,11 @@ async function probeAgent(a) {
   // MCP is spoken to rather than assumed from the URL shape. Same reasoning as
   // the card lookup: an agent that runs MCP at /mcp on its own domain will
   // usually have registered only the domain.
-  const mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
+  let mcpUrl = a.endpoints.find((e) => /\/mcp(\/|$)/i.test(e))
     || (result.reachable ? (() => {
       try { return new URL(a.endpoints[0]).origin + '/mcp'; } catch { return null; }
     })() : null);
+  if (mcpUrl && !a.endpoints.includes(mcpUrl)) { try { if (await domainDisowns(new URL(mcpUrl).origin, a.id)) mcpUrl = null; } catch { mcpUrl = null; } }
   if (mcpUrl) {
     const res = await probeOne(mcpUrl, {
       method: 'POST',
@@ -480,13 +503,16 @@ await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
 await new Promise((resolve) => out.end(resolve));
 
 if (SELF_TEST) {
-  const r = JSON.parse(fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n')[0]);
+  const rows = fs.readFileSync(OUT.replace(/\.jsonl$/, '.selftest.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const r = rows.find((x) => Number(x.id) === 49467), lent = rows.find((x) => Number(x.id) === 421197);
   console.log('\n--- self-test against our own agent ---');
   console.log('  reachable  :', r.reachable);
   console.log('  MCP        :', !!r.live.mcp, r.live.mcpTools ? `(${r.live.mcpTools} tools)` : '');
   console.log('  agent card :', !!r.live.a2a, r.live.cardUrl || '');
   console.log('  tools      :', (r.live.tools || []).slice(0, 5).map((t) => t.name).join(', ') || '(none)');
-  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10;
+  const lentNothing = !!lent && lent.reachable && !lent.live.mcp && !lent.live.card;
+  console.log('  #421197 (names only the domain, not in its proof): card', !!lent?.live?.card, '· MCP', !!lent?.live?.mcp, lentNothing ? '- nothing lent, right' : '- LENT the domain\'s surface');
+  const good = r.reachable && r.live.mcp && (r.live.tools || []).length >= 10 && lentNothing;
   console.log(good
     ? '\n  DETECTOR WORKS — a zero elsewhere is a finding, not a bug\n'
     : '\n  DETECTOR BROKEN — fix this before publishing any count\n');
@@ -646,7 +672,7 @@ const quoteOf = (id, cat = null) => {
 //   'none'    did not answer: HTTP error, unreadable card, auth wall, timeout
 // Unknown reasons count as 'none' only when they read like a transport
 // failure; anything else that came back in words was an answer.
-const NO_ANSWER = /HTTP \d{3}|could not be read|not an A2A reply|Unauthori[sz]ed|Authentication|Forbidden|timed? ?out|timeout|fetch failed|ECONN|ENOTFOUND|EAI_AGAIN|certificate|no A2A endpoint|did not answer/i;
+const NO_ANSWER = /HTTP \d{3}|could not be read|not an A2A reply|Unauthori[sz]ed|Authentication|Forbidden|timed? ?out|timeout|fetch failed|ECONN|ENOTFOUND|EAI_AGAIN|certificate|no A2A endpoint|did not answer|could not be found on Vercel|DEPLOYMENT_NOT_FOUND|Method not found/i;   // Vercel's 404 page and a JSON-RPC -32601 are no answer (A-Z 24.11.: three dead deployments carried a Hire button)
 const quoteState = (q) => {
   if (!q) return null;
   if (q.quotes) return 'quotes';
@@ -1630,6 +1656,10 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
       // it is.
       const shared = e.own ? 1 : providerAgentCount.get(e.address) || 0;
       const who = shared > 1 ? 'Its provider hired' : 'Hired';
+      // DELIVERED AS A COUNT, NOT A PERCENT (A-Z 24.11.: "Hired 5x · 5 paid out · 60% delivered" read as a contradiction — the
+      // rate takes in the unattributed jobs of a shared provider address, the counts beside it do not): the jobs delivered of
+      // the jobs counted, and how many of those are the address's
+      const deliveredChip = (x) => { const o = x.own || {}, f = o.funded_outside, r = o.delivery_rate_outside_pct ?? o.delivery_rate_pct; if (r == null) return ''; if (!f) return ` &middot; ${r}% delivered`; const d = Math.round((r / 100) * f), sh = o.shared_address_jobs?.funded_outside; return ` &middot; ${fmt(d)}/${fmt(f)} delivered${sh ? ` (${fmt(sh)} of them address-wide)` : ''}`; };
       if (e.funded) {
         // last delivery (2026-10-09): the newest submission on the kernel for
         // this provider, counted in days at the job scan and recounted in the
@@ -1637,7 +1667,7 @@ const categorySections = categorised.map(({ cat, rows, maybe }) => {
         const lastMs = tsMs(e.last_submission);
         const ago = lastMs ? daysSince(e.last_submission) : null;
         const agoText = (n) => (n === 0 ? 'today' : n === 1 ? '1 day ago' : `${fmt(n)} days ago`);
-        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${(e.own?.delivery_rate_outside_pct ?? e.own?.delivery_rate_pct) != null ? ` &middot; ${e.own.delivery_rate_outside_pct ?? e.own.delivery_rate_pct}% delivered` : ''}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
+        chips.push(`<li title="Jobs funded through the ERC-8183 escrow${shared > 1 ? `, counted for the provider address, which ${fmt(shared)} agents on this page share` : ''}, and how many of those paid out${lastMs ? `; last delivery submitted ${new Date(lastMs).toISOString().slice(0, 10)}` : ''}">${who} ${fmt(e.funded_outside)}&times; &middot; ${e.completed_outside ? `${fmt(e.completed_outside)} paid out` : 'none paid out yet'}${e.outside_buyers ? ` &middot; ${fmt(e.outside_buyers)} ${e.outside_buyers === 1 ? 'buyer' : 'buyers'}` : ''}${e.funded_by_us ? ` &middot; +${fmt(e.funded_by_us)} by our wallets` : ''}${deliveredChip(e)}${e.own?.expired ? ` &middot; ${fmt(e.own.expired)} expired` : ''}${lastMs ? ` &middot; last delivery <span class="rg-ago" data-t="${Math.floor(lastMs / 1000)}">${agoText(ago)}</span>` : ''}</li>`);
         facts.push(`<li>${shared > 1 ? `Its provider address, shared by ${fmt(shared)} agents here, was hired` : 'Hired'} ${fmt(e.funded_outside)} ${e.funded_outside === 1 ? 'time' : 'times'} by others through the escrow${e.completed_outside ? `, ${fmt(e.completed_outside)} paid out` : ', none paid out yet'}${e.funded_by_us ? `, and ${fmt(e.funded_by_us)} more by our own wallets` : ''}${e.submitted_not_released ? `; ${fmt(e.submitted_not_released)} more delivered and waiting out the dispute window` : ''}</li>`);
       } else {
         chips.push('<li>Never hired</li>');
@@ -1710,7 +1740,7 @@ ${maybe.map(card).join(NL)}
       <h2>${esc(cat.label)}</h2>
       <p class="rg-sub">${esc(cat.blurb)}</p>
       ${rows.length ? leaderLine(cat, rows) : ''}
-      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ` Ordered by evidence score, ours included: one sum for every agent, not for sale (<a href="https://agent.brainonbnb.com/chart/rank?category=${cat.id}">the ranking</a>). Without a score, priced when asked first, then answers without a price, then no answer; measured up less than half the time last; then paid out by several buyers, then paid out, then the latest delivery, then hired.` : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
+      <p class="rg-note" style="margin:-8px 0 16px"><b>${fmt(rows.length)} ${rows.length === 1 ? 'entry' : 'entries'}</b>${EVIDENCE_DATES ? ` <span class="rg-dates">(${EVIDENCE_DATES})</span>` : ''}${ids > rows.length ? ` (${fmt(ids)} registry ids, fleets shown as one)` : ''}.${rows.length > 1 ? ` Ordered by evidence score, ours included: one sum for every agent, not for sale (<a href="https://agent.brainonbnb.com/chart/rank?category=${cat.id}">the ranking</a>).` : ''}${rows.length <= 2 ? ' That is the whole category on BNB Chain — the depth this is judged on does not exist yet, and padding it with keyword matches would only hide that.' : ''}</p>
       ${rows.length ? `<div class="rgc-list">
 ${body}
       </div>${restBlock}${oursBlock}` : '<p class="rg-note">Nothing on this chain exposes this yet.</p>'}${maybeBlock}
@@ -1731,7 +1761,7 @@ const categoryChips = categorised.map(({ cat, rows }) => {
   // page was built to point out in other people's numbers.
   const quoting = rows.filter((r) => canHire(r) && r.agentId && quoteOf(r.agentId, cat.id)?.quotes).length;
   return `<a class="rg-chip" href="#cat-${cat.id}"><span>${esc(cat.label)}</span>`
-    + `<em>${fmt(rows.length)}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote back' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;
+    + `<em>${fmt(rows.length)} agent${rows.length === 1 ? '' : 's'}${hireable ? ` &middot; ${hireConfirm ? fmt(quoting) + ' quote a price' : fmt(hireable) + ' hireable'}` : ''}</em></a>`;   // C34 (A-Z 24.11.): '21 · 9 quote back' read as broken
 }).join('');
 
 // What the homepage prints on its marketplace card. Written here rather than
@@ -2028,6 +2058,8 @@ const page = `<!doctype html>
   @media(max-width:720px){.aw-tiles{grid-template-columns:1fr 1fr;gap:8px}}
   /* three tiles are three columns (2026-10-26): the board's three stood in a grid of four on an iPad, 2+1 on a Fold */
   .aw-tiles:has(> :nth-child(3):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+  /* a phone: three columns of ~100 px broke each line into five or six (A-Z 23.11.) — one tile per row */
+  @media(max-width:480px){.aw-tiles.n3,.aw-tiles:has(> :nth-child(3):last-child){grid-template-columns:1fr!important}}
   .aw-box{display:flex;flex-direction:column;gap:14px}
   .aw-sec{display:grid;grid-template-columns:150px 1fr;gap:6px 16px;align-items:start}
   /* 'Show the 8 newest' under its own list, on one line — in the 150 px label column it broke in two (26.10.) */
@@ -2267,6 +2299,10 @@ const page = `<!doctype html>
   details.rg-fold[open] summary::after{content:'\\2212'}
   details.rg-fold summary h2{margin:0;display:inline}
   details.rg-fold summary .rg-peek{color:var(--muted);font-size:.72rem;font-weight:400;margin-left:auto;padding-right:12px}
+  /* the peek and the +/- shared the free space (two auto margins), so the peeks floated mid-row at a different place in
+     each row (A-Z 23.11.): the peek takes it alone and the sign follows it; on a phone the peek goes under the title */
+  details.rg-fold summary:has(.rg-peek)::after{margin-left:0}
+  @media (max-width:560px){details.rg-fold summary:has(.rg-peek){flex-wrap:wrap;row-gap:2px}details.rg-fold summary:has(.rg-peek) h2{flex:1 1 0;min-width:0}details.rg-fold summary .rg-peek{order:3;flex-basis:100%;margin-left:0;padding-right:0}}
   details.rg-fold[open] summary{margin-bottom:14px}
   details.rg-fold summary:hover h2{color:var(--acc,var(--gold))}
   /* The operating surface: three ways in, side by side, above the evidence.
@@ -2382,7 +2418,7 @@ const page = `<!doctype html>
       </div>
       <div class="hx-try" id="rg-try-chips">
         <span>Try:</span>
-        <button type="button" data-q="protocol stats and pool statistics">protocol stats</button>
+        <button type="button" data-q="where is the best stablecoin yield on BNB Chain right now">the best stablecoin yield</button>
         <button type="button" data-q="check the health factor of the Venus position at 0xd319e1F8e987cf78333cEA853F455366640929cF">a Venus health factor</button>
         <button type="button" data-q="find an agent that rebalances a PancakeSwap position">hire a rebalancer</button>
         <button type="button" data-q="measure the PancakeSwap pool of token 0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82">measure the CAKE pool</button>
@@ -2425,7 +2461,7 @@ const page = `<!doctype html>
     <div class="blk-head" style="margin-top:34px"><span class="blk-tag">Every agent on BNB Chain, measured</span><span class="blk-line"></span></div>
     <div class="rg-hero">
       <h2 class="rg-h1">The <em>directory</em><br><span class="rg-sub2"><span id="rg-live-total">${fmt(total)}</span> agents are registered on BNB Chain. ${reach ? fmt(reach.reachable) + ' answer, ' + fmt(serving) + ' serve something at the address they declare. ' + fmt(operators.length) + ' operators run them.' : 'We asked every one.'}</span></h2>
-      <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do, with a Hire button on each.</p>
+      <p class="rg-lead">The first number gets quoted everywhere; nobody checks it. We knocked on every door. Below is who answered, sorted by what they can do; the ones that answered our ask for a price carry a Hire button.</p>
       <p class="rg-when" id="rg-when" data-measured="${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))}" data-scanned="${fmt(scanned)}">Measured ${esc((api.measured_at || '').slice(0, 16).replace('T', ' '))} UTC &middot; ${fmt(scanned)} of ${fmt(total)} ids read &middot; ${c.unread} left unreadable</p>
     </div>
 

@@ -2071,6 +2071,12 @@ export default {
       const { handleRegister } = await import('./register.js');
       return await handleRegister(request, env, path, url);
     }
+    // THE AGENT ID BOOK (2026-11-27): read-only summary of BobaiAgentIdBook on BNB Chain (agent-id.js)
+    if (path === '/agent-id' || path.startsWith('/agent-id/')) {
+      note(`agent-id:${path.split('/')[2] || 'book'}`);
+      const { handleAgentId } = await import('./agent-id.js');
+      return await handleAgentId(request, env, path, url);
+    }
     if (path === '/wall' || path.startsWith('/wall/')) {
       note(`wall:${request.method}`);
       const wk = env.BOARD_PROXY_SECRET || env.HIT_SECRET;
@@ -4183,6 +4189,8 @@ ${pageTail}`;
     // the invocation's operation budget (job 56905 was delivered 2 min into
     // the top-of-hour tick, 2026-10-04).
     ctx.waitUntil(watchFundedJobs(env, rpc).catch(() => {}));
+    // THE AGENT ID BOOK (agent-id.js, 2026-11-27): a handful of log reads, early so the heavy tasks cannot starve it
+    if (event.cron === '*/15 * * * *') ctx.waitUntil(import('./agent-id.js').then((m) => m.agentIdTick(env)).catch(() => {}));
     // THE PULSE (pulse.js, agent chart phase 1): the next agents of the census index, each once a day, kept 90 days
     ctx.waitUntil(runPulseTick(env).catch(() => {}));
     // Listed agents every hour (agent-watch alarms within the hour), on the tick at minute 0

@@ -59,7 +59,7 @@ export function applyTransfers(bal, transfers, isContract = () => false) {
 }
 
 const post = async (u, body) => fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json());
-const rpcOf = (env) => async (body) => {
+export const rpcOf = (env) => async (body) => {
   const urls = [env.BSC_RPC_KEYED_URL_2, 'https://bsc-rpc.publicnode.com'].filter(Boolean);
   for (const u of urls) {
     try {
@@ -80,7 +80,7 @@ const NODEREAL_SPAN = 300;
 // below the chain on 9.11. (0xf738… 10.94M kept, 13.42M on chain). A range older than FRESH_BLOCKS is read at NodeReal
 // only; without NodeReal it stays unread and is asked again next tick, never applied as empty.
 export const FRESH_BLOCKS = 40000;
-async function logsOf(env, rpc, filter, from, to, head = null) {
+export async function logsOf(env, rpc, filter, from, to, head = null) {
   const ask = (a, b) => ({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ ...filter, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
   const old = head != null && head - to > FRESH_BLOCKS;
   if (!old) { const r = await rpc(ask(from, to)); if (r) return r.result; }

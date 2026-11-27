@@ -201,7 +201,12 @@ try {
   globalThis.fetch = async (u) => { asked.push(String(u)); return /logs\.brainonbnb\.com\/health/.test(String(u)) ? json({ buyback: new Date().toISOString() }) : new Response('{}', { status: 404 }); };
   const waits = [];
   try { quiet(); if (W.default) await W.default.scheduled({ cron: W.LIGHT_CRON }, { TG: tgGreen, BROADCAST_SECRET: 's' }, { waitUntil: (p) => waits.push(p) }); await Promise.all(waits); } catch (e) { asked.push('threw ' + e.message); } finally { loud(); globalThis.fetch = prevFetch; }
-  is('8 the hourly cron runs the light look only (two heartbeats) and says nothing when green', asked.length === 2 && asked.some((u) => /tg\/health|workers\.dev\/health/.test(u)) && asked.some((u) => /logs\.brainonbnb\.com\/health/.test(u)) && !asked.some((u) => /broadcast/.test(u)), asked.join(' '));
+  // the campaign watch (worker-health/campaigns.js, 2026-11-27) reads Binance's announcement lists and BNB Chain's blog
+  // sitemap on the same cron; it is its own job and only those addresses are its own
+  const watchUrl = (u) => /^https:\/\/www\.binance\.com\/bapi\/composite\/v1\/public\/cms\/article\/list\/query\?/.test(u) || /^https:\/\/www\.bnbchain\.org\/en\/blog\/sitemap\.xml$/.test(u);
+  const looked = asked.filter((u) => !watchUrl(u));
+  is('8 the hourly cron runs the light look only (two heartbeats) and says nothing when green', looked.length === 2 && looked.some((u) => /tg\/health|workers\.dev\/health/.test(u)) && looked.some((u) => /logs\.brainonbnb\.com\/health/.test(u)) && !asked.some((u) => /broadcast/.test(u)), asked.join(' '));
+  is('8 … beside it only the campaign watch reads, and only its own sources', asked.filter(watchUrl).length <= 3);
   const mails = [];
   const ef = W.emailFallback;
   const r1 = ef ? await (async () => { quiet(); try { return await ef({}, 'x', async () => { mails.push(1); return { ok: true }; }); } finally { loud(); } })() : null;

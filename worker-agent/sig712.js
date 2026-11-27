@@ -9,7 +9,7 @@
 // (brainbook.html / wall.html), so nothing is taken on trust.
 import { verifyMessage, verifyTypedData } from 'viem';
 
-export const DOMAIN_NAME = { brainbook: 'BOBAI Brainbook', wall: 'BOBAI Agent Wall', join: 'BOBAI Join' };   // join: the one-signature join (join.js, 24.11.)
+export const DOMAIN_NAME = { brainbook: 'BOBAI Brainbook', wall: 'BOBAI Agent Wall', join: 'BOBAI Join', pass: 'BOBAI Holder Pass' };   // join: the one-signature join (join.js, 24.11.)
 
 export function typedFor(kind, message) {
   return {

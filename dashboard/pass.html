@@ -37,7 +37,7 @@
     <a class="nb" href="https://pancakeswap.finance/swap?outputCurrency=0x245c386dcfed896f5c346107596141e5edcbffff&amp;chain=bsc" target="_blank" rel="noopener" title="3% tax: set slippage to 6% in PancakeSwap">Buy $BOBAI</a>
   </div></nav>
   <main>
-  <div class="intro"><h1>Hold <em>$BOBAI</em>, use the agents free</h1><p>1,000,000 $BOBAI<span data-busd="1000000"></span> in your wallet: the six agents' paid answers, 20 a day, nothing paid.</p></div>
+  <div class="intro"><h1>Hold <em>$BOBAI</em>, use the agents free</h1><p>1,000,000 $BOBAI<span data-busd="1000000"></span> in your wallet: the six agents' paid answers, 20 a day, nothing paid. Or an <a href="/agent-id" style="color:var(--gold)">Agent ID with a place in the Agent ID Book</a>: 5 a day.</p></div>
   <section class="sec sec-after-band hp">
 
     <div class="hp-card fi">
@@ -183,10 +183,10 @@ textarea.hp-in{resize:vertical}
     }).catch(() => { out.textContent = 'The holder list could not be read just now. Try again in a minute.'; });
   });
 
-  const call = async (data) => {
+  const call = async (data, to = BOBAI) => {
     for (const u of RPCS) {
       try {
-        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: BOBAI, data }, 'latest'] }) });
+        const r = await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to, data }, 'latest'] }) });
         const j = await r.json();
         if (j.result) return j.result;
       } catch {}
@@ -200,9 +200,14 @@ textarea.hp-in{resize:vertical}
     try {
       const hex = await call('0x70a08231' + wallet.slice(2).padStart(64, '0'));
       const bal = Number(BigInt(hex) / 10n ** 15n) / 1000;
-      const ok = bal >= LINE, miss = LINE - bal;
+      const atLine = bal >= LINE, miss = LINE - bal;
+      // THE AGENT ID TIER (2026-11-27): below the line, an Agent ID plus a place in the Agent ID Book opens 5 answers a day
+      let human = false;
+      if (!atLine) { try { const p = wallet.slice(2).toLowerCase().padStart(64, '0'); const [n, e] = await Promise.all([call('0x70a08231' + p, '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F'), call('0x58bb388a' + p, '0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca')]); human = BigInt(n) > 0n && BigInt('0x' + e.slice(2, 66)) > 0n; } catch {} }
+      const ok = atLine || human;
       el.innerHTML = '<b>' + esc(wallet.slice(0, 6) + '…' + wallet.slice(-4)) + '</b> holds <b>' + fmt(bal) + ' $BOBAI</b>' + usd(bal) + '. '
-        + (ok ? '<span class="ok">At the line: the agents are yours to use, 20 answers a day.</span>'
+        + (human ? '<span class="ok">Agent ID holder in the <a href="/agent-id">Agent ID Book</a>: 5 answers a day are yours, nothing paid. Hold the line for 20.</span>'
+        : ok ? '<span class="ok">At the line: the agents are yours to use, 20 answers a day.</span>'
               : '<span class="no">' + fmt(Math.ceil(miss)) + ' $BOBAI' + usd(miss) + ' short of the line.</span> With the 3&nbsp;% transfer tax, buy a little more than that.<br><a class="hp-btn hp-buy" href="' + BUY + '" target="_blank" rel="noopener">Buy $BOBAI on PancakeSwap</a>');
       $('hp-ask').hidden = !ok;
       needs();

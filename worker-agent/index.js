@@ -1525,7 +1525,7 @@ async function sellAnswer(env, ctx, payTo, serviceId, body, proof) {
   ctx.waitUntil(bump(env, 'answer_sold'));
   return { status: 200, body: {
     ok: true, service: serviceId, name: service.name, tx: pay.tx,
-    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, answer ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    paid: pay.holder ? `nothing — ${pay.holder.tier === 'agent_id' ? 'Agent ID pass (Agent ID + a place in the Agent ID Book)' : '$BOBAI holder pass'} of ${pay.from}, answer ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
     ...paymentFate(pay),
     produced_at: new Date().toISOString(),
     ...(target ? { input: target.target } : {}),
@@ -1655,7 +1655,7 @@ async function purchaseScanPass(env, ctx, payTo, proof) {
     pass: issued.pass,
     expires: issued.expires,
     use: `Send header X-Scan-Pass: ${issued.pass} on every pool scan until ${issued.expires} (up to ${SCAN_PASS_CAP.toLocaleString('en-US')} scans): https://brainonbnb.com/api/pool-scan?address=0x… or bsc_pool_scan at https://brainonbnb.com/mcp.`,
-    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, day pass ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
+    paid: pay.holder ? `nothing — ${pay.holder.tier === 'agent_id' ? 'Agent ID pass (Agent ID + a place in the Agent ID Book)' : '$BOBAI holder pass'} of ${pay.from}, day pass ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(pay.paid)} ${pay.asset || 'USD1'}`,
     ...paymentFate(pay),
     tx: pay.holder ? undefined : pay.tx,
   } };
@@ -1771,7 +1771,7 @@ async function purchaseWatch(env, ctx, payTo, spec, proof) {
     // Spelled out, not left as a pattern to fill in. This is the only copy of
     // the id the buyer will ever be handed.
     read_back: `https://agent.brainonbnb.com/watch/${watch.id}`,
-    paid: pay.holder ? `nothing — $BOBAI holder pass of ${pay.from}, watch ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(check.paid)} ${check.asset}`,
+    paid: pay.holder ? `nothing — ${pay.holder.tier === 'agent_id' ? 'Agent ID pass (Agent ID + a place in the Agent ID Book)' : '$BOBAI holder pass'} of ${pay.from}, watch ${pay.holder.used} of ${pay.holder.of} today` : `${fmtUsd1(check.paid)} ${check.asset}`,
     ...paymentFate(pay),
     // Stated rather than implied: a watch with no threshold records depth
     // and never alerts, which is a legitimate thing to want and a terrible

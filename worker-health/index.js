@@ -194,7 +194,12 @@ async function lightRun(env, { notify, pauseMs = 60000, scheduledTime = null }) 
 
 export default {
   async scheduled(event, env, ctx) {
-    if (event && event.cron === LIGHT_CRON) { ctx.waitUntil(lightRun(env, { notify: true, scheduledTime: event.scheduledTime })); return; }
+    if (event && event.cron === LIGHT_CRON) {
+      ctx.waitUntil(lightRun(env, { notify: true, scheduledTime: event.scheduledTime }));
+      // the campaign watch (campaigns.js, 2026-11-27): new Binance / BNB Chain actions for builders, told privately
+      ctx.waitUntil(import('./campaigns.js').then((m) => m.campaignWatch(env, { send: (t) => sendOperator(env, t) })).catch((e) => console.error('[HEALTH] campaign watch', e && e.message)));
+      return;
+    }
     ctx.waitUntil(morningRun(env, { notify: true, secondLook: true, scheduled: true }));
   },
   async fetch(request, env) {
@@ -212,6 +217,13 @@ export default {
       const out = await emailFallback(env, `BOBAI Health · e-mail test ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC
 The second way works: when the Telegram bot cannot post a health message, it comes here.`);
       return new Response(JSON.stringify({ email: out }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+    }
+    if (url.pathname === '/campaigns' && request.method === 'POST') {
+      const got = request.headers.get('x-broadcast-secret') || '';
+      if (!env.BROADCAST_SECRET || got !== env.BROADCAST_SECRET) return new Response('forbidden', { status: 403 });
+      const { campaignWatch } = await import('./campaigns.js');
+      const out = await campaignWatch(env, { send: (t) => sendOperator(env, t), notify: url.searchParams.get('notify') === '1' });
+      return new Response(JSON.stringify(out, null, 2), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
     }
     if (url.pathname === '/run' && request.method === 'POST') {
       const got = request.headers.get('x-broadcast-secret') || '';

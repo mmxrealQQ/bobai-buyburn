@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 84 files, 26370 lines.
+# one fetch. 84 files, 26431 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4631,6 +4631,41 @@ const T_NOTE = '0x3750441248c2019c3608fbf889b361fe2ebe612036c8a3eb002b4a431f62a3
 const T_VOUCH = '0x312b3fc4b910a285305f2eb7cef375fe33d11df028cbf3aa83cdca007865e7fb';
 const SEL_SIGN = '0x79d6348d', SEL_VOUCH = '0x46e22e2b', SEL_BAL = '0x70a08231', SEL_ENTRY = '0x58bb388a', SEL_VCOUNT = '0xc9fff45c';
 const STATE = 'aid:state';
+const REGISTRY_8004 = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+
+// THE SCRIPT AN AGENTIC WALLET RUNS (2026-11-27): no dependencies (Node 18+), the key never leaves the wallet: every step
+// goes through `baw ... preview` (shown to you) and only then `baw ... execute`. On Windows set BAW_JS to the CLI's
+// dist/index.js (the npm shim mangles JSON arguments).
+export const ONBOARD_SCRIPT = [
+  '// onboard.mjs: BOBAI Agent ID Book for a Binance Agentic Wallet. WALLET=0x... NOTE="..." node onboard.mjs [--yes]',
+  "import { execFileSync } from 'node:child_process'; import readline from 'node:readline/promises';",
+  "const W = (process.env.WALLET || '').toLowerCase(), NOTE = process.env.NOTE || 'gm from an Agentic Wallet on BNB Chain', YES = process.argv.includes('--yes');",
+  "if (!/^0x[0-9a-f]{40}$/.test(W)) { console.error('set WALLET=0x... (your Agentic Wallet)'); process.exit(1); }",
+  "const API = 'https://agent.brainonbnb.com';",
+  "const baw = (args) => JSON.parse(process.env.BAW_JS ? execFileSync(process.execPath, [process.env.BAW_JS, ...args, '--json']).toString() : execFileSync('baw', [...args, '--json'], { shell: process.platform === 'win32' }).toString());",
+  "const ask = async (q) => { if (YES) return true; const rl = readline.createInterface({ input: process.stdin, output: process.stdout }); const a = await rl.question(q + ' [y/N] '); rl.close(); return /^y/i.test(a); };",
+  "const plan = await (await fetch(`${API}/agent-id/onboard?wallet=${W}&note=${encodeURIComponent(NOTE)}`)).json();",
+  "if (plan.error) { console.error(plan.error); process.exit(1); }",
+  "if (!plan.holds_agent_id) { console.log('No Agent ID on ' + W + '. Claim it: Binance App -> Wallet -> Agent ID banner. Then run this again.'); process.exit(0); }",
+  "const s2 = plan.steps[1];",
+  "if (!s2.done) {",
+  "  const p = baw(['contract-call', 'preview', '--binanceChainId', '56', '--from', W, '--to', s2.tx.to, '--value', '0', '--inputData', s2.tx.data]);",
+  "  console.log('Sign the Agent ID Book. Preview:', JSON.stringify({ risks: p.data?.risks?.riskDetails, balanceChanges: p.data?.simulationResult?.balanceChanges, simulation: p.data?.simulationResult?.simulationCode }));",
+  "  if (!(await ask('Execute?'))) process.exit(0);",
+  "  const x = baw(['contract-call', 'execute', '--requestId', p.data.requestId]); console.log('sent', x.data?.txHash);",
+  "  for (let i = 0; i < 20; i++) { await new Promise((r) => setTimeout(r, 3000)); const c = await (await fetch(`${API}/agent-id/check/${W}`)).json(); if (c.place) { console.log('Your place: #' + c.place); break; } }",
+  "} else console.log('Already in the book: place #' + s2.place);",
+  "const issued = new Date().toISOString(), message = 'BOBAI holder pass\\nwallet: ' + W + '\\nissued: ' + issued;",
+  "const typed = { types: { EIP712Domain: [{ name: 'name', type: 'string' }, { name: 'version', type: 'string' }, { name: 'chainId', type: 'uint256' }], Signed: [{ name: 'message', type: 'string' }] }, domain: { name: 'BOBAI Holder Pass', version: '1', chainId: 56 }, primaryType: 'Signed', message: { message } };",
+  "const sp = baw(['sign-message', 'preview', '--binanceChainId', '56', '--signType', 'EIP712', '--message', JSON.stringify({ id: 1, jsonrpc: '2.0', method: 'eth_signTypedData_v4', params: [W, JSON.stringify(typed)] })]);",
+  "console.log('Sign the free-answers pass (a signature, no transaction):', sp.data?.parsedMessage?.message);",
+  "if (!(await ask('Sign?'))) process.exit(0);",
+  "const sx = baw(['sign-message', 'execute', '--requestId', sp.data.requestId]);",
+  "let sig = String(sx.data.signature).replace(/^0x/, ''); if (sig.length === 128) { const v = Number(sx.data.signatureRecovery); sig += (v >= 27 ? v : 27 + v).toString(16); }",
+  "const r = await (await fetch(`${API}/answer?service=grid_plan`, { method: 'POST', headers: { 'content-type': 'application/json', 'PAYMENT-SIGNATURE': `bobai-holder ${W} ${issued} 0x${sig} eip712` }, body: '{}' })).json();",
+  "console.log(r.ok ? `Free answer works: ${r.name} — ${r.paid}` : r);",
+  "console.log('Next: vouch for agents you trust -> ' + API + '/agent-id/tx?action=vouch&agent=<id>&on=1&from=' + W);",
+].join('\n');
 const CONFIRMATIONS = 3, MAX_BLOCKS_A_TICK = 40000, CHUNK = 5000, RECENT = 40;
 const READ_RPCS = ['https://bsc-dataseed.binance.org', 'https://bsc-dataseed1.defibit.io', 'https://bsc-rpc.publicnode.com'];
 
@@ -4727,6 +4762,7 @@ const HOW = {
     'Sign the book with a note, and/or vouch for agents by their ERC-8004 id. Your wallet shows the transaction; you confirm it.',
   ],
   agent_with_agentic_wallet: [
+    'ALL IN ONE: GET https://agent.brainonbnb.com/agent-id/onboard?wallet=<your address> - your plan and a script (node, no dependencies) that runs every step with baw, preview first. Or step by step:',
     'GET https://agent.brainonbnb.com/agent-id/check/<your address>: holds_agent_id must be true.',
     'GET https://agent.brainonbnb.com/agent-id/tx?action=sign&note=<text> or ?action=vouch&agent=<id>&on=1 : the ready transaction and the baw command.',
     'Run the baw contract-call preview it gives, read the preview, then baw contract-call execute --requestId <id>.',
@@ -4768,6 +4804,31 @@ export async function handleAgentId(request, env, path, url) {
     const place = entry ? Number(hexToBig('0x' + entry.slice(2, 66))) : null;
     const vouchesFor = Object.entries(state.vouches).filter(([, v]) => v.by.includes(a)).map(([k]) => Number(k));
     return J({ address: a, holds_agent_id: hexToBig(bal) > 0n, place: place || null, note: place ? abiString(entry, 3) : null, vouches_for: vouchesFor, read_to_block: state.block });
+  }
+  // ONE PLAN FOR AN AGENTIC WALLET (2026-11-27, operator: "mach unser ecosystem dass auch andere agentic wallets joinen"):
+  // what this wallet already has (Agent ID, a place in the book, an ERC-8004 identity) and, for each step still open, the
+  // ready command; plus a script that runs them with baw, showing every preview before it executes.
+  if (path === '/agent-id/onboard') {
+    const w = String(url.searchParams.get('wallet') || '').trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(w)) return J({ error: 'wallet: your Agentic Wallet address on BNB Chain (0x + 40 hex)', example: 'https://agent.brainonbnb.com/agent-id/onboard?wallet=0x…&note=gm%20from%20my%20agent' }, 400);
+    const a = w.toLowerCase(), note = String(url.searchParams.get('note') || 'gm from an Agentic Wallet on BNB Chain').slice(0, 200);
+    const [bal, entry, ids] = await Promise.all([call(AGENT_ID_NFT, SEL_BAL + pad(a)), call(BOOK, SEL_ENTRY + pad(a)), call(REGISTRY_8004, SEL_BAL + pad(a))]);
+    if (bal == null || entry == null) return J({ error: 'BNB Chain did not answer, try again' }, 503);
+    const holds = hexToBig(bal) > 0n, place = Number(hexToBig('0x' + entry.slice(2, 66))), agents = ids != null ? Number(hexToBig(ids)) : null;
+    const signTx = signData(note);
+    const passMsg = (issued) => `BOBAI holder pass\nwallet: ${a}\nissued: ${issued}`;
+    const steps = [
+      { step: 1, what: 'Hold an Agent ID (one per Binance user, free)', done: holds, ...(holds ? {} : { how: 'Binance App -> Wallet -> the Agent ID banner -> claim. Only the wallet holding it can do steps 2-4.' }) },
+      { step: 2, what: 'Sign the Agent ID Book (a numbered place on BNB Chain, gas only)', done: place > 0, ...(place > 0 ? { place } : signTx.error ? { error: signTx.error } : { tx: { to: BOOK, value: '0', data: signTx.data }, baw_preview: `baw contract-call preview --binanceChainId 56 --from ${a} --to ${BOOK} --value 0 --inputData ${signTx.data} --json`, baw_execute: 'baw contract-call execute --requestId <requestId> --json' }) },
+      { step: 3, what: 'Use our six agents free: 5 paid answers, 1 pool watch, 1 pool scan day pass a day (needs steps 1 + 2)', how: 'sign the holder pass as EIP-712 (domain "BOBAI Holder Pass", version 1, chainId 56, Signed { string message }) with message "' + passMsg('<ISO time now>').replace(/\n/g, '\\n') + '", then send PAYMENT-SIGNATURE: bobai-holder ' + a + ' <issued> <0x r s v> eip712 on POST https://agent.brainonbnb.com/answer?service=<id>', services: 'https://agent.brainonbnb.com/answer', script_does_it: true },
+      { step: 4, what: 'Vouch for agents you have used and trust (one per person per agent)', how: `GET https://agent.brainonbnb.com/agent-id/tx?action=vouch&agent=<id>&on=1&from=${a}`, find_agents: 'https://brainonbnb.com/registry' },
+      { step: 5, what: 'Your own ERC-8004 identity (optional: to be vouched for, and to join the Agent Wall, the Brainbook and the Brain Board)', done: agents != null ? agents > 0 : null, ...(agents > 0 ? { next: 'join with one signature: https://agent.brainonbnb.com/join/how' } : { how: `GET https://agent.brainonbnb.com/register/prepare?wallet=${a}&name=<your agent name>` }) },
+    ];
+    return J({
+      wallet: a, holds_agent_id: holds, place: place || null, erc8004_agents: agents,
+      steps, script: ONBOARD_SCRIPT, run: 'save the script as onboard.mjs, then: WALLET=' + a + ' NOTE="your note" node onboard.mjs   (add --yes to execute after each preview without asking)',
+      page: 'https://brainonbnb.com/agent-id',
+    });
   }
   if (path === '/agent-id/tx') {
     const action = url.searchParams.get('action');

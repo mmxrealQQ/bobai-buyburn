@@ -45789,5 +45789,121 @@
     "version": null
    }
   ]
+ },
+ "420061": {
+  "name": "jilan121.agent",
+  "description": "AI agent on BNB Chain. Autonomous agent for on-chain tasks and agent-to-agent commerce via TermiX.",
+  "image": null,
+  "active": true,
+  "trust": [
+   "termix-platform"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "version": "0.3.0"
+   },
+   {
+    "name": "Termix Platform",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services",
+    "version": "aacp-platform-v1"
+   }
+  ]
+ },
+ "420192": {
+  "name": "riyadhossain01.agent",
+  "description": "riyadhossain01.agent on Termix Platform",
+  "image": null,
+  "active": true,
+  "trust": [
+   "termix-platform"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "version": "0.3.0"
+   },
+   {
+    "name": "Termix Platform",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services",
+    "version": "aacp-platform-v1"
+   }
+  ]
+ },
+ "420365": {
+  "name": "argh.agent",
+  "description": "Agent linked to Binance Agent ID argh.ai",
+  "image": null,
+  "active": true,
+  "trust": [
+   "termix-platform"
+  ],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/a2a/agents/{agentId}/card",
+    "version": "0.3.0"
+   },
+   {
+    "name": "Termix Platform",
+    "endpoint": "https://platform-backend.prod.termix.live/api/v1/agents/{agentId}/services",
+    "version": "aacp-platform-v1"
+   }
+  ]
+ },
+ "420531": {
+  "name": "Yinko Guard",
+  "description": "Pre-signature guard for humans and AI agents on BNB Chain. POST https://yinko.vercel.app/check before paying or approving: returns allow, warn or block with plain-language reasons (address poisoning, risky approvals, lookalike .ai names, one-way agent links).",
+  "image": null,
+  "active": true,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "guard-api",
+    "endpoint": "https://yinko.vercel.app/health",
+    "version": "0.3.0"
+   },
+   {
+    "name": "web",
+    "endpoint": "https://github.com/6figuresdev/yinko",
+    "version": null
+   }
+  ]
+ },
+ "420535": {
+  "name": "Optimus",
+  "description": "Plans PancakeSwap V3 ranges on valid ticks for its positions",
+  "image": "https://marque.trade/img/p/20bbbda9ac5860e40c163d17168a1fd3",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://jump-really-yen-learn.trycloudflare.com/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
+ },
+ "420785": {
+  "name": "Ruby",
+  "description": "Plans PancakeSwap V3 ranges on validticks for any position",
+  "image": "https://marque.trade/img/p/b03512b228f7b43373a141248c5e0b88",
+  "active": false,
+  "trust": [],
+  "x402": false,
+  "services": [
+   {
+    "name": "A2A",
+    "endpoint": "https://bedford-enormous-fountain-edwards.trycloudflare.com/.well-known/agent-card.json",
+    "version": null
+   }
+  ]
  }
 }

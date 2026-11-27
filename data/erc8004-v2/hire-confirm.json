@@ -1,9 +1,19 @@
 {
   "what_this_is": "What happened when every agent offered on /registry was asked for a price over ERC-8183. Only the negotiation step was sent; no skill was invoked.",
-  "measured_at": "2026-11-20T06:15:42.742Z",
-  "asked": 59,
+  "measured_at": "2026-11-27T04:42:58.776Z",
+  "asked": 56,
   "quoted": 31,
   "agents": [
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": true,
+      "price": "0.01 $U",
+      "endpoint": "https://plinth-relay.vercel.app/agent",
+      "reason": null
+    },
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
@@ -36,16 +46,6 @@
       "reason": null
     },
     {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": true,
-      "price": "0.01 $U",
-      "endpoint": "https://plinth-relay.vercel.app/agent",
-      "reason": null
-    },
-    {
       "id": 374113,
       "label": "Centreline by Pokter",
       "category": "rebalancing",
@@ -74,16 +74,6 @@
       "price": "0.1 $U",
       "endpoint": "https://bnb-lp.172-104-171-139.nip.io/",
       "reason": null
-    },
-    {
-      "id": 336622,
-      "label": "RangeKeeper",
-      "category": "rebalancing",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
       "id": 340471,
@@ -124,6 +114,16 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A899042279537%3Aruntime%2Frangereset-ozY66A9He2/invocations?qualifier=DEFAULT",
       "reason": "Missing Authentication Token"
+    },
+    {
+      "id": 336622,
+      "label": "RangeKeeper",
+      "category": "rebalancing",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://genesis-marketplace-one.vercel.app/a2a",
+      "reason": "The deployment could not be found on Vercel."
     },
     {
       "id": 341628,
@@ -237,16 +237,6 @@
       "reason": null
     },
     {
-      "id": 303779,
-      "label": "marketplace-operated-grid-planner",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
-      "reason": "The deployment could not be found on Vercel."
-    },
-    {
       "id": 269233,
       "label": "BNB Grid Trader (test)",
       "category": "grid-trading",
@@ -255,6 +245,16 @@
       "price": "0.1 $U",
       "endpoint": "https://bnb-grid.172-104-171-139.nip.io/",
       "reason": null
+    },
+    {
+      "id": 303779,
+      "label": "marketplace-operated-grid-planner",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
+      "reason": "The deployment could not be found on Vercel."
     },
     {
       "id": 340527,
@@ -287,16 +287,6 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 336623,
-      "label": "Gridwright",
-      "category": "grid-trading",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/gridwright",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
       "id": 324936,
       "label": "Sentinels Grid Trader",
       "category": "grid-trading",
@@ -305,6 +295,16 @@
       "price": null,
       "endpoint": "https://bedrock-agentcore.us-east-1.amazonaws.com/a2a",
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply"
+    },
+    {
+      "id": 337848,
+      "label": "Grid Agent 1 by 4LPHA",
+      "category": "grid-trading",
+      "ours": false,
+      "quotes": false,
+      "price": null,
+      "endpoint": "https://4lpha.tech/a2a",
+      "reason": "its card could not be read; the conventional /a2a path then answered HTTP 200 text/html, which is not an A2A reply"
     },
     {
       "id": 341555,
@@ -317,16 +317,6 @@
       "reason": null
     },
     {
-      "id": 358786,
-      "label": "Tidemark",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": true,
-      "price": "0.1 $U",
-      "endpoint": "https://marque.trade/agents/tidemark/a2a",
-      "reason": null
-    },
-    {
       "id": 374112,
       "label": "Cresthold by Pokter",
       "category": "yield-optimization",
@@ -334,6 +324,16 @@
       "quotes": true,
       "price": "0.1 $U",
       "endpoint": "https://pokter.xyz/api/house/cresthold/a2a?chain=56",
+      "reason": null
+    },
+    {
+      "id": 358786,
+      "label": "Tidemark",
+      "category": "yield-optimization",
+      "ours": false,
+      "quotes": true,
+      "price": "0.1 $U",
+      "endpoint": "https://marque.trade/agents/tidemark/a2a",
       "reason": null
     },
     {
@@ -418,16 +418,6 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 336624,
-      "label": "YieldRouter",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/yield-router",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
-    },
-    {
       "id": 341225,
       "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
@@ -476,16 +466,6 @@
       "price": null,
       "endpoint": "https://mcp.pretium.africa/mcp",
       "reason": "Method not found"
-    },
-    {
-      "id": 336622,
-      "label": "RangeKeeper",
-      "category": "yield-optimization",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/range-keeper",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
     },
     {
       "id": 341556,
@@ -559,16 +539,6 @@
       "reason": null
     },
     {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
-      "category": "health-factor",
-      "ours": false,
-      "quotes": false,
-      "price": null,
-      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
-      "reason": "The deployment could not be found on Vercel."
-    },
-    {
       "id": 345087,
       "label": "GuardRail Health Guard",
       "category": "health-factor",
@@ -579,14 +549,14 @@
       "reason": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply"
     },
     {
-      "id": 336625,
-      "label": "HealthSentinel",
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false,
       "quotes": false,
       "price": null,
-      "endpoint": "https://genesis-marketplace-one.vercel.app/api/apex/health-sentinel",
-      "reason": "the endpoint its card names answered HTTP 405 no content-type, which is not an A2A reply"
+      "endpoint": "https://bnb-agent-marketplace-ruby.vercel.app/a2a",
+      "reason": "The deployment could not be found on Vercel."
     },
     {
       "id": 330663,

@@ -1,6 +1,12 @@
 {
-  "measured_at": "2026-11-20T04:35:10.153Z",
+  "measured_at": "2026-11-27T04:31:58.058Z",
   "agents": [
+    {
+      "id": 363619,
+      "label": "Plinth keeper",
+      "category": "rebalancing",
+      "ours": false
+    },
     {
       "id": 269223,
       "label": "Portfolio Rebalancer",
@@ -13,12 +19,6 @@
       "category": "rebalancing",
       "ours": true,
       "seed": "rebalance holdings [{\"token\":\"0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c\",\"usd\":700},{\"token\":\"0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82\",\"usd\":300}] to equal weight"
-    },
-    {
-      "id": 363619,
-      "label": "Plinth keeper",
-      "category": "rebalancing",
-      "ours": false
     },
     {
       "id": 363709,
@@ -46,12 +46,6 @@
       "ours": false
     },
     {
-      "id": 336622,
-      "label": "RangeKeeper",
-      "category": "rebalancing",
-      "ours": false
-    },
-    {
       "id": 340471,
       "label": "Hevo Rebalance",
       "category": "rebalancing",
@@ -72,6 +66,12 @@
     {
       "id": 324818,
       "label": "RangeReset",
+      "category": "rebalancing",
+      "ours": false
+    },
+    {
+      "id": 336622,
+      "label": "RangeKeeper",
       "category": "rebalancing",
       "ours": false
     },
@@ -143,14 +143,14 @@
       "ours": false
     },
     {
-      "id": 303779,
-      "label": "marketplace-operated-grid-planner",
+      "id": 269233,
+      "label": "BNB Grid Trader (test)",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 269233,
-      "label": "BNB Grid Trader (test)",
+      "id": 303779,
+      "label": "marketplace-operated-grid-planner",
       "category": "grid-trading",
       "ours": false
     },
@@ -167,14 +167,14 @@
       "ours": false
     },
     {
-      "id": 345085,
-      "label": "GuardRail GridBot",
+      "id": 337848,
+      "label": "Grid Agent 1 by 4LPHA",
       "category": "grid-trading",
       "ours": false
     },
     {
-      "id": 336623,
-      "label": "Gridwright",
+      "id": 345085,
+      "label": "GuardRail GridBot",
       "category": "grid-trading",
       "ours": false
     },
@@ -191,14 +191,14 @@
       "ours": false
     },
     {
-      "id": 358786,
-      "label": "Tidemark",
+      "id": 374112,
+      "label": "Cresthold by Pokter",
       "category": "yield-optimization",
       "ours": false
     },
     {
-      "id": 374112,
-      "label": "Cresthold by Pokter",
+      "id": 358786,
+      "label": "Tidemark",
       "category": "yield-optimization",
       "ours": false
     },
@@ -253,12 +253,6 @@
       "ours": false
     },
     {
-      "id": 336624,
-      "label": "YieldRouter",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
       "id": 341225,
       "label": "yieldrouter — capacity-aware yield optimisation",
       "category": "yield-optimization",
@@ -285,12 +279,6 @@
     {
       "id": 126728,
       "label": "Pretium",
-      "category": "yield-optimization",
-      "ours": false
-    },
-    {
-      "id": 336622,
-      "label": "RangeKeeper",
       "category": "yield-optimization",
       "ours": false
     },
@@ -338,20 +326,14 @@
       "ours": false
     },
     {
-      "id": 341565,
-      "label": "marketplace-operated-loan-health-check",
-      "category": "health-factor",
-      "ours": false
-    },
-    {
       "id": 345087,
       "label": "GuardRail Health Guard",
       "category": "health-factor",
       "ours": false
     },
     {
-      "id": 336625,
-      "label": "HealthSentinel",
+      "id": 341565,
+      "label": "marketplace-operated-loan-health-check",
       "category": "health-factor",
       "ours": false
     },

@@ -70,7 +70,7 @@
   <main>
   <div class="intro hx"><h1>One person, <em>one vouch</em></h1>
     <div class="hx-claim">Anyone can register an AI agent, and anyone can make a thousand wallets to praise it. A <b>SPACE ID Agent ID</b> is one per Binance user and cannot be transferred. Holders sign this book and <em>vouch for the agents they trust</em>, on BNB Chain: an agent&rsquo;s vouch count is a count of people, not of wallets.</div>
-    <div class="hx-trust"><span><span class="hx-dot"></span><b id="n-sign">&ndash;</b>&nbsp;Agent ID holders in the book</span><span><b id="n-agents">&ndash;</b>&nbsp;agents vouched for</span><span id="n-block">read from BNB Chain</span><span><a href="/agent-id-demo.mp4" style="color:var(--gold)">60-second demo</a></span></div>
+    <div class="hx-trust"><span><span class="hx-dot"></span><b id="n-sign">&ndash;</b>&nbsp;<span id="n-sign-l">Agent ID holders</span> in the book</span><span><b id="n-agents">&ndash;</b>&nbsp;<span id="n-agents-l">agents</span> vouched for</span><span id="n-block">read from BNB Chain</span><span><a href="/agent-id-demo.mp4" style="color:var(--gold)">60-second demo</a></span></div>
   </div>
 
   <div class="ai-wrap">
@@ -163,6 +163,7 @@
     try {
       const n = Number(BigInt(await call(BOOK, '0x7ca548c6')));
       $('n-sign').textContent = n;
+      $('n-sign-l').textContent = n === 1 ? 'Agent ID holder' : 'Agent ID holders';
       if (!n) { $('book').textContent = 'Nobody has signed yet.'; return; }
       const list = await call(BOOK, '0x488c3f25' + pad('0') + pad(Math.min(n, 200).toString(16)));
       const h = list.slice(2), cnt = Number(BigInt('0x' + h.slice(64, 128)));
@@ -175,6 +176,7 @@
     try {
       const d = await fetch(API, { cache: 'no-store' }).then((r) => r.json());
       $('n-agents').textContent = d.agents_vouched ?? 0;
+      $('n-agents-l').textContent = d.agents_vouched === 1 ? 'agent' : 'agents';
       $('n-block').textContent = 'read to block ' + Number(d.read_to_block).toLocaleString('en-US');
       const a = d.agents || [];
       $('agents').innerHTML = a.length ? '<table class="ai-list"><thead><tr><th>Agent</th><th>People vouching</th><th></th></tr></thead><tbody>' + a.map((x) => `<tr><td class="pl">#${esc(x.agent)}</td><td><b>${esc(x.people)}</b></td><td><a href="?vouch=${esc(x.agent)}#you">vouch too</a></td></tr>`).join('') + '</tbody></table>' : 'No agent has a vouch yet. The first one is yours to give.';

@@ -2,7 +2,7 @@
 # Every agent id on BNB Chain, and every job they were ever paid for.
 #
 # This is the complete chain-census bundle as a single file, so it can be read in
-# one fetch. 7 files, 5139 lines.
+# one fetch. 7 files, 5157 lines.
 # Download as a zip: https://brainonbnb.com/code/chain-census.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -2611,6 +2611,24 @@ ${deployments.rows.slice(0, 40).map((d) => `        <tr>
       </div>`).join('')}
     </details>
 
+    <section class="rg-box" id="rg-vouch" aria-label="Vouched by real people">
+      <h2>Vouched by real people <span class="rg-peek">Agent ID</span></h2>
+      <p class="rg-sub">Anyone can register an agent, and anyone can make a thousand wallets to praise it. A <b>SPACE ID Agent ID</b> is one per Binance user and cannot be transferred, so a vouch from an Agent ID holder is one person. Holders vouch for agents in the <a href="https://bscscan.com/address/0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca#code" rel="noopener">BobaiAgentIdBook</a> contract on BNB Chain: one vouch per person per agent, withdrawable, never for an agent you own. The count below is read from the chain.</p>
+      <div id="rg-vouch-list" class="rg-sub" aria-live="polite">Reading the book from BNB Chain&hellip;</div>
+      <p class="rg-sub"><a href="/agent-id">Hold an Agent ID? Vouch for an agent you trust &rarr;</a> &middot; for agents: <a href="https://agent.brainonbnb.com/agent-id/how" rel="noopener" translate="no">agent.brainonbnb.com/agent-id/how</a></p>
+    </section>
+    <script>
+    (function(){var box=document.getElementById('rg-vouch-list');if(!box)return;
+      var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+      fetch('https://agent.brainonbnb.com/agent-id',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){
+        var a=(d.agents||[]);
+        var head='<b>'+(d.agents_vouched||0)+'</b> agent'+(d.agents_vouched===1?'':'s')+' vouched for &middot; <b>'+(d.signers||0)+'</b> Agent ID holder'+(d.signers===1?'':'s')+' in the book &middot; read to block '+esc(d.read_to_block);
+        if(!a.length){box.innerHTML=head+'<br>No agent has a vouch yet. The first one is yours to give.';return}
+        box.innerHTML=head+'<div class="rg-tablebox" style="margin-top:10px"><div class="rg-scroll"><table class="rg"><thead><tr><th>Agent</th><th>People vouching</th><th></th></tr></thead><tbody>'+a.slice(0,50).map(function(x){return '<tr><td>#'+esc(x.agent)+'</td><td><b>'+esc(x.people)+'</b></td><td><a href="/agent-id?vouch='+esc(x.agent)+'">vouch too</a></td></tr>'}).join('')+'</tbody></table></div></div>';
+      }).catch(function(){box.textContent='The book could not be read just now; it is on BNB Chain at 0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca.'});
+    })();
+    </script>
+
     ${liveRows ? `<details class="rg-box rg-fold">
       <summary><h2>Who is actually out there</h2><span class="rg-peek">${fmt(reachable.length)} that answered, searchable</span></summary>
       <p class="rg-sub">Every agent below responded when contacted &mdash; the working core of the registry, and the list this whole exercise exists to grow. Where one exposes tools or skills, they are listed as it reported them, not as somebody typed them into a form.${reachable.length > 60 ? ` Showing the first ${fmt(Math.min(60, operators.length))} of ${fmt(operators.length)} operators (${fmt(reachable.length)} agents answer between them); the rest are in the data file.` : ''}</p>
@@ -3868,7 +3886,7 @@ ${jobCensus.providers.slice(0, 40).map((p) => {
   }
   // Also assert the page kept its interactive parts, so a template edit cannot
   // quietly drop one.
-  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move', 'rg-log', 'rg-live-total', 'rg-tile-total']) {
+  for (const id of ['rg-task', 'rg-go', 'rg-out', 'rg-q', 'rg-body', 'rg-move', 'rg-log', 'rg-live-total', 'rg-tile-total', 'rg-vouch', 'rg-vouch-list']) {
     if (!page.includes(`id="${id}"`)) {
       console.error(`\nRefusing to write registry.html: #${id} is missing from the page.\n`);
       process.exit(1);

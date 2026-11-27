@@ -541,6 +541,10 @@ const ALLOWED_HEX64 = new Set([
   '0xdccd412f0b1252819cb1fd330b93224ca42612892bb3f4f789976e6d81936496', // Burn
   '0x799b2cd04630260020ee5b9f8e761cdf644383855739696bf8f1aadbc73dfd2a', // NFT buy-drop marker
   '0x4ecbb010c79223623fc0a5fd2d955ed432e0d426d06c525f5a1bf8e344753bae', // $BOBAI's own tax-swap log (2026-10-09, TG market card)
+  // BobaiAgentIdBook events (2026-11-27, worker-agent/agent-id.js): keccak of the public event signatures
+  '0x95812dd7b1ec8af26cc5f8e3cf0cc8f56ad6b6bad9817afadc48ec4d230a68f0', // Signed(address,uint256,string)
+  '0x3750441248c2019c3608fbf889b361fe2ebe612036c8a3eb002b4a431f62a392', // NoteChanged(address,uint256,string)
+  '0x312b3fc4b910a285305f2eb7cef375fe33d11df028cbf3aa83cdca007865e7fb', // Vouched(address,uint256,bool,uint256)
   // EIP-1967 proxy storage slots (2026-10-09, the scanner's control read): fixed by the standard, the same on every proxy
   '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc', // implementation slot
   '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103', // admin slot

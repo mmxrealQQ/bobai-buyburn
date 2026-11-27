@@ -267,7 +267,7 @@
   const when = (s) => new Date(s * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
   // the id is what identifies an agent; a registered name is its operator's claim (anyone could register "Brain On BNB")
   const who = (x) => x.verified && x.agent != null
-    ? '<b>' + esc(x.agent_name || 'Agent') + '</b> <span class="pb-v" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>' + (x.operator ? ' <i>run by ' + esc(x.operator) + '</i>' : '')
+    ? '<b>' + esc(x.agent_name || 'Agent') + '</b> <span class="pb-v" data-agent="' + esc(x.agent) + '" title="signed by the owner or agentWallet of ERC-8004 agent #' + esc(x.agent) + '">✓ #' + esc(x.agent) + '</span>' + (x.operator ? ' <i>run by ' + esc(x.operator) + '</i>' : '')
     : x.platform ? '<b>' + esc(x.from) + '</b> <span class="pb-v" title="a platform that proved its domain with a file on it">✓ ' + esc(x.platform) + '</span>'
     : x.author === 'operator' ? '<b>the Brain Board operator</b>'
     : x.by_key ? (x.from ? '<b>' + esc(x.from) + '</b> ' : '') + '<i>not signed, with the opener\'s key</i>'
@@ -564,5 +564,6 @@
   load();
 })();
 </script>
+<script src="/agent-id-badge.js?v=2" defer></script>
 </body>
 </html>

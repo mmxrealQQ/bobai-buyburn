@@ -2987,7 +2987,11 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
         // an id the registry does not hold is a 404 (2026-11-16, Liste A: /agent/999999999 answered 200, a soft 404); the
         // page stays the same, only its status says it — and a chart that did not answer at all leaves the 200
         let missing = false;
-        const c = await fetch(`https://agent.brainonbnb.com/chart/${id}`, { signal: AbortSignal.timeout(2500) }).then((x) => { if (x.status === 404) missing = true; return x.ok ? x.json() : null; }).catch(() => null);
+        // (2026-11-28) through edgeRecord: kept 2 minutes, and a day-old spare when the chart is slow (it said "Reading this
+        // agent…" to the first reader after each expiry); a 404 stays a 404
+        const cr = await edgeRecord(`https://agent.brainonbnb.com/chart/${id}`, ctx, 2500);
+        if (cr.status === 404) missing = true;
+        const c = cr.json;
         // cut at a sentence (2026-11-12: "centred on the Evidence score", "skill showca Evidence score"), and the paid
         // jobs said as the registry says them: by outside buyers, ours beside
         const desc = (() => { const d = String(c?.description || '').trim(); if (d.length <= 280) return d; const cut = d.slice(0, 280), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? ')); return end > 80 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…'; })();
@@ -3057,20 +3061,10 @@ try{navigator.clipboard.writeText(l.textContent).then(function(){s.textContent='
       // number of /stats, /registry 2.6 s, and /buys at 3.3 s never made the 2.5 s limit, so "paid us" was never written);
       // a slow one goes on in the background and fills the cache for the next reader, the page waits at most 2.5 s
       // (the Cache API, not cf.cacheTtl: these sources are Workers, and a Worker answers before the edge cache would)
-      const ask = async (u) => {
-        const key = new Request(u), cache = caches.default;
-        const hit = await cache.match(key).catch(() => null);
-        if (hit) return hit.json().catch(() => null);
-        const f = fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(15000) }).then(async (x) => {
-          if (!x.ok) return null;
-          const body = await x.text();
-          await cache.put(key, new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' } })).catch(() => {});
-          return JSON.parse(body);
-        }).catch(() => null);
-        ctx.waitUntil(f);
-        return Promise.race([f, new Promise((res) => setTimeout(() => res(null), 2500))]);
-      };
-      const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 2500))]) : await ask(rp.src);
+      // (2026-11-28) with a day-old spare behind it, edgeRecord above; the whole page waits at most 3 s (the asks run side
+      // by side: 2.2 s for the source, then the spare from the same edge cache)
+      const ask = async (u) => (await edgeRecord(u, ctx, 2200)).json;
+      const data = rp.get ? await Promise.race([rp.get(ask).catch(() => null), new Promise((res) => setTimeout(() => res(null), 3000))]) : await ask(rp.src);
       let lines = null; try { lines = data ? rp.say(data) : null; } catch { lines = null; }
       // /registry: every foreign logo from our own 76-px copy, a broken one not asked for at all (1.8 MB -> a few KB)
       const lx = url.pathname.replace(/.html$/, '') === '/registry' ? await logoIndex(env, url.origin) : null;
@@ -3228,6 +3222,33 @@ export default {
     return new Response(t.body, { status: t.status, headers: new Headers(res.headers) });
   },
 };
+
+// A RECORD SOURCE WITH A SPARE COPY (2026-11-28, az-1112-check red on and off: /registry "times agents paid ours" and
+// "agents listed by others" read "—", /agent/<id> "Reading this agent…"). A source was kept 2 minutes at the edge, so the
+// first reader after each expiry waited on the source itself, and a slow one (/buys, /chart over 2.5 s) left that reader
+// the dash. Every answer is now also kept a day as a spare: with the fresh copy gone and the source slow, the reader gets
+// the spare (the last real answer, minutes old) while the fetch goes on in the background and renews both. A 404 is said
+// as a 404, never covered by a spare; only a source that never answered at this edge still leaves the page as it was.
+async function edgeRecord(u, ctx, waitMs = 2200) {
+  const cache = caches.default, fresh = new Request(u), su = new URL(u);
+  su.searchParams.set('_spare', '1');
+  const spare = new Request(su.toString());
+  const hit = await cache.match(fresh).catch(() => null);
+  if (hit) { const json = await hit.json().catch(() => null); if (json) return { status: 200, json }; }
+  const f = fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(15000) }).then(async (x) => {
+    if (!x.ok) return { status: x.status, json: null };
+    const body = await x.text(), json = JSON.parse(body);
+    const keep = (s) => new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${s}` } });
+    await Promise.all([cache.put(fresh, keep(120)), cache.put(spare, keep(86400))]).catch(() => {});
+    return { status: 200, json };
+  }).catch(() => ({ status: 0, json: null }));
+  ctx.waitUntil(f);
+  const got = await Promise.race([f, new Promise((res) => setTimeout(() => res(null), waitMs))]);
+  if (got && (got.json || got.status === 404)) return got;
+  const old = await cache.match(spare).catch(() => null);
+  const json = old ? await old.json().catch(() => null) : null;
+  return json ? { status: 200, json, spare: true } : (got || { status: 0, json: null });
+}
 
 // the record pages: where the record comes from, and the sentence per waiting element (selector -> text)
 const shortAddr = (a) => `${String(a).slice(0, 6)}…${String(a).slice(-4)}`;

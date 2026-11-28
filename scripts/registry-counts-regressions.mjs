@@ -23,8 +23,11 @@ ok('worker: /registry asks /census and api-registry.json', /'\/census'/.test(reg
 ok('worker: writes #rg-live-total and #rg-tile-total only when live > floor', /'#rg-live-total': ids/.test(reg) && /'#rg-tile-total': ids/.test(reg) && /live > floor/.test(reg));
 
 // the record sources are edge-cached and a slow one finishes in the background (TTFB /services ~1 s, /buys 3.3 s > 2.5 s)
-const ask = (w.match(/const ask = async \(u\) => \{[\s\S]*?\n {6}\};/) || [''])[0];
-ok('worker: record sources kept 120 s in caches.default, slow ones finish in waitUntil', /caches\.default/.test(ask) && /max-age=120/.test(ask) && /ctx\.waitUntil\(f\)/.test(ask) && /Promise\.race/.test(ask));
+// (2026-11-28) the cache moved into edgeRecord, which also keeps a day-old spare for a slow source; the behaviour itself
+// is tested with a fake cache in edge-record-regressions.mjs, this pins that the pages still go through it
+const ask = (w.match(/const ask = async \(u\) => \(await edgeRecord\(u, ctx, \d+\)\)\.json;/) || [''])[0];
+const er = (w.match(/async function edgeRecord\(u, ctx, waitMs = \d+\) \{[\s\S]*?\n\}\n/) || [''])[0];
+ok('worker: record sources kept 120 s in caches.default (+ a day as a spare), slow ones finish in waitUntil', !!ask && /caches\.default/.test(er) && /keep\(120\)/.test(er) && /keep\(86400\)/.test(er) && /ctx\.waitUntil\(f\)/.test(er) && /Promise\.race/.test(er));
 
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exitCode = fails ? 1 : 0;

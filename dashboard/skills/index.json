@@ -26,10 +26,10 @@
       "description": "Use when a Binance Agentic Wallet or a SPACE ID Agent ID comes up on BNB Chain - checking whether an address holds an Agent ID, proving a real person stands behind an agent, vouching for an ERC-8004 agent as a person (one vouch per person per agent), signing the Agent ID Book, or, for the Binance Wallet Agent ID Hackathon, counting how many Agent ID addresses send transactions to a contract (the number the Pioneer Award ranks by). Reads BNB Chain, builds the unsigned transaction and the exact `baw` preview/execute commands; it never signs or sends anything itself. Free, no key.",
       "type": "archive",
       "url": "https://brainonbnb.com/skills/bnb-agent-id.tar.gz",
-      "digest": "sha256:e2b2e4203eac163c03d95e83f7694fc8b59295a98cdeed9448d5178c30ade047",
-      "version": "1.0.1",
+      "digest": "sha256:714943158eb70ba708857264a440312e94a2e1f90147b3ec361ec08dce6e696e",
+      "version": "1.0.2",
       "license": "MIT",
-      "bytes": 2210
+      "bytes": 2331
     }
   ]
 }

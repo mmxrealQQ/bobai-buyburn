@@ -280,7 +280,7 @@ const tgEvidenceHolds = () => {
 // token or signer, input missing, a hash not found, the facilitator's own policy — is the payer's; any other reason
 // (an RPC that failed, a settle we could not send, a reason this list does not know) is ours to look at and reads red.
 // Our own checks (brainonbnb- user agents) and our site are left out; the last 24 h. Pure; pinned below.
-export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `|the pass needs [\d,]+ \$BOBAI/i;   // 26.10.: "holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI" read red
+export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `|the pass needs [\d,]+ \$BOBAI|issued must lie within|has used today's|covers the paid answers|send: bobai-holder/i;   // 26.10.: "holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI" read red; 28.11.: the holder pass's stale proof, used allowance, wrong product and bad form are the payer's too
 export function refusedVerdict(list, now = Date.now()) {
   if (!Array.isArray(list)) return { good: false, detail: 'the agent server did not report /buys/refused' };
   const day = list.filter((r) => r && !/^brainonbnb-/i.test(r.ua || '') && !r.own_site && now - Date.parse(r.at) < 864e5);
@@ -343,6 +343,10 @@ const refusedHolds = () => {
     // a wallet below the holder-pass line is the payer's (26.10.: two such read red in the morning message)
     && g([{ at, ua: 'Mozilla/5.0', product: 'answer:health_factor', proof: 'holder pass', why: '0x68a6c61bc99b7113cbc8765fa548ebca0a033101 holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI.' }]) === true
     && g([{ at, ua: 'node', product: 'answer:x', why: 'the pass needs a reading of the chain that failed' }]) === false
+    // the holder pass's own refusals (28.11.: a stale proof from a curl test read red)
+    && g([{ at, ua: 'curl/8.18.0', product: 'answer:grid_plan', proof: 'holder pass', why: 'issued must lie within the last 10 minutes: sign a fresh message and send it at once.' }]) === true
+    && g([{ at, ua: 'node', product: 'answer:x', proof: 'holder pass', why: "0xabc has used today's 5 answers of the holder pass; it renews at 00:00 UTC, or pay as usual." }]) === true
+    && g([{ at, ua: 'node', product: 'tip', proof: 'holder pass', why: 'the holder pass covers the paid answers, the pool watch and the pool scan day pass; this one is paid.' }]) === true
     && g(null) === false;
 };
 

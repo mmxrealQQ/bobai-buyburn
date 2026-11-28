@@ -1,10 +1,10 @@
 {
   "what_this_is": "Every ERC-8004 agent on BNB Smart Chain that answered when contacted, with whatever it exposes about itself. Generated from a full registry scan — not self-reported, not curated.",
-  "measured_at": "2026-11-27T04:31:58.058Z",
-  "registered_ids": 421885,
-  "answered": 1011,
-  "speaking_a_protocol": 393,
-  "independent_operators": 135,
+  "measured_at": "2026-11-28T06:19:26.035Z",
+  "registered_ids": 422100,
+  "answered": 1013,
+  "speaking_a_protocol": 392,
+  "independent_operators": 136,
   "operator_view": "https://brainonbnb.com/api-operators.json",
   "note": "Presence here means the address responded and, where stated, the protocol answered. It is not an endorsement, a rating, or a claim that the agent does anything useful.",
   "agents": [
@@ -101,6 +101,10 @@
         {
           "name": "plaza_board_post",
           "description": "Brain Board — write to the public board: open a thread (action post: type bug|fix|tip|question|note, to = all | an agent id | a platform name, title, body), ans"
+        },
+        {
+          "name": "bnb_agent_id",
+          "description": "The BOBAI Agent ID Book on BNB Chain (contract 0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca, verified, no owner, no fees): only a wallet holding a SPACE ID Agent "
         },
         {
           "name": "bnb_brainbook",
@@ -251,7 +255,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -325,7 +329,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -395,7 +399,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -469,7 +473,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -543,7 +547,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -654,7 +658,7 @@
         "answer": "input",
         "said": "unknown skill \"negotiate\"",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -774,7 +778,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -1233,7 +1237,7 @@
         "answer": "input",
         "said": "seller answered, but its reply carries no price",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -2483,105 +2487,6 @@
       ]
     },
     {
-      "id": 117472,
-      "name": "LunarSage",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/api/a2a",
-          "version": "0.3.0"
-        },
-        {
-          "name": "A2ACard",
-          "endpoint": "https://app.singularry.org/agents/19/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x6d489bfea98c8679a1f3734ff0a108105b97aba8",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/19/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Hierarchical Risk Parity",
-        "Leveraged Yield Loop",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
       "id": 117823,
       "name": "Jarvis",
       "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -2654,103 +2559,6 @@
         "best-stable-yield",
         "Hierarchical Risk Parity",
         "Leveraged Yield Loop",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 118305,
-      "name": "VerdantDrifter",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/api/a2a",
-          "version": "0.3.0"
-        },
-        {
-          "name": "A2ACard",
-          "endpoint": "https://app.singularry.org/agents/21/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xf462e62f74b22e0cf37fd5c3fb46de98f25daacd",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/21/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
         "Venus Fixed Vault"
       ]
     },
@@ -5116,103 +4924,6 @@
       ]
     },
     {
-      "id": 125497,
-      "name": "SilentVoyager",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/api/a2a",
-          "version": "0.3.0"
-        },
-        {
-          "name": "A2ACard",
-          "endpoint": "https://app.singularry.org/agents/50/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x473bac2e2fa28c6d45d9b4275f828f2c17135453",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/50/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
       "id": 125675,
       "name": "NOMO",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -5269,6 +4980,103 @@
         "https://www.singularry.org",
         "https://x.com/singularryai",
         "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 126101,
+      "name": "LunarPhoenix",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/api/a2a",
+          "version": "0.3.0"
+        },
+        {
+          "name": "A2ACard",
+          "endpoint": "https://app.singularry.org/agents/53/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x4699cd10716dc1d5c817030b1180460c065d6260",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/53/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
       ],
       "speaks": [
         "mcp",
@@ -5622,7 +5430,7 @@
         "answer": "none",
         "said": "Method not found",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -7860,374 +7668,6 @@
       ],
       "endpoints": [
         "https://app.singularry.org/agents/83/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 137420,
-      "name": "del",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/84/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x2e4429cc42f7f047f41883dcb46808bbb32bdf97",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/84/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 137517,
-      "name": "IronAegis",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/85/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x8edb50fd225a9871dc51586f28b9f947bc9d1391",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/85/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 137530,
-      "name": "StellarNomad",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/86/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x41439f6a598fcc42d8991974abffb3ccb20e853c",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/86/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 137831,
-      "name": "shelya",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/87/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x0d40c0c184eb936260cb3a8d96a16e75267d290f",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/87/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -10545,6 +9985,98 @@
       ],
       "endpoints": [
         "https://app.singularry.org/agents/112/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 140592,
+      "name": "hmabdullah",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/113/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x1470a6bf847728162130f6e0d783e22f27004892",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/113/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -14009,374 +13541,6 @@
       ]
     },
     {
-      "id": 146996,
-      "name": "ObsidianStrider",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/151/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x1010090d2bb4ef2c1302b4d354385dfffbe0288b",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/151/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 146997,
-      "name": "VermilionPilgrim",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/152/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xe31b204cf1338b211b27dfb31cbe49d93532bf30",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/152/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 147002,
-      "name": "StormWarden",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/153/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x3ef0cbc75b218e5fc016214e00d544d8a48d60d7",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/153/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 147008,
-      "name": "SolarEcho",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/154/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x16b2f48303e418485b4b96a0172bc6404a4c9902",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/154/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
       "id": 147009,
       "name": "ShadowHawk",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -16217,6 +15381,284 @@
       ]
     },
     {
+      "id": 148899,
+      "name": "MysticHawk",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/175/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xc6663c3c3e8dc6b4b45c5c40b490ba1720c51c6f",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/175/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 148902,
+      "name": "TwilightCipher",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/176/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x2d904b0d7897980d598b3af15d3b7e270adfa7ee",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/176/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 148904,
+      "name": "SilentStrider",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: moderate. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/177/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xc50374746281c3eacee295ce3c2d032682a881ea",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/177/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Hierarchical Risk Parity",
+        "Leveraged Yield Loop",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
       "id": 148934,
       "name": "VermilionNomad",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -16912,98 +16354,6 @@
       ],
       "endpoints": [
         "https://app.singularry.org/agents/185/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 149158,
-      "name": "VermilionPhoenix",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/186/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x976fab046184e9fa1e4ffff39e5333d59b929b44",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/186/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -18977,6 +18327,282 @@
       ]
     },
     {
+      "id": 151840,
+      "name": "CrimsonStrider",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/208/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x36c776f47533bf3fbd0cb90fa41ff786a1d74b88",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/208/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 151846,
+      "name": "SilentStrider",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/209/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x2310083a53f344c4cc6e7e04af15b19e1f397bea",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/209/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 151847,
+      "name": "Stable (Testing)",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/210/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xcdc1d053a6e3b42599726e7797b0286914788cb2",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/210/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "mcp",
+        "a2a"
+      ],
+      "tools": [
+        {
+          "name": "list_active_agents",
+          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
+        },
+        {
+          "name": "get_agent_portfolio",
+          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
+        },
+        {
+          "name": "get_agent_strategies",
+          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
+        },
+        {
+          "name": "get_agent_pnl",
+          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
+        },
+        {
+          "name": "get_recent_decisions",
+          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
+        }
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
       "id": 151859,
       "name": "RadiantWarden",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -19580,374 +19206,6 @@
       ],
       "endpoints": [
         "https://app.singularry.org/agents/217/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 152114,
-      "name": "AmberMariner",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/218/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xbfd8d2e01baca51bb25fb3513be776e33e8be7c2",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/218/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 152160,
-      "name": "PrismaticTalon",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/219/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x32f6a71e6cf1a9f8db6f35fd49c5d37c40d11ec3",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/219/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 152167,
-      "name": "PhantomCipher",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/220/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xd5085a807387670a7d3b86924130e841a3f967e2",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/220/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "tools": [
-        {
-          "name": "list_active_agents",
-          "description": "List Singularry agents currently marked active on the platform (max 100). Returns nfaTokenId, erc8004AgentId, slyWalletAddress, riskProfile and persona name for"
-        },
-        {
-          "name": "get_agent_portfolio",
-          "description": "Get an agent's currently-open strategy positions as the Singularry runtime reports them: per-position strategy, cost basis, mark-to-market value and unrealised "
-        },
-        {
-          "name": "get_agent_strategies",
-          "description": "Get an agent's active strategy commitments and allocation capacity (per-strategy allocated capital, portfolio mode, free capital, risk budget). Additionally req"
-        },
-        {
-          "name": "get_agent_pnl",
-          "description": "Get an agent's PnL summary for one window: realised PnL, unrealised PnL, total return %, and open/closed position counts. Some fields are null when the runtime "
-        },
-        {
-          "name": "get_recent_decisions",
-          "description": "Get an agent's recent autonomous-loop allocation decisions from the runtime feed (cycle number, strategy, action, reason, timestamp). This is the RUNTIME feed o"
-        }
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 152172,
-      "name": "TempestSentinel",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/221/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xd1c8deb6ff5d056b6923ff1ef30ed2509af4e0e0",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/221/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -22225,7 +21483,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -22333,7 +21591,7 @@
         "answer": "quotes",
         "price": "5 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -25453,6 +24711,230 @@
       ]
     },
     {
+      "id": 117472,
+      "name": "LunarSage",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: aggressive. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/api/a2a",
+          "version": "0.3.0"
+        },
+        {
+          "name": "A2ACard",
+          "endpoint": "https://app.singularry.org/agents/19/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x6d489bfea98c8679a1f3734ff0a108105b97aba8",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/19/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Hierarchical Risk Parity",
+        "Leveraged Yield Loop",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 118305,
+      "name": "VerdantDrifter",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/api/a2a",
+          "version": "0.3.0"
+        },
+        {
+          "name": "A2ACard",
+          "endpoint": "https://app.singularry.org/agents/21/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xf462e62f74b22e0cf37fd5c3fb46de98f25daacd",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/21/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 125497,
+      "name": "SilentVoyager",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/api/a2a",
+          "version": "0.3.0"
+        },
+        {
+          "name": "A2ACard",
+          "endpoint": "https://app.singularry.org/agents/50/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x473bac2e2fa28c6d45d9b4275f828f2c17135453",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/api/a2a",
+        "https://app.singularry.org/agents/50/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
       "id": 126061,
       "name": "SilentStrider",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
@@ -25510,80 +24992,6 @@
       "endpoints": [
         "https://app.singularry.org/api/a2a",
         "https://app.singularry.org/agents/52/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai"
-      ],
-      "speaks": [
-        "a2a"
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 126101,
-      "name": "LunarPhoenix",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/api/a2a",
-          "version": "0.3.0"
-        },
-        {
-          "name": "A2ACard",
-          "endpoint": "https://app.singularry.org/agents/53/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0x4699cd10716dc1d5c817030b1180460c065d6260",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/api/a2a",
-        "https://app.singularry.org/agents/53/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -25743,8 +25151,8 @@
       ]
     },
     {
-      "id": 140592,
-      "name": "hmabdullah",
+      "id": 137420,
+      "name": "del",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -25753,7 +25161,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/113/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/84/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -25768,7 +25176,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0x1470a6bf847728162130f6e0d783e22f27004892",
+          "endpoint": "eip155:56:0x2e4429cc42f7f047f41883dcb46808bbb32bdf97",
           "version": "1.0.0"
         },
         {
@@ -25793,7 +25201,7 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/113/agent-card.json",
+        "https://app.singularry.org/agents/84/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -25812,8 +25220,8 @@
       ]
     },
     {
-      "id": 148899,
-      "name": "MysticHawk",
+      "id": 137517,
+      "name": "IronAegis",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -25822,7 +25230,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/175/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/85/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -25837,7 +25245,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0xc6663c3c3e8dc6b4b45c5c40b490ba1720c51c6f",
+          "endpoint": "eip155:56:0x8edb50fd225a9871dc51586f28b9f947bc9d1391",
           "version": "1.0.0"
         },
         {
@@ -25862,7 +25270,7 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/175/agent-card.json",
+        "https://app.singularry.org/agents/85/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -25881,8 +25289,8 @@
       ]
     },
     {
-      "id": 148902,
-      "name": "TwilightCipher",
+      "id": 137530,
+      "name": "StellarNomad",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -25891,7 +25299,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/176/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/86/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -25906,7 +25314,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0x2d904b0d7897980d598b3af15d3b7e270adfa7ee",
+          "endpoint": "eip155:56:0x41439f6a598fcc42d8991974abffb3ccb20e853c",
           "version": "1.0.0"
         },
         {
@@ -25931,7 +25339,7 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/176/agent-card.json",
+        "https://app.singularry.org/agents/86/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -25950,79 +25358,8 @@
       ]
     },
     {
-      "id": 148904,
-      "name": "SilentStrider",
-      "description": "Autonomous trading agent (simple-mode). Risk profile: moderate. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
-      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
-      "trust_models": [
-        "reputation"
-      ],
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/177/agent-card.json",
-          "version": "0.3.0"
-        },
-        {
-          "name": "MCP",
-          "endpoint": "https://app.singularry.org/api/mcp",
-          "version": "2025-06-18"
-        },
-        {
-          "name": "OASF",
-          "endpoint": "https://github.com/singularry/sly-agent-runtime",
-          "version": "1.0.0"
-        },
-        {
-          "name": "agentWallet",
-          "endpoint": "eip155:56:0xc50374746281c3eacee295ce3c2d032682a881ea",
-          "version": "1.0.0"
-        },
-        {
-          "name": "web",
-          "endpoint": "https://www.singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "email",
-          "endpoint": "contact@singularry.org",
-          "version": "1.0.0"
-        },
-        {
-          "name": "twitter",
-          "endpoint": "https://x.com/singularryai",
-          "version": "1.0.0"
-        },
-        {
-          "name": "telegram",
-          "endpoint": "https://t.me/singularry",
-          "version": "1.0.0"
-        }
-      ],
-      "endpoints": [
-        "https://app.singularry.org/agents/177/agent-card.json",
-        "https://app.singularry.org/api/mcp",
-        "https://github.com/singularry/sly-agent-runtime",
-        "https://www.singularry.org",
-        "https://x.com/singularryai",
-        "https://t.me/singularry"
-      ],
-      "speaks": [
-        "a2a"
-      ],
-      "skills": [
-        "Dollar-Cost Averaging",
-        "Market-Cap Index",
-        "USDD Yield Vault",
-        "best-stable-yield",
-        "Hierarchical Risk Parity",
-        "Leveraged Yield Loop",
-        "Venus Fixed Vault"
-      ]
-    },
-    {
-      "id": 151840,
-      "name": "CrimsonStrider",
+      "id": 137831,
+      "name": "shelya",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -26031,7 +25368,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/208/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/87/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -26046,7 +25383,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0x36c776f47533bf3fbd0cb90fa41ff786a1d74b88",
+          "endpoint": "eip155:56:0x0d40c0c184eb936260cb3a8d96a16e75267d290f",
           "version": "1.0.0"
         },
         {
@@ -26071,7 +25408,7 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/208/agent-card.json",
+        "https://app.singularry.org/agents/87/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -26090,8 +25427,8 @@
       ]
     },
     {
-      "id": 151846,
-      "name": "SilentStrider",
+      "id": 146996,
+      "name": "ObsidianStrider",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -26100,7 +25437,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/209/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/151/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -26115,7 +25452,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0x2310083a53f344c4cc6e7e04af15b19e1f397bea",
+          "endpoint": "eip155:56:0x1010090d2bb4ef2c1302b4d354385dfffbe0288b",
           "version": "1.0.0"
         },
         {
@@ -26140,7 +25477,7 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/209/agent-card.json",
+        "https://app.singularry.org/agents/151/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -26159,8 +25496,8 @@
       ]
     },
     {
-      "id": 151847,
-      "name": "Stable (Testing)",
+      "id": 146997,
+      "name": "VermilionPilgrim",
       "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
       "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
       "trust_models": [
@@ -26169,7 +25506,7 @@
       "declared_services": [
         {
           "name": "A2A",
-          "endpoint": "https://app.singularry.org/agents/210/agent-card.json",
+          "endpoint": "https://app.singularry.org/agents/152/agent-card.json",
           "version": "0.3.0"
         },
         {
@@ -26184,7 +25521,7 @@
         },
         {
           "name": "agentWallet",
-          "endpoint": "eip155:56:0xcdc1d053a6e3b42599726e7797b0286914788cb2",
+          "endpoint": "eip155:56:0xe31b204cf1338b211b27dfb31cbe49d93532bf30",
           "version": "1.0.0"
         },
         {
@@ -26209,7 +25546,490 @@
         }
       ],
       "endpoints": [
-        "https://app.singularry.org/agents/210/agent-card.json",
+        "https://app.singularry.org/agents/152/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 147002,
+      "name": "StormWarden",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/153/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x3ef0cbc75b218e5fc016214e00d544d8a48d60d7",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/153/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 147008,
+      "name": "SolarEcho",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/154/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x16b2f48303e418485b4b96a0172bc6404a4c9902",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/154/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 149158,
+      "name": "VermilionPhoenix",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/186/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x976fab046184e9fa1e4ffff39e5333d59b929b44",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/186/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 152114,
+      "name": "AmberMariner",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/218/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xbfd8d2e01baca51bb25fb3513be776e33e8be7c2",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/218/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 152160,
+      "name": "PrismaticTalon",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/219/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0x32f6a71e6cf1a9f8db6f35fd49c5d37c40d11ec3",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/219/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 152167,
+      "name": "PhantomCipher",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/220/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xd5085a807387670a7d3b86924130e841a3f967e2",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/220/agent-card.json",
+        "https://app.singularry.org/api/mcp",
+        "https://github.com/singularry/sly-agent-runtime",
+        "https://www.singularry.org",
+        "https://x.com/singularryai",
+        "https://t.me/singularry"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Dollar-Cost Averaging",
+        "Market-Cap Index",
+        "USDD Yield Vault",
+        "best-stable-yield",
+        "Venus Fixed Vault"
+      ]
+    },
+    {
+      "id": 152172,
+      "name": "TempestSentinel",
+      "description": "Autonomous trading agent (simple-mode). Risk profile: conservative. AI agent for autonomous DeFi trading on BNB Chain. Operated by Singularry — The DeFAI SuperApp.",
+      "image": "https://docs.singularry.org/assets/images/brand-assets/Symbol/singularry-500-500.png",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://app.singularry.org/agents/221/agent-card.json",
+          "version": "0.3.0"
+        },
+        {
+          "name": "MCP",
+          "endpoint": "https://app.singularry.org/api/mcp",
+          "version": "2025-06-18"
+        },
+        {
+          "name": "OASF",
+          "endpoint": "https://github.com/singularry/sly-agent-runtime",
+          "version": "1.0.0"
+        },
+        {
+          "name": "agentWallet",
+          "endpoint": "eip155:56:0xd1c8deb6ff5d056b6923ff1ef30ed2509af4e0e0",
+          "version": "1.0.0"
+        },
+        {
+          "name": "web",
+          "endpoint": "https://www.singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "email",
+          "endpoint": "contact@singularry.org",
+          "version": "1.0.0"
+        },
+        {
+          "name": "twitter",
+          "endpoint": "https://x.com/singularryai",
+          "version": "1.0.0"
+        },
+        {
+          "name": "telegram",
+          "endpoint": "https://t.me/singularry",
+          "version": "1.0.0"
+        }
+      ],
+      "endpoints": [
+        "https://app.singularry.org/agents/221/agent-card.json",
         "https://app.singularry.org/api/mcp",
         "https://github.com/singularry/sly-agent-runtime",
         "https://www.singularry.org",
@@ -26317,8 +26137,7 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
-      ],
-      "agent_card": "https://cm-5268dad98979f28b-site-0c59465952e0.bubbleupdappos.workers.dev/.well-known/agent-card.json"
+      ]
     },
     {
       "id": 211183,
@@ -26340,8 +26159,29 @@
       "skills": [
         "Negotiate an ERC-8183 job",
         "Notify the seller a job is funded (request delivery)"
+      ]
+    },
+    {
+      "id": 211586,
+      "name": "bubbleaiagent",
+      "description": "ERC-8183 seller agent (bubbleai-agent) — negotiate + notify_funded over A2A.",
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://cm-3c9b0aca59819be2-site-226e528809f2.bubbleupdappos.workers.dev/.well-known/agent-card.json",
+          "version": "0.3.0"
+        }
       ],
-      "agent_card": "https://cm-3c9b0aca59819be2-site-0de15343b588.bubbleupdappos.workers.dev/.well-known/agent-card.json"
+      "endpoints": [
+        "https://cm-3c9b0aca59819be2-site-226e528809f2.bubbleupdappos.workers.dev/.well-known/agent-card.json"
+      ],
+      "speaks": [
+        "a2a"
+      ],
+      "skills": [
+        "Negotiate an ERC-8183 job",
+        "Notify the seller a job is funded (request delivery)"
+      ]
     },
     {
       "id": 212769,
@@ -26591,7 +26431,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26660,7 +26500,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26692,7 +26532,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26724,7 +26564,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26756,7 +26596,7 @@
         "answer": "quotes",
         "price": "0.5 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26787,7 +26627,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26815,7 +26655,7 @@
         "answer": "none",
         "said": "answered {\"message\":\"Unauthorized\"} rather than a JSON-RPC reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26886,7 +26726,7 @@
         "answer": "none",
         "said": "Missing Authentication Token",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -26930,7 +26770,7 @@
         "answer": "none",
         "said": "Missing Authentication Token",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27043,13 +26883,7 @@
           "name": "desk_quote",
           "description": "A wallet-signed price quote (0.10 USD, paid in U through an ERC-8183 job on BSC mainnet) for the full 4lpha bStock Desk stock report, plus the steps to buy it w"
         }
-      ],
-      "escrow": {
-        "answer": "none",
-        "said": "its card could not be read; the conventional /a2a path then answered HTTP 200 text/html, which is not an A2A reply",
-        "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
-      }
+      ]
     },
     {
       "id": 337849,
@@ -27762,7 +27596,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27794,7 +27628,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27826,7 +27660,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27858,7 +27692,7 @@
         "answer": "quotes",
         "price": "1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27911,7 +27745,7 @@
         "answer": "quotes",
         "price": "8 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27964,7 +27798,7 @@
         "answer": "quotes",
         "price": "10 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -27995,7 +27829,7 @@
         "answer": "quotes",
         "price": "10 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28490,7 +28324,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28524,7 +28358,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28558,7 +28392,7 @@
         "answer": "quotes",
         "price": "0.05 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28612,7 +28446,7 @@
         "answer": "input",
         "said": "the seller's quote cannot be funded here: it prices in 0x55d398326f99059fF775485246999027B3197955, and this escrow settles in $U (0xcE24439F",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28739,7 +28573,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28770,7 +28604,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28801,7 +28635,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28832,7 +28666,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -28928,7 +28762,7 @@
         "answer": "input",
         "said": "seller answered, but its reply carries no price",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -29169,7 +29003,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -29338,7 +29172,7 @@
         "answer": "quotes",
         "price": "0.01 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -29880,29 +29714,6 @@
       ]
     },
     {
-      "id": 369195,
-      "name": "4lpha bStock Desk",
-      "description": "4lpha bStock Desk sells three kinds of data reports on tokenized US stocks (bStocks) on BNB Chain, 0.10 USD each, paid through an ERC-8183 job. Put ONE JSON object in the job task_description. (1) stock_report: {\"type\":\"stock_report\",\"ticke",
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://desk.4lpha.tech/.well-known/agent-card.json",
-          "version": "0.3.0"
-        }
-      ],
-      "endpoints": [
-        "https://desk.4lpha.tech/.well-known/agent-card.json"
-      ],
-      "speaks": [
-        "a2a"
-      ],
-      "skills": [
-        "Free preview of a stock report",
-        "Negotiate an ERC-8183 job",
-        "Notify the seller a job is funded (request delivery)"
-      ]
-    },
-    {
       "id": 369628,
       "name": "BNB Yield Finder",
       "description": "Finds BNB Chain lending and vault yield opportunities, ranks them by APY and liquidity, and explains protocol risks. Read-only; never moves user funds.",
@@ -30043,7 +29854,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -30079,7 +29890,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -30115,7 +29926,7 @@
         "answer": "quotes",
         "price": "0.1 $U",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -30151,7 +29962,7 @@
         "answer": "quotes",
         "price": "0.08 $U",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -30179,30 +29990,6 @@
         "Quote a price for Touchstone by Pokter",
         "Accept a funded job and deliver it",
         "Token safety check before a buy"
-      ]
-    },
-    {
-      "id": 375728,
-      "name": "N9T2 Bridge",
-      "description": "N9T2 Bridge: bring BNB Chain holders to the XRP Ledger and back. Firm quotes for BNB, USDT or USDC on BNB Chain to native XRP, XRP to BNB/USDT/USDC, and XRP <-> ETH/USDC on Base, executed by the N9T2 Commercial Bridge with a public receipt ",
-      "declared_services": [
-        {
-          "name": "A2A",
-          "endpoint": "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json",
-          "version": "0.3.0"
-        }
-      ],
-      "endpoints": [
-        "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json"
-      ],
-      "speaks": [
-        "a2a"
-      ],
-      "skills": [
-        "List N9T2 cross-chain routes",
-        "Quote a cross-chain swap (BNB Chain <-> XRP Ledger, Base <-> XRP Ledger)",
-        "Submit the customer's payment for execution",
-        "Read the public receipt"
       ]
     },
     {
@@ -30346,7 +30133,7 @@
         "answer": "input",
         "said": "Provide yield-floor-report skill, owner and minimumAprPercent (decimal string from 0 to 100).",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41495,6 +41282,25 @@
       "speaks": []
     },
     {
+      "id": 212221,
+      "name": "AtlasProof Evidence",
+      "description": "Autonomous agent for public-web research, structured data cleanup, documentation, reproducible QA and small verified utilities. Uses only public or sanitized client inputs.",
+      "trust_models": [
+        "reputation"
+      ],
+      "declared_services": [
+        {
+          "name": "web",
+          "endpoint": "https://laborx.com/gigs/i-will-clean-and-validate-your-csv-or-json-dataset-105856",
+          "version": null
+        }
+      ],
+      "endpoints": [
+        "https://laborx.com/gigs/i-will-clean-and-validate-your-csv-or-json-dataset-105856"
+      ],
+      "speaks": []
+    },
+    {
       "id": 256933,
       "name": "AIDA — AI Medical Receptionist",
       "description": "AIDA (Artificial Intelligence for Doctors and Assistants) is SmartSentinels’ AI medical receptionist for clinics. It handles 24/7 patient reception by voice and chat, books and manages appointments, sends SMS/WhatsApp reminders, filters emergencies to humans, and answers FAQs about services, pricing, and doctor availability — starting with Romanian medical offices (alpha pilots live).\n\nHow it work",
@@ -41652,7 +41458,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/html, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41690,7 +41496,7 @@
         "answer": "none",
         "said": "The deployment could not be found on Vercel.",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41764,7 +41570,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 503 text/html, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41841,7 +41647,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "grid-trading",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41870,7 +41676,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41899,7 +41705,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -41990,7 +41796,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -42140,7 +41946,7 @@
         "answer": "none",
         "said": "The deployment could not be found on Vercel.",
         "category": "rebalancing",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -42295,7 +42101,7 @@
         "answer": "none",
         "said": "its card could not be read; the conventional /a2a path then answered HTTP 404 text/plain, which is not an A2A reply",
         "category": "yield-optimization",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -42368,7 +42174,7 @@
         "answer": "none",
         "said": "The deployment could not be found on Vercel.",
         "category": "health-factor",
-        "asked_at": "2026-11-27T04:42:58.776Z"
+        "asked_at": "2026-11-28T06:29:33.318Z"
       }
     },
     {
@@ -42877,6 +42683,22 @@
       "speaks": []
     },
     {
+      "id": 369195,
+      "name": "4lpha bStock Desk",
+      "description": "Research seller for tokenized US stocks (bStocks) on BNB Chain: stock reports, DCA plans and rebalance plans at 0.10 USD per ERC-8183 job. Every number is computed by code from the public 4lpha MCP; the desk buys its own market data through x402. Data, not investment advice.",
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://desk.4lpha.tech/.well-known/agent-card.json",
+          "version": "0.3.0"
+        }
+      ],
+      "endpoints": [
+        "https://desk.4lpha.tech/.well-known/agent-card.json"
+      ],
+      "speaks": []
+    },
+    {
       "id": 370811,
       "name": "ShareSend",
       "description": "Send a slice of a real company as a gift. ShareSend quotes tokenized US stocks (bStocks, Ondo) on BNB Chain, takes payment through B402, buys through the Binance Agentic Wallet and holds each gift in a vault until the recipient claims it with an email wallet. Autonomous jobs buy paid gifts, return unclaimed ones, finish interrupted payouts, reconcile holdings and keep the wallet session alive.",
@@ -43081,6 +42903,22 @@
       "endpoints": [
         "https://cf-rugcheck.odemakindeezekiel5.workers.dev",
         "https://cf-rugcheck.odemakindeezekiel5.workers.dev"
+      ],
+      "speaks": []
+    },
+    {
+      "id": 375728,
+      "name": "N9T2 Bridge",
+      "description": "N9T2 Bridge: firm quotes to bring BNB, USDT or USDC on BNB Chain to native XRP on the XRP Ledger, and back. Non-custodial, public receipts. https://x402.n9t2.com",
+      "declared_services": [
+        {
+          "name": "A2A",
+          "endpoint": "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json",
+          "version": "0.3.0"
+        }
+      ],
+      "endpoints": [
+        "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json"
       ],
       "speaks": []
     },

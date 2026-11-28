@@ -3,9 +3,9 @@
  "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
  "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
  "chain": "eip155:56",
- "measured_at": "2026-11-27T04:39:59.984Z",
+ "measured_at": "2026-11-28T06:26:56.194Z",
  "population": {
-  "asked": 1011,
+  "asked": 1013,
   "source": "every agent that answered in the last scan, plus everything hireable here"
  },
  "rated": {
@@ -1021,8 +1021,8 @@
    "attestations": 3,
    "agents": 3,
    "tags": [
-    "grid-trading",
-    "starred"
+    "starred",
+    "grid-trading"
    ]
   },
   {
@@ -146780,6 +146780,1987 @@
    }
   },
   {
+   "id": 30996,
+   "name": "@booksey · Ensoul",
+   "clients": [
+    "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+    "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+    "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+    "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+    "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+    "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+    "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+    "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+    "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+    "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+    "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+    "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+    "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+    "0xb57E067Ff951943D44642fDD9F9f196311366959"
+   ],
+   "feedback": [
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 1,
+     "value": 91,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 91,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 7,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 8,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+     "index": 9,
+     "value": 75,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 75,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 7,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 8,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 9,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 10,
+     "value": 87,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 87,
+     "unit": ""
+    },
+    {
+     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+     "index": 11,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 13,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 14,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 15,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 16,
+     "value": 88,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 88,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 17,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 18,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 19,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 20,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 21,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 22,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 23,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 24,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 7,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 8,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 9,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+     "index": 10,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 1,
+     "value": 72,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 72,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 2,
+     "value": 81,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 81,
+     "unit": ""
+    },
+    {
+     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+     "index": 3,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 1,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 2,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 3,
+     "value": 76,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 76,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 4,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 5,
+     "value": 74,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 74,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 6,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 7,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 8,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 9,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 10,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+     "index": 11,
+     "value": 81,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 81,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 12,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 1,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+     "index": 2,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "personality": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 91,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 78,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 19
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 75,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     }
+    ],
+    "knowledge": [
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 78,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 20
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 85,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 85,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     }
+    ],
+    "stance": [
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 21
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     }
+    ],
+    "style": [
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 85,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 22
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 87,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 83,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     }
+    ],
+    "relationship": [
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 81,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 23
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 83,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+      "value": 78,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 78,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     }
+    ],
+    "timeline": [
+     {
+      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+      "value": 72,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 24
+     },
+     {
+      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+      "value": 81,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 12
+     }
+    ]
+   }
+  },
+  {
    "id": 30999,
    "name": "@jakegagain · Ensoul",
    "clients": [
@@ -148805,1987 +150786,6 @@
       "unit": "",
       "window": "fragment",
       "index": 6
-     }
-    ]
-   }
-  },
-  {
-   "id": 30996,
-   "name": "@booksey · Ensoul",
-   "clients": [
-    "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-    "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-    "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-    "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-    "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-    "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-    "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-    "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-    "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-    "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-    "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-    "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-    "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-    "0xb57E067Ff951943D44642fDD9F9f196311366959"
-   ],
-   "feedback": [
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 1,
-     "value": 91,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 91,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 7,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 8,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-     "index": 9,
-     "value": 75,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 75,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-     "index": 12,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 7,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 8,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 9,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 10,
-     "value": 87,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 87,
-     "unit": ""
-    },
-    {
-     "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-     "index": 11,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 12,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 13,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 14,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 15,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 16,
-     "value": 88,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 88,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 17,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 18,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 19,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 20,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 21,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 22,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 23,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 24,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 12,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-     "index": 12,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 7,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 8,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 9,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-     "index": 10,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-     "index": 1,
-     "value": 72,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 72,
-     "unit": ""
-    },
-    {
-     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-     "index": 2,
-     "value": 81,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 81,
-     "unit": ""
-    },
-    {
-     "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-     "index": 3,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 1,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 2,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 3,
-     "value": 76,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 76,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 4,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 5,
-     "value": 74,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 74,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 6,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 7,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 8,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 9,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 10,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-     "index": 11,
-     "value": 81,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 81,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 12,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-     "index": 1,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-     "index": 2,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "personality": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 91,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 78,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 19
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 75,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     }
-    ],
-    "knowledge": [
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-      "value": 78,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 20
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 85,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 85,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     }
-    ],
-    "stance": [
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 21
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     }
-    ],
-    "style": [
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 85,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 22
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 87,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 83,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     }
-    ],
-    "relationship": [
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-      "value": 81,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 23
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 83,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-      "value": 78,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 78,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     }
-    ],
-    "timeline": [
-     {
-      "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 12
-     },
-     {
-      "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-      "value": 72,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 12
-     },
-     {
-      "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 24
-     },
-     {
-      "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-      "value": 81,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 12
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 12
      }
     ]
    }
@@ -309517,574 +309517,6 @@
    }
   },
   {
-   "id": 44704,
-   "name": "@evans666666 · Ensoul",
-   "clients": [
-    "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-    "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-    "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-    "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B"
-   ],
-   "feedback": [
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 1,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 2,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 3,
-     "value": 88,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 88,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 4,
-     "value": 84,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 84,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 5,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 1,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 2,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 3,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 4,
-     "value": 87,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 87,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 5,
-     "value": 88,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 88,
-     "unit": ""
-    },
-    {
-     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-     "index": 6,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 1,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 2,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 3,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 4,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 5,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 1,
-     "value": 82,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 82,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 2,
-     "value": 85,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 85,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 3,
-     "value": 83,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 83,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 4,
-     "value": 87,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 87,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 5,
-     "value": 78,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 78,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 6,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "personality",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 7,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "knowledge",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 8,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "stance",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 9,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "style",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 10,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "relationship",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    },
-    {
-     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-     "index": 11,
-     "value": 70,
-     "decimals": 0,
-     "tag1": "timeline",
-     "tag2": "fragment",
-     "revoked": false,
-     "number": 70,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "timeline": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 82,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 1
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 11
-     }
-    ],
-    "personality": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 85,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 2
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     }
-    ],
-    "knowledge": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 83,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 3
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 7
-     }
-    ],
-    "style": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 88,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 5
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 9
-     }
-    ],
-    "relationship": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 80,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 6
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 10
-     }
-    ],
-    "stance": [
-     {
-      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     },
-     {
-      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-      "value": 87,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     },
-     {
-      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 4
-     },
-     {
-      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-      "value": 70,
-      "unit": "",
-      "window": "fragment",
-      "index": 8
-     }
-    ]
-   }
-  },
-  {
    "id": 44705,
    "name": "@elaineyang73 · Ensoul",
    "clients": [
@@ -310687,6 +310119,574 @@
       "unit": "",
       "window": "fragment",
       "index": 7
+     }
+    ]
+   }
+  },
+  {
+   "id": 44704,
+   "name": "@evans666666 · Ensoul",
+   "clients": [
+    "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+    "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+    "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+    "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B"
+   ],
+   "feedback": [
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 1,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 2,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 3,
+     "value": 88,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 88,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 4,
+     "value": 84,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 84,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 5,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 1,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 2,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 3,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 4,
+     "value": 87,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 87,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 5,
+     "value": 88,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 88,
+     "unit": ""
+    },
+    {
+     "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+     "index": 6,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 1,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 2,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 3,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 4,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 5,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 1,
+     "value": 82,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 82,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 2,
+     "value": 85,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 85,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 3,
+     "value": 83,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 83,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 4,
+     "value": 87,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 87,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 5,
+     "value": 78,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 78,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 6,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "personality",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 7,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "knowledge",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 8,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "stance",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 9,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "style",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 10,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "relationship",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    },
+    {
+     "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+     "index": 11,
+     "value": 70,
+     "decimals": 0,
+     "tag1": "timeline",
+     "tag2": "fragment",
+     "revoked": false,
+     "number": 70,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "timeline": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 82,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 1
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 11
+     }
+    ],
+    "personality": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 85,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 2
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     }
+    ],
+    "knowledge": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 83,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 3
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 7
+     }
+    ],
+    "style": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 88,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 5
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 9
+     }
+    ],
+    "relationship": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 80,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 6
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 10
+     }
+    ],
+    "stance": [
+     {
+      "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
+     },
+     {
+      "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+      "value": 87,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 4
+     },
+     {
+      "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+      "value": 70,
+      "unit": "",
+      "window": "fragment",
+      "index": 8
      }
     ]
    }
@@ -339185,183 +339185,6 @@
    }
   },
   {
-   "id": 341554,
-   "name": "Lattice",
-   "clients": [
-    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-    "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-    "0x34D9BFA696B4775341F1b9167aF578F5BE292766"
-   ],
-   "feedback": [
-    {
-     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-     "index": 1,
-     "value": 80,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 80,
-     "unit": ""
-    },
-    {
-     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 2,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-     "index": 1,
-     "value": 60,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:grid",
-     "revoked": false,
-     "number": 60,
-     "unit": ""
-    },
-    {
-     "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "grid-trading",
-     "tag2": "mandatemarkets",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "grid-trading",
-     "tag2": "mandatemarkets",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "starred": [
-     {
-      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 2
-     },
-     {
-      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-      "value": 80,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-      "value": 60,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     },
-     {
-      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-      "value": 100,
-      "unit": "",
-      "window": "marque:grid",
-      "index": 1
-     }
-    ],
-    "grid-trading": [
-     {
-      "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-      "value": 100,
-      "unit": "",
-      "window": "mandatemarkets",
-      "index": 1
-     },
-     {
-      "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-      "value": 100,
-      "unit": "",
-      "window": "mandatemarkets",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
    "id": 341553,
    "name": "Bound",
    "clients": [
@@ -339531,181 +339354,6 @@
       "value": 100,
       "unit": "",
       "window": "marque:rebalancing",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
-   "id": 341555,
-   "name": "Sluicegate",
-   "clients": [
-    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-    "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-    "0x34D9BFA696B4775341F1b9167aF578F5BE292766"
-   ],
-   "feedback": [
-    {
-     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-     "index": 2,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    },
-    {
-     "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-     "index": 1,
-     "value": 60,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "marque:yield",
-     "revoked": false,
-     "number": 60,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "starred": [
-     {
-      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 2
-     },
-     {
-      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-      "value": 60,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
-      "index": 1
-     },
-     {
-      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-      "value": 100,
-      "unit": "",
-      "window": "marque:yield",
       "index": 1
      }
     ]
@@ -339889,6 +339537,358 @@
       "value": 100,
       "unit": "",
       "window": "marque:health_factor",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 341554,
+   "name": "Lattice",
+   "clients": [
+    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+    "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+    "0x34D9BFA696B4775341F1b9167aF578F5BE292766"
+   ],
+   "feedback": [
+    {
+     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+     "index": 1,
+     "value": 80,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 80,
+     "unit": ""
+    },
+    {
+     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+     "index": 1,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:grid",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    },
+    {
+     "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "grid-trading",
+     "tag2": "mandatemarkets",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "grid-trading",
+     "tag2": "mandatemarkets",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 2
+     },
+     {
+      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+      "value": 80,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 60,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     },
+     {
+      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+      "value": 100,
+      "unit": "",
+      "window": "marque:grid",
+      "index": 1
+     }
+    ],
+    "grid-trading": [
+     {
+      "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+      "value": 100,
+      "unit": "",
+      "window": "mandatemarkets",
+      "index": 1
+     },
+     {
+      "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+      "value": 100,
+      "unit": "",
+      "window": "mandatemarkets",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 341555,
+   "name": "Sluicegate",
+   "clients": [
+    "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+    "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+    "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+    "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+    "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+    "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+    "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+    "0x34D9BFA696B4775341F1b9167aF578F5BE292766"
+   ],
+   "feedback": [
+    {
+     "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+     "index": 2,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    },
+    {
+     "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+     "index": 1,
+     "value": 60,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "marque:yield",
+     "revoked": false,
+     "number": 60,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 2
+     },
+     {
+      "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+      "value": 60,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
+      "index": 1
+     },
+     {
+      "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+      "value": 100,
+      "unit": "",
+      "window": "marque:yield",
       "index": 1
      }
     ]
@@ -344103,8 +344103,8 @@
    }
   },
   {
-   "id": 152261,
-   "name": "CrimsonPilgrim",
+   "id": 152291,
+   "name": "TwilightReaver",
    "clients": [
     "0x9ff98B99B6B250b3a23961EA932F4ef147B909ab"
    ],
@@ -344154,8 +344154,8 @@
    }
   },
   {
-   "id": 152291,
-   "name": "TwilightReaver",
+   "id": 152261,
+   "name": "CrimsonPilgrim",
    "clients": [
     "0x9ff98B99B6B250b3a23961EA932F4ef147B909ab"
    ],
@@ -344455,8 +344455,8 @@
    }
   },
   {
-   "id": 7,
-   "name": "NAMEAI",
+   "id": 15,
+   "name": "8004AI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -344486,8 +344486,8 @@
    }
   },
   {
-   "id": 15,
-   "name": "8004AI",
+   "id": 7,
+   "name": "NAMEAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -344548,8 +344548,8 @@
    }
   },
   {
-   "id": 17,
-   "name": "BIGAI",
+   "id": 19,
+   "name": "BASICAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -344610,8 +344610,8 @@
    }
   },
   {
-   "id": 19,
-   "name": "BASICAI",
+   "id": 17,
+   "name": "BIGAI",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -344672,37 +344672,6 @@
    }
   },
   {
-   "id": 90,
-   "name": "oai",
-   "clients": [
-    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
-   ],
-   "feedback": [
-    {
-     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "get top 1 rank >",
-     "tag2": "t.me/agent_bldr",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "get top 1 rank >": [
-     {
-      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-      "value": 100,
-      "unit": "",
-      "window": "t.me/agent_bldr",
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
    "id": 93,
    "name": "proai",
    "clients": [
@@ -344734,8 +344703,8 @@
    }
   },
   {
-   "id": 94,
-   "name": "proai",
+   "id": 90,
+   "name": "oai",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -344767,6 +344736,37 @@
   {
    "id": 95,
    "name": "botai",
+   "clients": [
+    "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
+   ],
+   "feedback": [
+    {
+     "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "get top 1 rank >",
+     "tag2": "t.me/agent_bldr",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "get top 1 rank >": [
+     {
+      "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+      "value": 100,
+      "unit": "",
+      "window": "t.me/agent_bldr",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 94,
+   "name": "proai",
    "clients": [
     "0x397558E5D63a894934362E5c3C33Ab5d0170c228"
    ],
@@ -345912,37 +345912,6 @@
    }
   },
   {
-   "id": 368707,
-   "name": "Agentic DCA Agent 2 by 4LPHA",
-   "clients": [
-    "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4"
-   ],
-   "feedback": [
-    {
-     "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
-     "index": 1,
-     "value": 100,
-     "decimals": 0,
-     "tag1": "starred",
-     "tag2": "",
-     "revoked": false,
-     "number": 100,
-     "unit": ""
-    }
-   ],
-   "latest": {
-    "starred": [
-     {
-      "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
-      "value": 100,
-      "unit": "",
-      "window": null,
-      "index": 1
-     }
-    ]
-   }
-  },
-  {
    "id": 368122,
    "name": "Ballast Risk Desk",
    "clients": [
@@ -345968,6 +345937,37 @@
       "value": 100,
       "unit": "",
       "window": "window",
+      "index": 1
+     }
+    ]
+   }
+  },
+  {
+   "id": 368707,
+   "name": "Agentic DCA Agent 2 by 4LPHA",
+   "clients": [
+    "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4"
+   ],
+   "feedback": [
+    {
+     "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+     "index": 1,
+     "value": 100,
+     "decimals": 0,
+     "tag1": "starred",
+     "tag2": "",
+     "revoked": false,
+     "number": 100,
+     "unit": ""
+    }
+   ],
+   "latest": {
+    "starred": [
+     {
+      "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+      "value": 100,
+      "unit": "",
+      "window": null,
       "index": 1
      }
     ]

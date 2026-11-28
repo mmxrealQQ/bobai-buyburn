@@ -1,5 +1,5 @@
 {
-  "measured_at": "2026-11-27T04:31:58.058Z",
+  "measured_at": "2026-11-28T06:19:26.035Z",
   "agents": [
     {
       "id": 363619,
@@ -163,12 +163,6 @@
     {
       "id": 331131,
       "label": "LatticeLatch",
-      "category": "grid-trading",
-      "ours": false
-    },
-    {
-      "id": 337848,
-      "label": "Grid Agent 1 by 4LPHA",
       "category": "grid-trading",
       "ours": false
     },

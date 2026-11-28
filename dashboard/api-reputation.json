@@ -3,9 +3,9 @@
   "contract": "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63",
   "identity_registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chain": "eip155:56",
-  "measured_at": "2026-11-27T04:39:59.984Z",
+  "measured_at": "2026-11-28T06:26:56.194Z",
   "population": {
-    "asked": 1011,
+    "asked": 1013,
     "source": "every agent that answered in the last scan, plus everything hireable here"
   },
   "rated": {
@@ -599,8 +599,8 @@
       "attestations": 3,
       "agents": 3,
       "tags": [
-        "grid-trading",
-        "starred"
+        "starred",
+        "grid-trading"
       ]
     },
     {
@@ -39914,6 +39914,530 @@
       "rated_by_this_marketplace": false
     },
     {
+      "id": 30996,
+      "name": "@booksey · Ensoul",
+      "raters": 14,
+      "latest": {
+        "personality": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 91,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 78,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 19
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 75,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          }
+        ],
+        "knowledge": [
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 78,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 20
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 85,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 85,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          }
+        ],
+        "stance": [
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 21
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          }
+        ],
+        "style": [
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 85,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 22
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 87,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 83,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          }
+        ],
+        "relationship": [
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 81,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 23
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 83,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
+            "value": 78,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 78,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          }
+        ],
+        "timeline": [
+          {
+            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
+            "value": 72,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 24
+          },
+          {
+            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
+            "value": 81,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 12
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
       "id": 30999,
       "name": "@jakegagain · Ensoul",
       "raters": 14,
@@ -40481,530 +41005,6 @@
             "unit": "",
             "window": "fragment",
             "index": 6
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
-      "id": 30996,
-      "name": "@booksey · Ensoul",
-      "raters": 14,
-      "latest": {
-        "personality": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 91,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 78,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 19
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 75,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          }
-        ],
-        "knowledge": [
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 78,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 20
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 85,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 85,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          }
-        ],
-        "stance": [
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 21
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          }
-        ],
-        "style": [
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 85,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 22
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 87,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 83,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          }
-        ],
-        "relationship": [
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 81,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 23
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 83,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0xb57E067Ff951943D44642fDD9F9f196311366959",
-            "value": 78,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 78,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          }
-        ],
-        "timeline": [
-          {
-            "client": "0x27240A11aE733b42764728442f2DAD5a5E68fEdE",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0x2c9134604E49d639FDE2bDfD08D6c00256E7d9ec",
-            "value": 72,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x2Fd9CAcF0beb98608BEa3AbAf7769534f0701d3b",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0x6587FBDa25a0c59003919691bA679a405dF8C441",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 24
-          },
-          {
-            "client": "0x6EC9515c9A6A1f5bC6893CeA21aaa3975fA40Df7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x74138523c2CD1a29f12EAF1E098c744E2EbeC3Af",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x9dc5f638F01c70BB357Dd1991F4487A6b660DC2a",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xB88037aD67a11aDD14706C5C37600E18e704C943",
-            "value": 81,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0xd84E51B191F4089f69083078D0fB2ca0801326c7",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 12
           }
         ]
       },
@@ -94733,194 +94733,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 44704,
-      "name": "@evans666666 · Ensoul",
-      "raters": 4,
-      "latest": {
-        "timeline": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 82,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 1
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 11
-          }
-        ],
-        "personality": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 85,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 2
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          }
-        ],
-        "knowledge": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 83,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 3
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 7
-          }
-        ],
-        "style": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 88,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 5
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 9
-          }
-        ],
-        "relationship": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 80,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 6
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 10
-          }
-        ],
-        "stance": [
-          {
-            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          },
-          {
-            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
-            "value": 87,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 4
-          },
-          {
-            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
-            "value": 70,
-            "unit": "",
-            "window": "fragment",
-            "index": 8
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 44705,
       "name": "@elaineyang73 · Ensoul",
       "raters": 6,
@@ -95140,6 +94952,194 @@
             "unit": "",
             "window": "fragment",
             "index": 7
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 44704,
+      "name": "@evans666666 · Ensoul",
+      "raters": 4,
+      "latest": {
+        "timeline": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 82,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 1
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 11
+          }
+        ],
+        "personality": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 85,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 2
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          }
+        ],
+        "knowledge": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 83,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 3
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 7
+          }
+        ],
+        "style": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 88,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 5
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 9
+          }
+        ],
+        "relationship": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 80,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 6
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 10
+          }
+        ],
+        "stance": [
+          {
+            "client": "0x03882eC12db6182e30D7165a9955781ADe482bAA",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
+          },
+          {
+            "client": "0x39813029a857F3A9fa0C702a5b7D8e62f3489375",
+            "value": 87,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0x693A508C62d08A319dfF9bAA08Bea7Ddc2f5A855",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 4
+          },
+          {
+            "client": "0xfFCB18dA8b65DAe930504C03443B81D6738aD19B",
+            "value": 70,
+            "unit": "",
+            "window": "fragment",
+            "index": 8
           }
         ]
       },
@@ -106267,74 +106267,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 341554,
-      "name": "Lattice",
-      "raters": 8,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 2
-          },
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 80,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-            "value": 60,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          },
-          {
-            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-            "value": 100,
-            "unit": "",
-            "window": "marque:grid",
-            "index": 1
-          }
-        ],
-        "grid-trading": [
-          {
-            "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-            "value": 100,
-            "unit": "",
-            "window": "mandatemarkets",
-            "index": 1
-          },
-          {
-            "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-            "value": 100,
-            "unit": "",
-            "window": "mandatemarkets",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": true
-    },
-    {
       "id": 341553,
       "name": "Bound",
       "raters": 8,
@@ -106394,72 +106326,6 @@
             "value": 100,
             "unit": "",
             "window": "marque:rebalancing",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": true
-    },
-    {
-      "id": 341555,
-      "name": "Sluicegate",
-      "raters": 8,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 2
-          },
-          {
-            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
-            "value": 60,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
-            "index": 1
-          },
-          {
-            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
-            "value": 100,
-            "unit": "",
-            "window": "marque:yield",
             "index": 1
           }
         ]
@@ -106533,6 +106399,140 @@
             "value": 100,
             "unit": "",
             "window": "marque:health_factor",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": true
+    },
+    {
+      "id": 341554,
+      "name": "Lattice",
+      "raters": 8,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 80,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 60,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:grid",
+            "index": 1
+          }
+        ],
+        "grid-trading": [
+          {
+            "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+            "value": 100,
+            "unit": "",
+            "window": "mandatemarkets",
+            "index": 1
+          },
+          {
+            "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+            "value": 100,
+            "unit": "",
+            "window": "mandatemarkets",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": true
+    },
+    {
+      "id": 341555,
+      "name": "Sluicegate",
+      "raters": 8,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x0d8c9Ad8eebB6879fefA218f0799219BcAAbE999",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 2
+          },
+          {
+            "client": "0x317C5DddfE27D7d9bAaf41f2AD38E9B83B40f99D",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x34D9BFA696B4775341F1b9167aF578F5BE292766",
+            "value": 60,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x4bfD3f9c81a743F852Fb424FD487A1c53d7786D5",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0x5aC2448FC79Ef8d33710b1Bced5AEff90138b452",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0xb833C2Ee1d6Cee3933A8Ab525Cc4a1C8f812a6e2",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0xbFAA69233741924eD5b9d5DAA9B4Bf7B84567F0A",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
+            "index": 1
+          },
+          {
+            "client": "0xDa53362d304D7970Db19547C52208a35C6D83C8a",
+            "value": 100,
+            "unit": "",
+            "window": "marque:yield",
             "index": 1
           }
         ]
@@ -108325,8 +108325,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 152261,
-      "name": "CrimsonPilgrim",
+      "id": 152291,
+      "name": "TwilightReaver",
       "raters": 1,
       "latest": {
         "reachable": [
@@ -108351,8 +108351,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 152291,
-      "name": "TwilightReaver",
+      "id": 152261,
+      "name": "CrimsonPilgrim",
       "raters": 1,
       "latest": {
         "reachable": [
@@ -108488,8 +108488,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 7,
-      "name": "NAMEAI",
+      "id": 15,
+      "name": "8004AI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108505,8 +108505,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 15,
-      "name": "8004AI",
+      "id": 7,
+      "name": "NAMEAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108539,8 +108539,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 17,
-      "name": "BIGAI",
+      "id": 19,
+      "name": "BASICAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108573,8 +108573,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 19,
-      "name": "BASICAI",
+      "id": 17,
+      "name": "BIGAI",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108607,23 +108607,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 90,
-      "name": "oai",
-      "raters": 1,
-      "latest": {
-        "get top 1 rank >": [
-          {
-            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
-            "value": 100,
-            "unit": "",
-            "window": "t.me/agent_bldr",
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 93,
       "name": "proai",
       "raters": 1,
@@ -108641,8 +108624,8 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 94,
-      "name": "proai",
+      "id": 90,
+      "name": "oai",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -108660,6 +108643,23 @@
     {
       "id": 95,
       "name": "botai",
+      "raters": 1,
+      "latest": {
+        "get top 1 rank >": [
+          {
+            "client": "0x397558E5D63a894934362E5c3C33Ab5d0170c228",
+            "value": 100,
+            "unit": "",
+            "window": "t.me/agent_bldr",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 94,
+      "name": "proai",
       "raters": 1,
       "latest": {
         "get top 1 rank >": [
@@ -109287,23 +109287,6 @@
       "rated_by_this_marketplace": false
     },
     {
-      "id": 368707,
-      "name": "Agentic DCA Agent 2 by 4LPHA",
-      "raters": 1,
-      "latest": {
-        "starred": [
-          {
-            "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
-            "value": 100,
-            "unit": "",
-            "window": null,
-            "index": 1
-          }
-        ]
-      },
-      "rated_by_this_marketplace": false
-    },
-    {
       "id": 368122,
       "name": "Ballast Risk Desk",
       "raters": 1,
@@ -109314,6 +109297,23 @@
             "value": 100,
             "unit": "",
             "window": "window",
+            "index": 1
+          }
+        ]
+      },
+      "rated_by_this_marketplace": false
+    },
+    {
+      "id": 368707,
+      "name": "Agentic DCA Agent 2 by 4LPHA",
+      "raters": 1,
+      "latest": {
+        "starred": [
+          {
+            "client": "0x561b561eF37874c8e61534bE9BaE52Eb6261DDc4",
+            "value": 100,
+            "unit": "",
+            "window": null,
             "index": 1
           }
         ]

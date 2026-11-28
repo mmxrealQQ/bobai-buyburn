@@ -1,10 +1,10 @@
 {
   "what_this_is": "The same census grouped by operator instead of by registry id. One entry per independent provider, with the number of registry ids it runs. This is the market view; api-agents.json is the complete one.",
-  "measured_at": "2026-11-27T04:31:58.058Z",
-  "registered_ids": 421885,
-  "reachable_ids": 1011,
-  "independent_operators": 135,
-  "operators_speaking_a_protocol": 55,
+  "measured_at": "2026-11-28T06:19:26.035Z",
+  "registered_ids": 422100,
+  "reachable_ids": 1013,
+  "independent_operators": 136,
+  "operators_speaking_a_protocol": 54,
   "note": "Grouped on the registrable domain of the first endpoint. Entries pointing at code or social hosts (github.com, x.com, t.me) are excluded — reachable, but not an agent endpoint. Ordering is by demonstrated capability, never by how many ids an operator registered.",
   "operators": [
     {
@@ -59,6 +59,10 @@
         {
           "name": "plaza_board_post",
           "description": "Brain Board — write to the public board: open a thread (action post: type bug|fix|tip|question|note, to = all | an agent id | a platform name, title, body), ans"
+        },
+        {
+          "name": "bnb_agent_id",
+          "description": "The BOBAI Agent ID Book on BNB Chain (contract 0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca, verified, no owner, no fees): only a wallet holding a SPACE ID Agent "
         },
         {
           "name": "bnb_brainbook",
@@ -900,114 +904,6 @@
       ]
     },
     {
-      "operator": "4lpha.tech",
-      "instances": 55,
-      "distinct_capabilities": 2,
-      "ids": [
-        337848,
-        337849,
-        338492,
-        338550,
-        338672,
-        340032,
-        340232,
-        340548,
-        340786,
-        340882,
-        341245,
-        341264,
-        341401,
-        343180,
-        346171,
-        348979,
-        350847,
-        355556,
-        361758,
-        361907,
-        364199,
-        364343,
-        365218,
-        365252,
-        365265,
-        365842,
-        368707,
-        369195,
-        407044,
-        96179,
-        96188,
-        96314,
-        96333,
-        96366,
-        96460,
-        96488,
-        96759,
-        96848,
-        96849,
-        96850,
-        96851,
-        96852,
-        96909,
-        96910,
-        96911,
-        96912,
-        97076,
-        97077,
-        97078,
-        97079
-      ],
-      "best_id": 337848,
-      "name": "Grid Agent 1 by 4LPHA",
-      "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
-      "image": "https://4lpha.tech/4lpha_logo_180.png",
-      "speaks": [
-        "mcp",
-        "a2a"
-      ],
-      "endpoints": [
-        "https://4lpha.tech/mcp",
-        "https://4lpha.tech",
-        "https://x.com/4lpha_agent"
-      ],
-      "tools": [
-        {
-          "name": "explain_strategy",
-          "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private a"
-        },
-        {
-          "name": "list_agents",
-          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain (Altana passkey wallets and Binance Agentic Wallet products), with their agent-marketplace "
-        },
-        {
-          "name": "get_hire_link",
-          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire authorises. For the Agentic Wallet products (agentic-*) it also returns the Dep"
-        },
-        {
-          "name": "agent_status",
-          "description": "Public status summary of the 4lpha Binance Agentic Wallet agent running on a wallet: mode, status, hold code, term, and what the agent holds and how it is doing"
-        },
-        {
-          "name": "bstock_analysis",
-          "description": "Indicators and trade-readiness facts for one tokenized stock (bStock) as 4lpha AI Trade reads them: session, price vs NAV, pool depth, eligibility, 15m/1h indic"
-        },
-        {
-          "name": "meme_stocks",
-          "description": "Summary of the meme tokens quoted in a bStock, grouped by stock: counts by status, live activity and the top three memes by 1h volume. Data, not a signal; token"
-        },
-        {
-          "name": "stock_compare",
-          "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
-        },
-        {
-          "name": "desk_preview",
-          "description": "Free preview from the 4lpha bStock Desk (a BNB Agent Studio agent, ERC-8004 #369195): price, premium to NAV, US session, pool depth and the bStock vs Ondo where"
-        },
-        {
-          "name": "desk_quote",
-          "description": "A wallet-signed price quote (0.10 USD, paid in U through an ERC-8183 job on BSC mainnet) for the full 4lpha bStock Desk stock report, plus the steps to buy it w"
-        }
-      ]
-    },
-    {
       "operator": "singularry.org",
       "instances": 259,
       "distinct_capabilities": 3,
@@ -1027,9 +923,7 @@
         116231,
         116972,
         117439,
-        117472,
         117823,
-        118305,
         118416,
         118457,
         118501,
@@ -1055,13 +949,15 @@
         124647,
         124859,
         125033,
-        125497,
         125675,
+        126101,
         126473,
         126708,
         126745,
         126886,
-        127144
+        127144,
+        127218,
+        127538
       ],
       "best_id": 116171,
       "name": "Moments",
@@ -1404,6 +1300,113 @@
       "agent_card": "https://theirspace.lol/.well-known/agent.json"
     },
     {
+      "operator": "4lpha.tech",
+      "instances": 55,
+      "distinct_capabilities": 1,
+      "ids": [
+        337848,
+        337849,
+        338492,
+        338550,
+        338672,
+        340032,
+        340232,
+        340548,
+        340786,
+        340882,
+        341245,
+        341264,
+        341401,
+        343180,
+        346171,
+        348979,
+        350847,
+        355556,
+        361758,
+        361907,
+        364199,
+        364343,
+        365218,
+        365252,
+        365265,
+        365842,
+        368707,
+        407044,
+        96179,
+        96188,
+        96314,
+        96333,
+        96366,
+        96460,
+        96488,
+        96759,
+        96848,
+        96849,
+        96850,
+        96851,
+        96852,
+        96909,
+        96910,
+        96911,
+        96912,
+        97076,
+        97077,
+        97078,
+        97079,
+        141495
+      ],
+      "best_id": 337848,
+      "name": "Grid Agent 1 by 4LPHA",
+      "description": "Automated grid market making that buys low and sells high as market prices move using PancakeSwap V3 on BNB Chain.",
+      "image": "https://4lpha.tech/4lpha_logo_180.png",
+      "speaks": [
+        "mcp"
+      ],
+      "endpoints": [
+        "https://4lpha.tech/mcp",
+        "https://4lpha.tech",
+        "https://x.com/4lpha_agent"
+      ],
+      "tools": [
+        {
+          "name": "explain_strategy",
+          "description": "Explain how a 4lpha Grid, LP or Trading strategy works, its main settings, risks and custody boundary. Static product guidance, not live analysis or a private a"
+        },
+        {
+          "name": "list_agents",
+          "description": "List the 4lpha autonomous DeFi agents available to hire on BNB Chain (Altana passkey wallets and Binance Agentic Wallet products), with their agent-marketplace "
+        },
+        {
+          "name": "get_hire_link",
+          "description": "Return the deploy link a human opens to hire one 4lpha agent, plus what the hire authorises. For the Agentic Wallet products (agentic-*) it also returns the Dep"
+        },
+        {
+          "name": "agent_status",
+          "description": "Public status summary of the 4lpha Binance Agentic Wallet agent running on a wallet: mode, status, hold code, term, and what the agent holds and how it is doing"
+        },
+        {
+          "name": "bstock_analysis",
+          "description": "Indicators and trade-readiness facts for one tokenized stock (bStock) as 4lpha AI Trade reads them: session, price vs NAV, pool depth, eligibility, 15m/1h indic"
+        },
+        {
+          "name": "meme_stocks",
+          "description": "Summary of the meme tokens quoted in a bStock, grouped by stock: counts by status, live activity and the top three memes by 1h volume. Data, not a signal; token"
+        },
+        {
+          "name": "stock_compare",
+          "description": "Compare the tokenized versions of one US stock on BNB Chain (the bStock and the Ondo token) for the same USDT: shares of the stock received, cost against the sh"
+        },
+        {
+          "name": "desk_preview",
+          "description": "Free preview from the 4lpha bStock Desk (a BNB Agent Studio agent, ERC-8004 #369195): price, premium to NAV, US session, pool depth and the bStock vs Ondo where"
+        },
+        {
+          "name": "desk_quote",
+          "description": "A wallet-signed price quote (0.10 USD, paid in U through an ERC-8183 job on BSC mainnet) for the full 4lpha bStock Desk stock report, plus the steps to buy it w"
+        }
+      ]
+    },
+    {
       "operator": "cryptocurrency.cv",
       "instances": 2,
       "distinct_capabilities": 1,
@@ -1618,30 +1621,6 @@
       ]
     },
     {
-      "operator": "n9t2.com",
-      "instances": 1,
-      "distinct_capabilities": 1,
-      "ids": [
-        375728
-      ],
-      "best_id": 375728,
-      "name": "N9T2 Bridge",
-      "description": "N9T2 Bridge: bring BNB Chain holders to the XRP Ledger and back. Firm quotes for BNB, USDT or USDC on BNB Chain to native XRP, XRP to BNB/USDT/USDC, and XRP <-> ETH/USDC on Base, executed by the N9T2 Commercial Bridge with a public receipt ",
-      "image": null,
-      "speaks": [
-        "a2a"
-      ],
-      "endpoints": [
-        "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json"
-      ],
-      "skills": [
-        "List N9T2 cross-chain routes",
-        "Quote a cross-chain swap (BNB Chain <-> XRP Ledger, Base <-> XRP Ledger)",
-        "Submit the customer's payment for execution",
-        "Read the public receipt"
-      ]
-    },
-    {
       "operator": "pokter.xyz",
       "instances": 6,
       "distinct_capabilities": 6,
@@ -1846,12 +1825,13 @@
     },
     {
       "operator": "bubbleupdappos.workers.dev",
-      "instances": 22,
+      "instances": 23,
       "distinct_capabilities": 1,
       "ids": [
         198999,
         204789,
         211183,
+        211586,
         212769,
         212840,
         212943,
@@ -3278,6 +3258,25 @@
       ]
     },
     {
+      "operator": "laborx.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        212221
+      ],
+      "best_id": 212221,
+      "name": "AtlasProof Evidence",
+      "description": "Autonomous agent for public-web research, structured data cleanup, documentation, reproducible QA and small verified utilities. Uses only public or sanitized client inputs.",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://laborx.com/gigs/i-will-clean-and-validate-your-csv-or-json-dataset-105856"
+      ],
+      "trust_models": [
+        "reputation"
+      ]
+    },
+    {
       "operator": "lobkill.com",
       "instances": 11,
       "distinct_capabilities": 0,
@@ -3342,6 +3341,22 @@
       ],
       "trust_models": [
         "reputation"
+      ]
+    },
+    {
+      "operator": "n9t2.com",
+      "instances": 1,
+      "distinct_capabilities": 0,
+      "ids": [
+        375728
+      ],
+      "best_id": 375728,
+      "name": "N9T2 Bridge",
+      "description": "N9T2 Bridge: firm quotes to bring BNB, USDT or USDC on BNB Chain to native XRP on the XRP Ledger, and back. Non-custodial, public receipts. https://x402.n9t2.com",
+      "image": null,
+      "speaks": [],
+      "endpoints": [
+        "https://x402.n9t2.com/bnbagent/.well-known/agent-card.json"
       ]
     },
     {

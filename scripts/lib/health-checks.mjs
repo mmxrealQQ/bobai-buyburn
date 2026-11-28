@@ -281,6 +281,17 @@ const tgEvidenceHolds = () => {
 // (an RPC that failed, a settle we could not send, a reason this list does not know) is ours to look at and reads red.
 // Our own checks (brainonbnb- user agents) and our site are left out; the last 24 h. Pure; pinned below.
 export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `|the pass needs [\d,]+ \$BOBAI|issued must lie within|has used today's|covers the paid answers|send: bobai-holder/i;   // 26.10.: "holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI" read red; 28.11.: the holder pass's stale proof, used allowance, wrong product and bad form are the payer's too
+// THE AGENT ID PROJECTS COUNT (2026-11-28): /agent-id/projects is read by the 15-minute cron; red when the last read is
+// older than an hour, our two contracts are missing, or a listed contract lags more than 20,000 blocks (~3 h). Pure.
+export function projectsCountVerdict(j, now = Date.now()) {
+  if (!j || !Array.isArray(j.projects)) return { good: false, detail: 'the agent server did not report /agent-id/projects' };
+  const age = j.read_at ? (now - Date.parse(j.read_at)) / 6e4 : Infinity;
+  const own = j.projects.filter((p) => p.own).length;
+  const lag = j.projects.filter((p) => !p.not_a_contract && p.behind_blocks > 20000);
+  const good = age <= 60 && own >= 2 && lag.length === 0;
+  const listed = j.projects.filter((p) => !p.own && !p.not_a_contract);
+  return { good, detail: !(age <= 60) ? `last read ${Number.isFinite(age) ? Math.round(age) + ' min ago' : 'never'}` : own < 2 ? `only ${own} of our 2 contracts counted` : lag.length ? `${lag.length} contract(s) behind: ${lag.map((p) => p.contract.slice(0, 10) + ' ' + p.behind_blocks).join(', ')}` : `read ${Math.round(age)} min ago · ${listed.length} project contract(s) listed · ${j.projects.reduce((s, p) => s + (p.agent_id_addresses || 0), 0)} Agent ID address(es) counted` };
+}
 export function refusedVerdict(list, now = Date.now()) {
   if (!Array.isArray(list)) return { good: false, detail: 'the agent server did not report /buys/refused' };
   const day = list.filter((r) => r && !/^brainonbnb-/i.test(r.ua || '') && !r.own_site && now - Date.parse(r.at) < 864e5);
@@ -1154,6 +1165,10 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const rf = await getJson(`${AGENT}/buys/refused`);
   const rv = refusedVerdict(rf.json && rf.json.refused);
   ok('Paid', 'no payment of the last 24 h was refused on our side', rv.good, rv.detail);
+  // the Agent ID projects count (2026-11-28): read every 15 minutes; a stopped count is silent on the page
+  const ap = await getJson(`${AGENT}/agent-id/projects`);
+  const apv = projectsCountVerdict(ap.json);
+  ok('Agent ID', 'the Agent ID projects count is read and keeps up', apv.good, apv.detail);
 
   const guard = await fetch(`${AGENT}/run-checks`, { method: 'POST' }).catch(() => null);
   ok('Paid', 'admin trigger needs the secret', guard?.status === 403, guard ? `got ${guard.status}` : '');

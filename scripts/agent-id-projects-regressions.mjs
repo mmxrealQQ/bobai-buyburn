@@ -92,5 +92,16 @@ const logs = { [C1]: [{ block: HEAD_READ - 100, tx: 't1' }, { block: HEAD_READ -
   ok('budget: at most 120 requests', c.calls.n <= 120);
 }
 
+// the health rule for the count (scripts/lib/health-checks.mjs)
+{
+  const { projectsCountVerdict: v } = await import('./lib/health-checks.mjs');
+  const now = Date.parse('2026-11-28T05:00:00Z'), own = (b = 0) => [{ own: true, behind_blocks: b, contract: C1 }, { own: true, behind_blocks: 0, contract: C2 }];
+  ok('health: fresh read green', v({ read_at: '2026-11-28T04:50:00Z', projects: own() }, now).good === true);
+  ok('health: read 2 h ago red', v({ read_at: '2026-11-28T03:00:00Z', projects: own() }, now).good === false);
+  ok('health: an own contract missing red', v({ read_at: '2026-11-28T04:50:00Z', projects: own().slice(0, 1) }, now).good === false);
+  ok('health: a contract 30,000 blocks behind red', v({ read_at: '2026-11-28T04:50:00Z', projects: own(30000) }, now).good === false);
+  ok('health: no answer red', v(null, now).good === false);
+}
+
 console.log(`agent-id-projects-regressions: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

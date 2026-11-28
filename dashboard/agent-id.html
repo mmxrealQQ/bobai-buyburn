@@ -18,12 +18,14 @@
   <link rel="canonical" href="https://brainonbnb.com/agent-id">
   <link rel="icon" type="image/png" href="/favicon.png?v=4">
   <link rel="apple-touch-icon" href="/logo.png?v=4">
-  <meta property="og:title" content="Agent ID Book — one person, one vouch">
-  <meta property="og:description" content="Agent ID holders vouch for the AI agents they trust, on BNB Chain. One vouch per person per agent: a vouch count counts people, not wallets.">
+  <meta property="og:title" content="Agent ID Book — count the Agent ID addresses using your contract">
+  <meta property="og:description" content="Building for the Binance Wallet Agent ID Hackathon? List your contract and see, live and free, how many Agent ID holders send it a transaction on BNB Chain. And vouch for the AI agents you trust: one vouch per person.">
   <meta property="og:image" content="https://brainonbnb.com/og-wall.jpg">
   <meta property="og:url" content="https://brainonbnb.com/agent-id">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Count the Agent ID addresses using your contract">
+  <meta name="twitter:description" content="Agent ID Hackathon: list your contract in the Agent ID Book and see, live and free, how many Agent ID holders send it a transaction on BNB Chain.">
   <link rel="preload" href="/styles.css?v=84" as="style">
   <link rel="stylesheet" href="/styles.css?v=84">
   <link rel="stylesheet" href="/home.css?v=1">
@@ -197,7 +199,7 @@
   const found = [];
   window.addEventListener('eip6963:announceProvider', (e) => { if (e.detail && !found.some((f) => f.info.uuid === e.detail.info.uuid)) found.push(e.detail); });
   window.dispatchEvent(new Event('eip6963:requestProvider'));
-  let prov = null, me = null, holder = false;
+  let prov = null, me = null, holder = false, prepared = false;
   const say = (id, text, cls) => { const el = $(id); el.className = 'ai-msg' + (cls ? ' ' + cls : ''); el.innerHTML = text; };
   async function useProvider(p) {
     prov = p;
@@ -217,7 +219,7 @@
       if (holder) {
         const e = await call(BOOK, '0x58bb388a' + pad(me)), place = Number(BigInt('0x' + e.slice(2, 66)));
         say('conn-msg', place ? `Agent ID found. You hold place <b>#${place}</b> in the book.` : 'Agent ID found. Sign the book to take your place.', 'ok');
-        if (place) { $('note').value = str(e, 3); count(); $('sign').textContent = 'Change note'; }
+        if (place) { if (!prepared) { $('note').value = str(e, 3); count(); } $('sign').textContent = 'Change note'; }
       } else say('conn-msg', '');
     } catch (e) { say('conn-msg', esc(e && e.message ? e.message : 'The wallet refused.'), 'bad'); }
   }
@@ -272,7 +274,7 @@
     if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { say('p-msg', 'The contract: 0x and 40 hex characters.', 'bad'); return; }
     const note = (n ? n + ' ' : '') + a;
     if (enc.encode(note).length > 140) { say('p-msg', 'Name and contract together: at most 140 bytes.', 'bad'); return; }
-    $('note').value = note; count();
+    $('note').value = note; count(); prepared = true;
     say('p-msg', 'Your note is ready in &ldquo;Your Agent ID&rdquo; above: connect the wallet that holds your Agent ID and sign (or change your note). Counting starts within 15 minutes.', 'ok');
     $('you').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });

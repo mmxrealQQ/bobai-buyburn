@@ -166,6 +166,36 @@ const logs = { [C1]: [{ block: HEAD_READ - 100, tx: 't1' }, { block: HEAD_READ -
   }
 }
 
+// A LOOK BEFORE SIGNING (2026-11-28): previewCount reads a contract since the start without listing it
+{
+  const { previewCount, HACKATHON_START_BLOCK: S } = await import('../worker-agent/agent-id-projects.js');
+  const HD = S + 100000, C4 = '0x' + '66'.repeat(20);
+  const pl = { [C4]: [{ block: S + 5, tx: 't5' }, { block: S + 70000, tx: 't6' }, { block: HD - 50, tx: 't1' }, { block: HD - 40, tx: 't1' }] };
+  const txFrom = { t5: H2, t6: NOID, t1: H1 };
+  const arch = ({ fail = false, maxSpan = 50000, logs = pl } = {}) => async (body) => {
+    if (fail) return null;
+    if (Array.isArray(body)) return body.map((b) => ({ id: b.id, result: { from: txFrom[b.params[0]] || NOID } }));
+    const f = body.params[0], a = parseInt(f.fromBlock, 16), b = parseInt(f.toBlock, 16);
+    if (b - a + 1 > maxSpan) return { error: { message: 'exceed maximum block range' } };
+    return { result: (logs[f.address] || []).filter((l) => l.block >= a && l.block <= b).map((l) => ({ transactionHash: l.tx })) };
+  };
+  const rpc = chain({ head: HD, logs: {} }).rpc;
+  const r = await previewCount({}, C4.toUpperCase().replace('0X', '0x'), { rpc, archive: arch(), head: HD });
+  ok('preview: counted since the start, before any listing', r.status === 200 && r.body.agent_id_addresses === 2 && r.body.senders === 3 && r.body.transactions === 3 && r.body.from_block === S && r.body.complete === true);
+  ok('preview: names the holders and how to list it', r.body.agent_id_holders.includes(H2) && /Agent ID Book/.test(r.body.list_it));
+  const r300 = await previewCount({}, C4, { rpc, archive: arch({ maxSpan: 300 }), head: HD });
+  ok('preview: a node too narrow to read it in one look says so (503), never a short count', r300.status === 503 && /did not answer in full/.test(r300.body.error) && r300.body.agent_id_addresses === undefined);
+  const away = await previewCount({}, C4, { rpc, archive: arch({ fail: true }), head: HD });
+  ok('preview: archive away is a 503, never a 0', away.status === 503 && away.body.agent_id_addresses === undefined);
+  ok('preview: a wallet is no contract (422)', (await previewCount({}, EOA, { rpc, archive: arch(), head: HD })).status === 422);
+  ok('preview: the Agent ID contract itself is refused', (await previewCount({}, '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F', { rpc, archive: arch(), head: HD })).status === 400);
+  ok('preview: a bad address is refused', (await previewCount({}, '0x123', { rpc, archive: arch(), head: HD })).status === 400);
+  ok('preview: no archive on the worker is a 503', (await previewCount({}, C4, { rpc, archive: null, head: HD })).status === 503);
+  const many = { [C4]: Array.from({ length: 2500 }, (_, i) => ({ block: S + 1 + i * 30, tx: 'm' + i })) };
+  const big = await previewCount({}, C4, { rpc, archive: arch({ logs: many }), head: HD });
+  ok('preview: a busy contract is counted up to 2,000 transactions and said as partial', big.status === 200 && big.body.complete === false && big.body.transactions === 2000 && /more than 2,000/.test(big.body.partial));
+}
+
 // the health rule for the count (scripts/lib/health-checks.mjs)
 {
   const { projectsCountVerdict: v } = await import('./lib/health-checks.mjs');

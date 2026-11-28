@@ -104,8 +104,9 @@
 
   <section class="ai-box" id="projects" aria-label="Agent ID projects">
     <h2>Building for the Agent ID Hackathon? Count your Agent ID addresses</h2>
+    <p><b>See your number first:</b> type your contract and press <i>Count it now</i> &mdash; its Agent ID addresses since 18 Nov, read from BNB Chain in a few seconds, no wallet, no gas.</p>
     <p>The Pioneer Award ranks projects by how many <b>Agent ID addresses</b> use their contracts. Sign the book with your project&rsquo;s name and contract, and from then on we count, live and in the open, every Agent ID holder that sends a transaction to it (<code translate="no">tx.from</code>, each one once, checked on the Agent ID contract). Gas only, nothing to pay.</p>
-    <div class="ai-row"><input class="ai-in" id="p-name" maxlength="80" placeholder="Project name" autocomplete="off"><input class="ai-in" id="p-addr" maxlength="42" placeholder="Contract 0x…" autocomplete="off" translate="no"><button class="ai-btn" id="p-list" type="button">Put it in my note</button></div>
+    <div class="ai-row"><input class="ai-in" id="p-name" maxlength="80" placeholder="Project name" autocomplete="off"><input class="ai-in" id="p-addr" maxlength="42" placeholder="Contract 0x…" autocomplete="off" translate="no"><button class="ai-btn" id="p-look" type="button">Count it now</button><button class="ai-btn" id="p-list" type="button">Put it in my note</button></div>
     <div class="ai-msg" id="p-msg"></div>
     <div id="p-table" class="ai-msg">Reading&hellip;</div>
     <p class="ai-cnt">Counted from the hackathon start, 18 Nov 2026 00:00 UTC: the days before a listing are read from an archive node right after it. It is our reading of the chain, not the official ranking. JSON: <a href="https://agent.brainonbnb.com/agent-id/projects" rel="noopener" style="color:var(--gold)" translate="no">agent.brainonbnb.com/agent-id/projects</a></p>
@@ -269,6 +270,20 @@
       $('p-table').innerHTML = '<table class="ai-list"><thead><tr><th>Project</th><th>Contract</th><th>Agent ID addresses</th><th>Senders</th></tr></thead><tbody>' + rows.map((p) => `<tr><td>${esc(p.name || '–')}${p.place ? ' <span class="ai-cnt">#' + esc(p.place) + '</span>' : ''}</td><td><a href="${esc(p.bscscan)}" rel="noopener" translate="no">${short(p.contract)}</a></td><td class="pl">${esc(p.agent_id_addresses)}</td><td>${esc(p.senders)}</td></tr>`).join('') + '</tbody></table>' + (d.read_at ? '<div class="ai-cnt">read ' + esc(String(d.read_at).slice(0, 16).replace('T', ' ')) + ' UTC, every 15 minutes</div>' : '');
     } catch { $('p-table').textContent = 'The list could not be read just now.'; }
   }
+  // COUNT IT NOW (2026-11-28): a builder sees the contract's Agent ID addresses since the start before paying gas to list it
+  $('p-look').addEventListener('click', async () => {
+    const a = $('p-addr').value.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { say('p-msg', 'The contract: 0x and 40 hex characters.', 'bad'); return; }
+    const b = $('p-look'); b.disabled = true; say('p-msg', 'Reading BNB Chain since 18 Nov&hellip; (up to ~20 s for a busy contract)', 'ok');
+    try {
+      const r = await fetch(API + '/projects/preview?contract=' + encodeURIComponent(a), { cache: 'no-store' });
+      const d = await r.json();
+      if (!r.ok) { say('p-msg', esc(d.error || 'The count could not be read just now.'), 'bad'); return; }
+      const n = d.agent_id_addresses, need = Math.max(0, 30 - n);
+      say('p-msg', `<b>${esc(n)} Agent ID address${n === 1 ? '' : 'es'}</b> sent transactions to <span translate="no">${short(d.contract)}</span> since 18 Nov (of ${esc(d.senders)} senders, ${esc(d.transactions)} transactions)${d.complete ? '' : ' &mdash; ' + esc(d.partial)}. ${need ? `The hackathon asks for 30: ${need} to go.` : 'That meets the hackathon&rsquo;s 30.'} <br>List it with <i>Put it in my note</i> and sign: we then count it every 15 minutes, in the open.`, 'ok');
+    } catch { say('p-msg', 'The count could not be read just now.', 'bad'); }
+    finally { b.disabled = false; }
+  });
   $('p-list').addEventListener('click', () => {
     const n = $('p-name').value.trim(), a = $('p-addr').value.trim();
     if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { say('p-msg', 'The contract: 0x and 40 hex characters.', 'bad'); return; }

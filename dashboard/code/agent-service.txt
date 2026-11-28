@@ -2,7 +2,7 @@
 # An agent that sells something, and gets paid without a human in the loop.
 #
 # This is the complete agent-service bundle as a single file, so it can be read in
-# one fetch. 85 files, 26684 lines.
+# one fetch. 85 files, 26750 lines.
 # Download as a zip: https://brainonbnb.com/code/agent-service.zip
 # Everything else:   https://brainonbnb.com/code/index.txt
 #
@@ -4773,6 +4773,67 @@ export async function projectsTick(env, signers, { rpc = rpcOf(env), archive = a
   return { ok: true, head, contracts: order.length, moved, backfilled: back, requests_left: budget };
 }
 
+// A LOOK BEFORE SIGNING (2026-11-28, operator: "ja, mach 1 und 2" — builders reached on X and Binance Square): a builder
+// types a contract and sees its Agent ID addresses since the start at once, before paying gas to list it. One read from
+// the archive, at most PREVIEW_MAX_TXS transactions (past them: what was read, said as partial), kept an hour per
+// contract at the edge; a caller gets PREVIEW_PER_HOUR fresh reads an hour (a kept answer is free). Nothing is stored
+// on the list: only signing the book lists a contract.
+const PREVIEW_MAX_TXS = 2000, PREVIEW_PER_HOUR = 20;
+export async function previewCount(env, contract, { rpc = rpcOf(env), archive = archiveOf(env), head: headIn = null } = {}) {
+  const c = String(contract || '').toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(c)) return { status: 400, body: { error: 'contract: 0x and 40 hex characters' } };
+  if (c === AGENT_ID_NFT) return { status: 400, body: { error: 'that is the Agent ID contract itself, not a project' } };
+  if (!archive) return { status: 503, body: { error: 'the archive node is not set on this worker' } };
+  let budget = MAX_REQUESTS_A_TICK;
+  const ask = async (f, body) => { if (budget <= 0) return null; budget--; return f(body); };
+  const code = await ask(rpc, { jsonrpc: '2.0', id: 1, method: 'eth_getCode', params: [c, 'latest'] });
+  if (!code) return { status: 503, body: { error: 'BNB Chain did not answer; try again in a minute' } };
+  if (!code.result || code.result === '0x') return { status: 422, body: { error: 'no contract at this address (a wallet?)', contract: c } };
+  let head = headIn;
+  if (head == null) { const h = await ask(rpc, { jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }); if (!h) return { status: 503, body: { error: 'BNB Chain did not answer; try again in a minute' } }; head = Number(h.result) - CONFIRMATIONS; }
+  const hashes = new Set();
+  let span = ARCHIVE_SPAN, block = HACKATHON_START_BLOCK - 1, partial = false;
+  while (block < head && budget > 10) {
+    const a = block + 1, b = Math.min(head, a + span - 1);
+    const r = await ask(archive, { jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: c, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
+    if (r?.error && span > ARCHIVE_MIN_SPAN) { span = Math.max(ARCHIVE_MIN_SPAN, Math.floor(span / 2)); continue; }
+    if (!r || !Array.isArray(r.result)) break;
+    for (const l of r.result) hashes.add(l.transactionHash);
+    block = b;
+    if (hashes.size >= PREVIEW_MAX_TXS) { partial = block < head; break; }
+  }
+  if (block < head && !partial) return { status: 503, body: { error: 'the archive node did not answer in full; try again in a minute', contract: c } };
+  const list = [...hashes].slice(0, PREVIEW_MAX_TXS);
+  const froms = await sendersOf((b) => ask(archive, b), list);
+  if (!froms) return { status: 503, body: { error: 'the archive node did not answer in full; try again in a minute', contract: c } };
+  const senders = [...new Set(froms)];
+  const holds = await agentIdsOf((b) => ask(rpc, b), senders);
+  if (!holds) return { status: 503, body: { error: 'BNB Chain did not answer in full; try again in a minute', contract: c } };
+  const ids = senders.filter((s) => holds[s]);
+  return { status: 200, body: {
+    contract: c, agent_id_addresses: ids.length, senders: senders.length, transactions: list.length,
+    from_block: HACKATHON_START_BLOCK, to_block: block, complete: !partial,
+    ...(partial ? { partial: `more than ${PREVIEW_MAX_TXS.toLocaleString('en-US')} transactions since the start: this counts them up to block ${block}; listed, the 15-minute read counts it in full (up to ${MAX_BACKFILL_TXS.toLocaleString('en-US')} transactions back, then live)` } : {}),
+    agent_id_holders: ids,
+    list_it: `sign the Agent ID Book with a note naming it, e.g. "My Project ${c}": https://brainonbnb.com/agent-id#projects (gas only)`,
+    counted: 'tx.from of every transaction behind the contract\'s events since 18 Nov 2026 00:00 UTC, each sender once, today\'s balanceOf on the Agent ID contract. Not the official ranking.',
+  } };
+}
+// the look as the worker serves it: kept an hour per contract, PREVIEW_PER_HOUR fresh reads per caller an hour
+export async function handlePreview(request, env, url) {
+  const c = String(url.searchParams.get('contract') || '').toLowerCase();
+  const cache = caches.default, key = new Request(`https://agent.brainonbnb.com/__aid-preview/${c}`);
+  if (/^0x[0-9a-f]{40}$/.test(c)) { const hit = await cache.match(key).catch(() => null); if (hit) return { status: 200, body: { ...(await hit.json()), kept: true } }; }
+  const ip = request.headers.get('cf-connecting-ip') || 'none', hour = new Date().toISOString().slice(0, 13);
+  const ik = new Request(`https://agent.brainonbnb.com/__aid-preview-ip/${encodeURIComponent(ip)}/${hour}`);
+  const used = Number(await (await cache.match(ik).catch(() => null))?.text().catch(() => '0') || 0);
+  if (used >= PREVIEW_PER_HOUR) return { status: 429, body: { error: `${PREVIEW_PER_HOUR} fresh looks an hour per caller; a contract looked up in the last hour is answered from the kept read` } };
+  await cache.put(ik, new Response(String(used + 1), { headers: { 'cache-control': 'public, max-age=3600' } })).catch(() => {});
+  const out = await previewCount(env, c);
+  if (out.status === 200) await cache.put(key, new Response(JSON.stringify(out.body), { headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' } })).catch(() => {});
+  return out;
+}
+
 // tx.from of each hash, in batches; null when one batch did not answer in full
 async function sendersOf(ask, hashes) {
   const out = [];
@@ -4853,7 +4914,7 @@ export async function handleProjects(env, path) {
 //   GET /agent-id/check/<address>    does this address hold an Agent ID, has it signed, how many agents it vouches for
 //   GET /agent-id/projects[/<c>]     the contracts projects list in their notes, with the live count of Agent ID senders
 import { logsOf, rpcOf } from './holders.js';
-import { projectsTick, handleProjects } from './agent-id-projects.js';
+import { projectsTick, handleProjects, handlePreview } from './agent-id-projects.js';
 
 export const BOOK = '0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca';
 export const AGENT_ID_NFT = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
@@ -5076,6 +5137,11 @@ export async function handleAgentId(request, env, path, url) {
       baw_execute: 'baw contract-call execute --requestId <requestId from the preview> --json',
       note: 'Only a wallet holding an Agent ID can send this; any other reverts with NoAgentId(). Gas only, no value, no approval.',
     });
+  }
+  // a builder's contract counted since the start before it is listed (28.11.)
+  if (path === '/agent-id/projects/preview') {
+    const out = await handlePreview(request, env, url);
+    return J(out.body, out.status);
   }
   if (path.startsWith('/agent-id/projects')) {
     const out = await handleProjects(env, path);

@@ -16,7 +16,7 @@
 //   GET /agent-id/check/<address>    does this address hold an Agent ID, has it signed, how many agents it vouches for
 //   GET /agent-id/projects[/<c>]     the contracts projects list in their notes, with the live count of Agent ID senders
 import { logsOf, rpcOf } from './holders.js';
-import { projectsTick, handleProjects } from './agent-id-projects.js';
+import { projectsTick, handleProjects, handlePreview } from './agent-id-projects.js';
 
 export const BOOK = '0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca';
 export const AGENT_ID_NFT = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
@@ -239,6 +239,11 @@ export async function handleAgentId(request, env, path, url) {
       baw_execute: 'baw contract-call execute --requestId <requestId from the preview> --json',
       note: 'Only a wallet holding an Agent ID can send this; any other reverts with NoAgentId(). Gas only, no value, no approval.',
     });
+  }
+  // a builder's contract counted since the start before it is listed (28.11.)
+  if (path === '/agent-id/projects/preview') {
+    const out = await handlePreview(request, env, url);
+    return J(out.body, out.status);
   }
   if (path.startsWith('/agent-id/projects')) {
     const out = await handleProjects(env, path);

@@ -281,6 +281,25 @@ const tgEvidenceHolds = () => {
 // (an RPC that failed, a settle we could not send, a reason this list does not know) is ours to look at and reads red.
 // Our own checks (brainonbnb- user agents) and our site are left out; the last 24 h. Pure; pinned below.
 export const PAYER_SIDE = /exceeds balance|insufficient|malformed|not a scan pass|not issued by|expired|more than a day old|failed on-chain|already been used|transaction not found|paid [\d.]+ .* need|signature|signer|not valid yet|expires too soon|nonce|must be|is not (a|an) |below the price|above the price|smaller than the price|another token|not a Permit2|policy:|below_line|bad_issued|holder pass not accepted|needs `|the pass needs [\d,]+ \$BOBAI|issued must lie within|has used today's|covers the paid answers|send: bobai-holder/i;   // 26.10.: "holds 0 $BOBAI; the pass needs 1,000,000 $BOBAI" read red; 28.11.: the holder pass's stale proof, used allowance, wrong product and bad form are the payer's too
+// A LOCAL TASK'S LAST RUN (2026-11-28): "BOBAI jobs refresh" stopped every day from 21.11. to 28.11. unseen. Reads the
+// task's own log (lines "[YYYY-MM-DD HH:MM:SS] ..."): red when the last run did not end in "done", when its last "done" is
+// over 26 hours old, or when there is no log. Pure; pinned in scripts/agent-id-projects-regressions.mjs.
+export function taskLogVerdict(text, now = Date.now()) {
+  if (typeof text !== 'string' || !text.trim()) return { good: false, detail: 'no log' };
+  const lines = text.split(/\r?\n/).filter((l) => /^\[\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\]/.test(l));
+  const at = (l) => Date.parse(l.slice(1, 20).replace(' ', 'T') + 'Z');
+  let start = -1; lines.forEach((l, i) => { if (/\] .*refresh started/.test(l)) start = i; });
+  if (start < 0) return { good: false, detail: 'no run in the log' };
+  const run = lines.slice(start), last = run[run.length - 1];
+  const doneLine = run.find((l) => /\] done/.test(l));
+  if (!doneLine) {
+    const stopLine = run.find((l) => /\] (stopped|FAIL live)/.test(l));
+    if (stopLine) return { good: false, detail: stopLine.slice(22, 180) };
+    return { good: now - at(last) < 3 * 3600e3, detail: 'running since ' + run[0].slice(1, 17) + ' UTC' };
+  }
+  const age = (now - at(doneLine)) / 3600e3;
+  return { good: age <= 26, detail: `last run done ${age.toFixed(1)} h ago` };
+}
 // THE AGENT ID PROJECTS COUNT (2026-11-28): /agent-id/projects is read by the 15-minute cron; red when the last read is
 // older than an hour, our two contracts are missing, or a listed contract lags more than 20,000 blocks (~3 h). Pure.
 export function projectsCountVerdict(j, now = Date.now()) {
@@ -515,7 +534,7 @@ export function dispatchNote(failing, ages = {}, lookLateMin = 0) {
 // sibling's workers.dev address (it gets a 404 from Cloudflare's own router),
 // so the health worker hands in its service binding here. `nftFetch`: the same for the NFT minter (2026-10-26: its
 // drop log was asked at its workers.dev address and every morning read "the minter did not report its drops").
-export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch, nftFetch = fetch, buybackPrior = null } = {}) {
+export async function runHealth({ rpc = 'https://bsc-dataseed.binance.org', tgFetch = fetch, nftFetch = fetch, buybackPrior = null, taskLogs = null } = {}) {
 const RPC = rpc;
 const results = [];
 const ok = (area, name, good, detail = '') => results.push({ area, name, good, detail });
@@ -1169,6 +1188,8 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
   const ap = await getJson(`${AGENT}/agent-id/projects`);
   const apv = projectsCountVerdict(ap.json);
   ok('Agent ID', 'the Agent ID projects count is read and keeps up', apv.good, apv.detail);
+  // the two local Windows tasks (2026-11-28): only scripts/health.mjs on this machine hands their logs in; the worker cannot
+  if (taskLogs) for (const [name, text] of Object.entries(taskLogs)) { const tv = taskLogVerdict(text); ok('Tasks', `the local task "${name}" finished its last run`, tv.good, tv.detail); }
 
   const guard = await fetch(`${AGENT}/run-checks`, { method: 'POST' }).catch(() => null);
   ok('Paid', 'admin trigger needs the secret', guard?.status === 403, guard ? `got ${guard.status}` : '');

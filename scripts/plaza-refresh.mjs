@@ -9,6 +9,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { tellOperator } from './lib/task-alarm.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const LOG = path.join(ROOT, 'data', 'plaza-refresh.log');
@@ -45,11 +46,13 @@ function foreignChanges() {
   if (r.status !== 0) return ['(git status failed)'];
   return r.stdout.split('\n').filter(Boolean).map((l) => l.slice(3).trim().replace(/^"|"$/g, '')).filter((f) => !OWN_OUTPUT.test(f));
 }
+// a stopped run tells the operator (scripts/lib/task-alarm.mjs, 2026-11-28)
+const stop = async (msg) => { say(msg); await tellOperator('⚠️ Plaza refresh (local task): ' + msg + ' · log data/plaza-refresh.log'); process.exit(1); };
 say('Plaza refresh started');
 for (const [name, cmd, args, opt = {}] of STEPS) {
   if (name === 'scan' || name.startsWith('deploy')) {
     const other = foreignChanges();
-    if (other.length) { say(`stopped before "${name}": the working tree holds work this chain did not write (${other.slice(0, 5).join(', ')}${other.length > 5 ? ' …' : ''}) — nothing deployed`); process.exit(1); }
+    if (other.length) { await stop(`stopped before "${name}": the working tree holds work this chain did not write (${other.slice(0, 5).join(', ')}${other.length > 5 ? ' …' : ''}) — nothing deployed`); }
   }
   const t0 = Date.now();
   const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', timeout: 3 * 3600e3, maxBuffer: 64 * 1024 * 1024 });
@@ -59,7 +62,7 @@ for (const [name, cmd, args, opt = {}] of STEPS) {
   const ok = name.startsWith('plaza page check') ? /all PASS/.test(out.join('\n')) : r.status === 0;
   say(`${ok ? 'ok  ' : 'FAIL'} ${name} (${Math.round((Date.now() - t0) / 1000)} s)\n${tail}`);
   if (!ok && opt.optional) { say(`"${name}" failed and is optional — its last good output stays, the chain goes on`); continue; }
-  if (!ok) { say(`stopped at "${name}" — nothing after it ran`); process.exit(1); }
+  if (!ok) { await stop(`stopped at "${name}" — nothing after it ran`); }
 }
 const page = await fetch('https://brainonbnb.com/registry?r=' + Date.now()).then((r) => r.text()).catch(() => '');
 say(`done · ${(page.match(/Measured [^<]{0,80}/) || ['the page did not answer'])[0]}`);

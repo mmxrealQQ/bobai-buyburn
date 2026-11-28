@@ -14,11 +14,16 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tellOperator } from './lib/task-alarm.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const LOG = path.join(ROOT, 'data', 'jobs-refresh.log');
 const say = (t) => { const l = `[${new Date().toISOString().slice(0, 19).replace('T', ' ')}] ${t}`; console.log(l); fs.appendFileSync(LOG, l + '\n'); };
-export const OWN_OUTPUT = /^dashboard\/(api-[a-z0-9-]+\.json|registry\.html)$/;
+// what this chain writes, AND what the Plaza refresh (05:00, an hour before) writes and leaves uncommitted: advantage.html
+// was missing, so from 21.11. to 28.11. every daily run stopped on the Plaza refresh's own output (2026-11-28)
+export const OWN_OUTPUT = /^dashboard\/(api-[a-z0-9-]+\.json|registry\.html|advantage\.html)$/;
+// a stopped run tells the operator (scripts/lib/task-alarm.mjs, 2026-11-28)
+const stop = async (msg) => { say(msg); await tellOperator('⚠️ Jobs refresh (local task): ' + msg + ' · log data/jobs-refresh.log'); process.exit(1); };
 
 function foreignChanges() {
   const r = spawnSync('git', ['status', '--porcelain', '--untracked-files=all', '--', 'dashboard'], { cwd: ROOT, encoding: 'utf8' });
@@ -38,14 +43,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (const [name, cmd, args] of STEPS) {
     if (name === 'job scan' || name === 'deploy site') {
       const other = foreignChanges();
-      if (other.length) { say(`stopped before "${name}": dashboard/ holds work this chain did not write (${other.slice(0, 5).join(', ')}${other.length > 5 ? ' …' : ''}) — nothing deployed`); process.exit(1); }
+      if (other.length) await stop(`stopped before "${name}": dashboard/ holds work this chain did not write (${other.slice(0, 5).join(', ')}${other.length > 5 ? ' …' : ''}) — nothing deployed`);
     }
     const t0 = Date.now();
     const r = spawnSync(cmd, args, { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32', timeout: 3600e3, maxBuffer: 64 * 1024 * 1024 });
     const out = `${r.stdout || ''}${r.stderr || ''}`.trim().split('\n').filter((l) => !/UV_HANDLE_CLOSING/.test(l));
     const ok = r.status === 0;
     say(`${ok ? 'ok  ' : 'FAIL'} ${name} (${Math.round((Date.now() - t0) / 1000)} s)\n${out.slice(-3).map((l) => '    ' + l.slice(0, 200)).join('\n')}`);
-    if (!ok) { say(`stopped at "${name}" — nothing after it ran`); process.exit(1); }
+    if (!ok) await stop(`stopped at "${name}" — nothing after it ran`);
   }
   const local = JSON.parse(fs.readFileSync(path.join(ROOT, 'dashboard', 'api-agent-jobs.json'), 'utf8')).measured_at;
   let live = null;
@@ -53,6 +58,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (i) await new Promise((r) => setTimeout(r, 20e3));
     live = await fetch('https://brainonbnb.com/api-agent-jobs.json?r=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => j.measured_at).catch(() => null);
   }
-  say(live === local ? `done · live measured_at ${live}` : `FAIL live measured_at ${live} ≠ local ${local}`);
-  process.exit(live === local ? 0 : 1);
+  if (live !== local) await stop(`FAIL live measured_at ${live} ≠ local ${local}`);
+  say(`done · live measured_at ${live}`);
+  process.exit(0);
 }

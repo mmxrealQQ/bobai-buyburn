@@ -5,9 +5,13 @@
 // The checks themselves live in scripts/lib/health-checks.mjs, because the same
 // body runs every morning in worker-health/ and reports to the operator on
 // Telegram. This file is the hand: it runs them and prints them.
+import fs from 'node:fs';
 import { runHealth } from './lib/health-checks.mjs';
 
-const results = await runHealth({ rpc: process.env.BSC_RPC_URL || undefined });
+// the two local Windows tasks write their logs here; the morning worker cannot read them, this hand can (2026-11-28)
+const readLog = (f) => { try { return fs.readFileSync(new URL('../data/' + f, import.meta.url), 'utf8'); } catch { return ''; } };
+const taskLogs = { 'BOBAI Plaza refresh': readLog('plaza-refresh.log'), 'BOBAI jobs refresh': readLog('jobs-refresh.log') };
+const results = await runHealth({ rpc: process.env.BSC_RPC_URL || undefined, taskLogs });
 
 const areas = [...new Set(results.map((r) => r.area))];
 let bad = 0;

@@ -1,7 +1,7 @@
 ---
 name: bnb-agent-id
 description: Use when a Binance Agentic Wallet or a SPACE ID Agent ID comes up on BNB Chain - checking whether an address holds an Agent ID, proving a real person stands behind an agent, vouching for an ERC-8004 agent as a person (one vouch per person per agent), signing the Agent ID Book, or, for the Binance Wallet Agent ID Hackathon, counting how many Agent ID addresses send transactions to a contract (the number the Pioneer Award ranks by). Reads BNB Chain, builds the unsigned transaction and the exact `baw` preview/execute commands; it never signs or sends anything itself. Free, no key.
-version: 1.0.0
+version: 1.0.1
 license: MIT
 metadata:
   author: brainonbnb
@@ -69,9 +69,10 @@ curl -s https://agent.brainonbnb.com/agent-id/projects
 curl -s https://agent.brainonbnb.com/agent-id/projects/0xYOUR_CONTRACT
 ```
 
-Limits, said plainly: free BNB Chain nodes keep event logs for ~40,000 blocks (5-6 h), so a count starts at most that
-long before the listing and never covers earlier days; a contract that emits no events is not seen; this is a reading
-of the chain, not the official ranking.
+Limits, said plainly: the count runs from the hackathon start (18 Nov 2026 00:00 UTC); the days before a listing are
+read from an archive node after it, shown as `backfill` while that runs, and a very busy contract's backfill stops
+after 20,000 transactions and says where; a contract that emits no events is not seen; this is a reading of the chain,
+not the official ranking.
 
 ## 5. What a place in the book opens
 

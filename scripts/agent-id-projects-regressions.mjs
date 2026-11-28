@@ -92,6 +92,80 @@ const logs = { [C1]: [{ block: HEAD_READ - 100, tx: 't1' }, { block: HEAD_READ -
   ok('budget: at most 120 requests', c.calls.n <= 120);
 }
 
+// THE DAYS SINCE THE START (2026-11-28): with an archive node the days before the live count are read by a second cursor
+{
+  const { HACKATHON_START_BLOCK: S } = await import('../worker-agent/agent-id-projects.js');
+  const HD = S + 100000, LIVE_FROM = HD - 3 - 40000 + 1;
+  const C3 = '0x' + '55'.repeat(20);
+  const sig3 = { [H1]: { place: 1, note: `Gamma ${C3}`, updated_block: HD - 10 } };
+  // old senders: t5 (H2, an Agent ID) on day one, t6 (NOID) a little later; the live range has t1 (H1)
+  const oldLogs = { [C3]: [{ block: S + 10, tx: 't5' }, { block: S + 30000, tx: 't6' }, { block: HD - 200, tx: 't1' }] };
+  const archiveChain = ({ maxSpan = 50000, fail = false, txFrom = { t5: H2, t6: NOID, t1: H1 } } = {}) => {
+    const calls = { n: 0, spans: [] };
+    const archive = async (body) => {
+      calls.n++;
+      if (fail) return null;
+      if (Array.isArray(body) && body[0].method === 'eth_getTransactionByHash') return body.map((b) => ({ id: b.id, result: { from: txFrom[b.params[0]] || NOID } }));
+      if (body.method === 'eth_getLogs') {
+        const f = body.params[0], a = parseInt(f.fromBlock, 16), b = parseInt(f.toBlock, 16);
+        calls.spans.push(b - a + 1);
+        if (b - a + 1 > maxSpan) return { error: { message: `exceed maximum block range ${maxSpan}` } };
+        return { result: (oldLogs[f.address] || []).filter((l) => l.block >= a && l.block <= b).map((l) => ({ transactionHash: l.tx })) };
+      }
+      return null;
+    };
+    return { archive, calls };
+  };
+  const live = () => chain({ head: HD, logs: oldLogs }).rpc;
+  {
+    const env = kv(), A = archiveChain();
+    for (let i = 0; i < 4; i++) await projectsTick(env, sig3, { rpc: live(), archive: A.archive });
+    const p = await handleProjects(env, `/agent-id/projects/${C3}`);
+    ok('archive: counted from the start block once the backfill is done', p.counting_since_block === S && p.since_hackathon_start === true && !p.backfill);
+    ok('archive: an Agent ID sender from day one is counted (H2), with the live one (H1)', p.agent_id_addresses === 2 && p.agent_id_holders.includes(H2) && p.agent_id_holders.includes(H1));
+    ok('archive: every sender once (H1, H2, NOID), every transaction once', p.senders === 3 && p.transactions === 3);
+    ok('archive: the live count stays at the head', p.behind_blocks === 0 && p.read_to_block === HD - 3);
+    ok('archive: no range wider than 50,000 asked', A.calls.spans.every((s) => s <= 50000));
+  }
+  {
+    // the worker's key was seen at 300 blocks a call: the span halves to 300 and the backfill still goes on
+    const env = kv(), A = archiveChain({ maxSpan: 300 });
+    // the three contracts are read one after the other: after 2 ticks C3 has not started, and says so
+    for (let i = 0; i < 2; i++) await projectsTick(env, sig3, { rpc: live(), archive: A.archive });
+    const mid = await handleProjects(env, `/agent-id/projects/${C3}`);
+    ok('archive at 300 blocks: while it runs, the backfill is shown and not claimed as done', mid.backfill?.from_block === S && mid.since_hackathon_start === false);
+    const all = JSON.parse(await env.AGENT.get('aid:proj'));
+    ok('archive at 300 blocks: the node limit is kept (300) and no 600 is asked after it', all.archive_span === 300 && A.calls.spans.slice(A.calls.spans.indexOf(300)).every((s) => s <= 300));
+    for (let i = 0; i < 8; i++) await projectsTick(env, sig3, { rpc: live(), archive: A.archive });
+    const st = JSON.parse(await env.AGENT.get('aid:proj')).contracts[C3];
+    ok('archive at 300 blocks: done in the end, the day-one sender found', st.back.done === true && st.agent_ids.includes(H2) && st.since_block === S);
+  }
+  {
+    // an archive that never answers: nothing applied, the live count unchanged
+    const env = kv(), A = archiveChain({ fail: true });
+    for (let i = 0; i < 2; i++) await projectsTick(env, sig3, { rpc: live(), archive: A.archive });
+    const p = await handleProjects(env, `/agent-id/projects/${C3}`);
+    ok('archive away: the backfill stays at its start, nothing counted from it', p.backfill?.read_to_block === S - 1 && p.agent_id_addresses === 1 && p.counting_since_block === LIVE_FROM);
+  }
+  {
+    // without an archive: as before, the live count only
+    const env = kv();
+    await projectsTick(env, sig3, { rpc: live(), archive: null });
+    const p = await handleProjects(env, `/agent-id/projects/${C3}`);
+    ok('no archive: as before (from 40,000 blocks back, no backfill)', p.counting_since_block === LIVE_FROM && !p.backfill && p.since_hackathon_start === false);
+  }
+  {
+    // a busy contract: the backfill stops after 20,000 transactions and says where
+    const busy = []; for (let i = 0; i < 21000; i++) busy.push({ block: S + 1 + Math.floor(i / 50), tx: 'b' + i });
+    oldLogs[C3] = busy;
+    const env = kv(), A = archiveChain();
+    for (let i = 0; i < 12; i++) await projectsTick(env, sig3, { rpc: chain({ head: HD, logs: {} }).rpc, archive: A.archive });
+    const p = await handleProjects(env, `/agent-id/projects/${C3}`);
+    ok('busy contract: backfill stopped with a stated reason', /transactions/.test(p.backfill?.stopped || '') && p.counting_since_block === LIVE_FROM);
+    ok('busy contract: the budget of 120 a tick still holds', A.calls.n <= 12 * 120);
+  }
+}
+
 // the health rule for the count (scripts/lib/health-checks.mjs)
 {
   const { projectsCountVerdict: v } = await import('./lib/health-checks.mjs');

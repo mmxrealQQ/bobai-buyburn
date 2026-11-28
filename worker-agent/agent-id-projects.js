@@ -28,6 +28,20 @@ const CHUNK = 5000, MIN_SPAN = 50, CONFIRMATIONS = 3;
 const MAX_REQUESTS_A_TICK = 120, MAX_PROJECTS = 60, MAX_CONTRACTS_A_NOTE = 3, TX_BATCH = 50, BAL_BATCH = 50;
 const MAX_SEEN = 50000; // senders kept per contract (each checked once); past it the count goes on, new senders are not checked
 
+// THE DAYS SINCE THE START (2026-11-28, operator: "stell den Zähler um"): the hackathon counts from 18 Nov, and the free
+// nodes only gave the last ~5 h, so every count started at its listing. NodeReal (BSC_RPC_KEYED_URL, an archive) gives
+// the old logs. Each contract now has a second cursor (back) that reads from the start block up to where the live count
+// began; the live cursor is untouched, so a backfill never makes the live count fall behind. Measured 28.11. with our
+// own key: 18 Nov 00:00 UTC = block 134211719 (timestamp read back), eth_getLogs up to 50,000 blocks a call (the worker's
+// key was noted at 300 on 9.11., so the span halves on any refusal down to 300 and grows back after an answer).
+// A busy contract would spend the key the NFT minter and the TG bot share: a backfill stops after 20,000 transactions
+// and says so (backfill_capped), the count then covers what was read.
+export const HACKATHON_START_BLOCK = 134211719;
+const ARCHIVE_SPAN = 50000, ARCHIVE_MIN_SPAN = 300, MAX_BACKFILL_TXS = 20000;
+const archiveOf = (env) => (env.BSC_RPC_KEYED_URL ? async (body) => {
+  try { return await fetch(env.BSC_RPC_KEYED_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) }).then((x) => x.json()); } catch { return null; }
+} : null);
+
 // the contracts a note names, in order, without repeats; the Book's own sign() note is plain text
 export function contractsInNote(note) {
   const out = [];
@@ -61,10 +75,11 @@ export function listingsOf(signers) {
 }
 
 // one tick: list from the Book, then read each contract forward; budgeted, never applies an unread range as empty
-export async function projectsTick(env, signers, { rpc = rpcOf(env), head: headIn = null } = {}) {
+export async function projectsTick(env, signers, { rpc = rpcOf(env), archive = archiveOf(env), head: headIn = null } = {}) {
   const st = JSON.parse((await env.AGENT.get(KEY)) || 'null') || emptyProjects();
   let budget = MAX_REQUESTS_A_TICK;
   const ask = async (body) => { if (budget <= 0) return null; budget--; return rpc(body); };
+  const askA = archive ? async (body) => { if (budget <= 0) return null; budget--; return archive(body); } : null;
   let head = headIn;
   if (head == null) { const h = await ask({ jsonrpc: '2.0', id: 1, method: 'eth_blockNumber', params: [] }); if (!h) return { ok: false, error: 'no block number' }; head = Number(h.result) - CONFIRMATIONS; }
   const listed = listingsOf(signers);
@@ -80,36 +95,75 @@ export async function projectsTick(env, signers, { rpc = rpcOf(env), head: headI
   }
   // the contracts that fell out of every note are kept (their count is history), but no longer read
   const order = Object.entries(st.contracts).filter(([c, p]) => listed[c] && !p.not_a_contract).sort((a, b) => a[1].block - b[1].block);
-  const moved = {};
+  // one chunk [a, b] of contract c: its senders counted into p; 'ok', 'unread' (a node did not answer: nothing applied)
+  // or 'wide' (more transactions than this tick can still look up: nothing applied, read narrower)
+  const readChunk = async (c, p, a, b, logsAsk, txAsk) => {
+    const r = await logsAsk({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: c, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
+    if (r?.error) return { s: 'refused' }; // an answer ("exceed maximum block range"): narrower at once
+    if (!r || !Array.isArray(r.result)) return { s: 'unread' };
+    const hashes = [...new Set(r.result.map((l) => l.transactionHash))];
+    if (Math.ceil(hashes.length / TX_BATCH) + Math.ceil(hashes.length / BAL_BATCH) > budget - 1) return { s: 'wide', n: hashes.length };
+    const froms = await sendersOf(txAsk, hashes);
+    if (!froms) return { s: 'unread' }; // a transaction lookup unanswered: the chunk stays unread
+    const fresh = [...new Set(froms)].filter((f) => !(f in p.seen));
+    const holds = await agentIdsOf(ask, fresh);
+    if (!holds) return { s: 'unread' };
+    for (const f of fresh) {
+      if (Object.keys(p.seen).length >= MAX_SEEN) break;
+      p.seen[f] = holds[f] ? 1 : 0;
+      if (holds[f]) p.agent_ids.push(f);
+    }
+    p.txs += hashes.length;
+    p.senders = Object.keys(p.seen).length;
+    return { s: 'ok', n: hashes.length };
+  };
+  const moved = {}, back = {};
+  // the live count first, so it stays at the head
   for (const [c, p] of order) {
     while (p.block < head && budget > 3) {
       // a busy contract can return more logs than a node gives in one answer: the span halves on a refusal (down to
       // MIN_SPAN) and grows back after an answer, so one crowded range never stops the count for good
       const span = p.span || CHUNK;
       const a = p.block + 1, b = Math.min(head, a + span - 1);
-      const r = await ask({ jsonrpc: '2.0', id: 1, method: 'eth_getLogs', params: [{ address: c, fromBlock: '0x' + a.toString(16), toBlock: '0x' + b.toString(16) }] });
-      if (!r || !Array.isArray(r.result)) { p.span = Math.max(MIN_SPAN, Math.floor(span / 2)); break; }
+      const got = await readChunk(c, p, a, b, ask, ask);
+      if (got.s !== 'ok') { p.span = Math.max(MIN_SPAN, Math.floor(span / 2)); break; }
       p.span = Math.min(CHUNK, span * 2);
-      const hashes = [...new Set(r.result.map((l) => l.transactionHash))];
-      const froms = await sendersOf(ask, hashes);
-      if (!froms) break; // a transaction lookup unanswered: the chunk stays unread
-      const fresh = [...new Set(froms)].filter((f) => !(f in p.seen));
-      const holds = await agentIdsOf(ask, fresh);
-      if (!holds) break;
-      for (const f of fresh) {
-        if (Object.keys(p.seen).length >= MAX_SEEN) break;
-        p.seen[f] = holds[f] ? 1 : 0;
-        if (holds[f]) p.agent_ids.push(f);
-      }
-      p.txs += hashes.length;
-      p.senders = Object.keys(p.seen).length;
       p.block = b;
       moved[c] = (moved[c] || 0) + (b - a + 1);
     }
   }
+  // then the days since the start, from the archive, with what the tick has left
+  if (askA) {
+    for (const [c, p] of order) {
+      if (!p.back && p.since_block > HACKATHON_START_BLOCK) p.back = { from: HACKATHON_START_BLOCK, to: p.since_block - 1, block: HACKATHON_START_BLOCK - 1, txs: 0, span: ARCHIVE_SPAN };
+      const k = p.back;
+      if (!k || k.done || k.capped) continue;
+      k.span = Math.min(k.span, st.archive_span || ARCHIVE_SPAN);
+      while (k.block < k.to && budget > 3) {
+        const a = k.block + 1, b = Math.min(k.to, a + k.span - 1);
+        const got = await readChunk(c, p, a, b, askA, askA);
+        if (got.s !== 'ok') {
+          // the node away: again next tick; a refused range or too many transactions for what is left: narrower at once
+          if (got.s === 'unread') break;
+          // a refused range is the node's limit: kept for every contract (st.archive_span), so it is not asked again
+          if (got.s === 'refused') st.archive_span = Math.max(ARCHIVE_MIN_SPAN, Math.floor(k.span / 2));
+          if (k.span > ARCHIVE_MIN_SPAN) { k.span = Math.max(ARCHIVE_MIN_SPAN, Math.floor(k.span / 2)); continue; }
+          if (got.s === 'refused') break;
+          // 300 blocks and still more transactions than this tick can look up: a full tick may manage, a bigger one never
+          if (Math.ceil(got.n / TX_BATCH) + Math.ceil(got.n / BAL_BATCH) > MAX_REQUESTS_A_TICK - 5) { k.capped = `blocks ${a}-${b} hold ${got.n.toLocaleString('en-US')} transactions, more than one read can look up`; }
+          break;
+        }
+        k.span = Math.min(st.archive_span || ARCHIVE_SPAN, k.span * 2);
+        k.block = b; k.txs += got.n;
+        back[c] = (back[c] || 0) + (b - a + 1);
+        if (k.txs >= MAX_BACKFILL_TXS && k.block < k.to) { k.capped = `over ${MAX_BACKFILL_TXS.toLocaleString('en-US')} transactions read`; break; }
+      }
+      if (k.block >= k.to) { k.done = true; p.since_block = k.from; }
+    }
+  }
   st.at = new Date().toISOString();
   await env.AGENT.put(KEY, JSON.stringify(st));
-  return { ok: true, head, contracts: order.length, moved, requests_left: budget };
+  return { ok: true, head, contracts: order.length, moved, backfilled: back, requests_left: budget };
 }
 
 // tx.from of each hash, in batches; null when one batch did not answer in full
@@ -140,6 +194,9 @@ const row = (c, p, head) => ({
   ...(p.not_a_contract ? { not_a_contract: true } : {
     agent_id_addresses: p.agent_ids.length, senders: p.senders, transactions: p.txs,
     counting_since_block: p.since_block, read_to_block: p.block, behind_blocks: head != null ? Math.max(0, head - p.block) : null,
+    // the days before the live count, while they are being read (or where a busy contract's read stopped)
+    since_hackathon_start: p.since_block <= HACKATHON_START_BLOCK,
+    ...(p.back && !p.back.done ? { backfill: { from_block: p.back.from, read_to_block: p.back.block, until_block: p.back.to, ...(p.back.capped ? { stopped: `${p.back.capped}: the count covers blocks ${p.back.from}-${p.back.block} and the live count from ${p.since_block}` } : {}) } } : {}),
   }),
   bscscan: `https://bscscan.com/address/${c}`,
 });
@@ -154,7 +211,7 @@ export async function handleProjects(env, path) {
       what_this_is: 'Live count of the Agent ID addresses (SPACE ID Agent ID holders) that send transactions to each listed contract on BNB Chain: the number the Agent ID Hackathon ranks projects by. Read from the chain every 15 minutes.',
       list_yours: 'Sign the Agent ID Book (gas only) with a note naming your project and contract, e.g. "My Project 0x1234…abcd" (up to 3 contracts, 140 bytes). Counting starts within 15 minutes. Sign: https://brainonbnb.com/agent-id or GET https://agent.brainonbnb.com/agent-id/tx?action=sign&note=<name%200x…>',
       how_counted: 'tx.from of every transaction behind the contract\'s events, each sender once, checked with balanceOf on the Agent ID contract 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F.',
-      limits: 'Free BNB Chain nodes keep event logs for ~40,000 blocks (5-6 h): a count starts at most that long before the listing and never covers earlier days. A contract without events is not seen. Not the official ranking.',
+      limits: `Counted from the hackathon start, 18 Nov 2026 00:00 UTC (block ${HACKATHON_START_BLOCK}): the days before a listing are read from an archive node after it (backfill, shown per project while it runs); a very busy contract's backfill stops after ${MAX_BACKFILL_TXS.toLocaleString('en-US')} transactions and says where. The Agent ID check is today's balanceOf. A contract without events is not seen. Not the official ranking.`,
       read_at: st.at, projects: rows,
     };
   }

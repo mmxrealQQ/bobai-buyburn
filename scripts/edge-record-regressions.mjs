@@ -16,7 +16,7 @@ const W = fs.readFileSync(path.join(ROOT, 'dashboard', '_worker.js'), 'utf8');
 const m = W.match(/async function edgeRecord\(u, ctx, waitMs = \d+\) \{[\s\S]*?\n\}\n/);
 if (!m) { console.log('FAIL  edgeRecord not found in dashboard/_worker.js'); process.exit(1); }
 const SRC = m[0];
-const MUTANT = SRC.replace(/const old = await cache\.match\(spare\)[^\n]*\n/, 'const old = null;\n');
+const MUTANT = SRC.replace(/const sp = await read\(await cache\.match\(spare\)[^\n]*\n/, 'const sp = null;\n');
 if (MUTANT === SRC) { console.log('FAIL  the mutant could not be made (spare lookup line changed?)'); process.exit(1); }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -32,7 +32,7 @@ function world({ cached = {}, source = {} }) {
   const ctx = { waitUntil: (p) => waits.push(p) };
   return { caches, fetch, ctx, store, puts, waits };
 }
-const make = (src, w) => new Function('caches', 'fetch', 'AbortSignal', `${src}; return edgeRecord;`)(w.caches, w.fetch, { timeout: () => undefined });
+const make = (src, w) => new Function('caches', 'fetch', 'AbortSignal', `const GONE = '{"__status":404}';${src}; return edgeRecord;`)(w.caches, w.fetch, { timeout: () => undefined });
 
 const U = 'https://agent.brainonbnb.com/buys', SP = 'https://agent.brainonbnb.com/buys?_spare=1';
 const CASES = [
@@ -56,6 +56,17 @@ const CASES = [
   { name: 'a 404 stays a 404, a spare never covers it (an agent id nobody holds)', mutantFails: false,
     w: () => world({ cached: { [SP]: { n: 6 } }, source: { [U]: { status: 404, delay: 0 } } }),
     run: (f, w) => f(U, w.ctx, 200), ok: (r) => r.status === 404 && r.json == null },
+  { name: 'a 404 is kept: the next reader gets the 404 at once, even with the source slow (/chart/999999999 took 3.2 s)', mutantFails: false,
+    w: () => world({ source: { [U]: { status: 404, delay: 0 } } }),
+    run: async (f, w) => { await f(U, w.ctx, 200); await Promise.all(w.waits); return { r: await f(U, w.ctx, 50), w }; },
+    ok: ({ r, w }) => r.status === 404 && w.store.get(U) === '{"__status":404}' && w.store.get(SP) === '{"__status":404}' },
+  { name: 'a 404 kept as the spare answers a slow source as a 404, not as a figure', mutantFails: true,
+    w: () => world({ cached: { [SP]: { __status: 404 } }, source: { [U]: { status: 404, delay: 300 } } }),
+    run: (f, w) => f(U, w.ctx, 50), ok: (r) => r.status === 404 && r.json == null },
+  { name: 'a 404 replaces an older figure in the spare (an id that was deregistered is not shown as alive)', mutantFails: false,
+    w: () => world({ cached: { [SP]: { n: 8 } }, source: { [U]: { status: 404, delay: 0 } } }),
+    run: async (f, w) => { await f(U, w.ctx, 200); await Promise.all(w.waits); return w; },
+    ok: (w) => w.store.get(SP) === '{"__status":404}' },
   { name: 'slow source, never answered here: no figure (the page stays as it was)', mutantFails: false,
     w: () => world({ source: { [U]: { status: 200, body: { n: 7 }, delay: 300 } } }),
     run: (f, w) => f(U, w.ctx, 50), ok: (r) => r.json == null },

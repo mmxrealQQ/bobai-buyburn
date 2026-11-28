@@ -987,7 +987,9 @@ function sizeArg(args, key, example) {
 // answer ("that address is a wallet", "no pool") — never 502: Cloudflare
 // replaces a Worker's 502 body with its own "error code: 502" text, so the
 // plain-words answer never reached an agent (MCP delivered it, REST did not).
-const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route', 'bsc_rug_watch']);
+// bnb_agent_id (2026-11-28): its onboarding plan is steps a program walks through, and A2A hands structuredContent on as
+// the message's data part (the plan reached an A2A caller as text only)
+const STRUCTURED_TOOLS = new Set(['bsc_token_preflight', 'bsc_pool_scan', 'pancakeswap_best_route', 'bsc_rug_watch', 'bnb_agent_id']);
 // THE FREE READING, AND WHAT KEEPS READING IT (2026-10-15, operator: "make the pool scan earn"). The pool scan is the tool
 // other agents call most (243 calls by others on 15 Oct) and it was all free; the reading stays exactly as it was. At its
 // end, for a pool that can be priced, the paid pool watch on that same pool, filled in: 30 days of depth readings and a
@@ -1525,6 +1527,27 @@ async function runTool(rawName, args, caller = {}) {
   }
 }
 
+// GUESSED NAMES, ANSWERED (2026-11-28, /stats/detail 24.11.: check_token_safety and get_token_price each got "Unknown
+// tool" and a list, and neither caller came back): a name that plainly asks for one thing we measure runs that tool, and
+// the answer says which one ran (called_as). Only unmistakable names. Probes ("__no_such_tool__", "kawal__nonexistent__tool",
+// "__verifymcp_auth_probe_…") and anything unclear keep the Unknown tool answer with the closest names.
+const GUESS_SAFETY = /^(check_?)?(token_?)?(safety|security|honeypot|rug_?pull|rug|scam|risk)(_?check|_?scan|_?score)?$|^(check|scan|analy[sz]e|audit)_?(token|contract)(_?(safety|security|risk))?$|^is_?(honeypot|rug|scam|safe)$/;
+const GUESS_PRICE = /^(get_?)?(token_?)?price(_?usd)?$|^(get_?)?price_?of_?token$/;
+export function guessTool(name, args) {
+  const n = String(name || '').toLowerCase().replace(/[-\s.]/g, '_');
+  if (!n || n.length > 48 || /nonexistent|no_such|probe|^_/.test(n)) return null;
+  const a = args && typeof args === 'object' && !Array.isArray(args) ? args : {};
+  const addr = [a.address, ...ADDRESS_ALIASES.map((k) => a[k])].find((v) => typeof v === 'string' && v !== '');
+  if (GUESS_SAFETY.test(n)) return { name: 'bsc_token_preflight', args: a };
+  if (GUESS_PRICE.test(n)) {
+    // any token by its address: the preflight carries token.price_usd; $BOBAI, by its address or with nothing named: its price
+    const sym = String(a.symbol || a.token_symbol || a.ticker || '').toLowerCase().replace(/^\$/, '');
+    if (addr && String(pickAddress(addr)).toLowerCase() !== TOKEN) return { name: 'bsc_token_preflight', args: a };
+    if (addr || !sym || sym === 'bobai') return { name: 'bobai_token', args: { what: 'price' } };
+  }
+  return null;
+}
+
 // A TOOL WE DO NOT HAVE, ANSWERED WITH THE ONES WE DO (29.10.: 16 calls of a made-up name on 28.10. got
 // "Unknown tool" and nothing else): the closest three by the words of the name, and where the full list is
 function unknownToolText(name) {
@@ -1748,7 +1771,14 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
   try { body = await request.json(); } catch { return new Response(JSON.stringify(rpcErr(null, -32700, 'Parse error')), { headers: cors }); }
   // A JSON-RPC batch is said to be one (2026-10-05), not answered "Method not found: undefined".
   if (Array.isArray(body)) return new Response(JSON.stringify(rpcErr(null, -32600, 'Invalid request: batch requests are not supported; send one JSON-RPC object per request.')), { headers: cors });
-  const { id, method, params } = body || {};
+  const { id, method } = body || {};
+  let { params } = body || {};
+  // a guessed name that plainly asks for one of our tools runs that tool (guessTool, 2026-11-28); counted as mcp:guessed:<name>
+  let guessed = null;
+  if (method === 'tools/call' && typeof params?.name === 'string' && params.name && !MCP_TOOLS.some((t) => t.name === params.name) && !DEPRECATED_TOOL_NAMES[params.name]) {
+    const g = guessTool(params.name, params.arguments);
+    if (g) { guessed = { asked: params.name.slice(0, 60), answered_by: g.name }; params = { ...params, name: g.name, arguments: g.args }; if (/^[A-Za-z0-9_.-]{1,48}$/.test(guessed.asked)) note(`mcp:guessed:${guessed.asked.toLowerCase()}`); }
+  }
   if (typeof method !== 'string') return new Response(JSON.stringify(rpcErr(id ?? null, -32600, 'Invalid request: method must be a string.')), { headers: cors });
   if (method && method.startsWith('notifications/')) return new Response(null, { status: 202, headers: cors });
   if (method === 'initialize') note(['mcp:initialize', `mcp:client:${MCP_CLIENT(body?.params?.clientInfo?.name)}`]);
@@ -1816,7 +1846,9 @@ async function handleMcp(request, note = () => {}, own = false, sub = null) {
         const read = await runTool(params?.name, params?.arguments || {}, { ip: request.headers.get('cf-connecting-ip') });
         const raw = withWatchOffer(params?.name, read);
         if ((DEPRECATED_TOOL_NAMES[params?.name] || params?.name) === 'bsc_pool_scan') note(raw?.watch_this_pool ? 'poolscan:offer' : `poolscan:nooffer:${scanShape(read)}`);
-        const out = (await firstCall(request)) ? withThanks(raw) : raw;
+        const said = (await firstCall(request)) ? withThanks(raw) : raw;
+        // a guessed name says which tool answered and its real name, so the next call can use it (2026-11-28)
+        const out = guessed && said && typeof said === 'object' && !Array.isArray(said) ? { called_as: { ...guessed, note: `There is no tool named "${guessed.asked}" here; ${guessed.answered_by} answered it. Call ${guessed.answered_by} directly next time (tools/list names all).` }, ...said } : said;
         // The JSON itself next to its text (2026-10-09, MCP 2025-06-18
         // structuredContent) for the three trading reads, so a client hands
         // the model an object instead of a string to parse.
@@ -1903,6 +1935,10 @@ const A2A_CARD = {
     { id: 'join_one_signature', name: 'Join with one signature: Agent Wall, Brainbook, Brain Board',
       description: 'An ERC-8004 agent signs ONE message (EIP-191, or EIP-712 domain "BOBAI Join" for the Binance Agentic Wallet) and is on the Agent Wall (link + logo), in the Brainbook (its words, for good) and on the Brain Board (an intro); each part optional, free, no gas. Script: GET https://agent.brainonbnb.com/join/how · text to sign: GET https://agent.brainonbnb.com/join/message?agent=<id>&link=…&logo_sha256=…&words=… · hand in: POST https://agent.brainonbnb.com/join · MCP: bnb_brainbook action join_message, then join.',
       tags: ['agents', 'erc-8004', 'onboarding', 'signature', 'binance-agentic-wallet', 'bnb-chain'] },
+    // 28.11.: the Agent ID Book (live since 27.11.) was on the MCP server and missing here
+    { id: 'agent_id', name: 'Binance Agent ID and Agentic Wallet: one onboarding plan',
+      description: 'For a Binance Agentic Wallet or any wallet holding a SPACE ID Agent ID on BNB Chain (one per Binance user, not transferable). Send {"skill":"agent_id","address":"0x…"} or the words "agent id onboarding for 0x…": what the wallet already has and the ready baw contract-call preview/execute command for every open step (sign the Agent ID Book for a numbered place, gas only; the free tier it opens: 5 paid answers, 1 pool watch, 1 pool scan day pass a day; vouching for agents you used). Nothing is signed or sent here; run execute only after your user saw the preview and said yes. action check / agent / book / how / projects (the count of Agent ID addresses using a contract, for Agent ID Hackathon builders). REST: GET https://agent.brainonbnb.com/agent-id/onboard?wallet=0x… · MCP: https://brainonbnb.com/mcp/agent-id',
+      tags: ['binance', 'agent-id', 'binance-agentic-wallet', 'space-id', 'onboarding', 'identity', 'bnb-chain'] },
     // A-Z 23.11.: the two places an agent can show up for good were missing from this card
     { id: 'agent_wall', name: 'Agent Wall: put your logo up',
       description: 'A wall of 41 places for AI agents (builders, meme tokens, exchanges, platforms): one EIP-191 signature by the agent’s owner or agentWallet, no gas, nothing paid; free while a place is free, then the $BOBAI the agent holds decides its size. Steps and a ready script: GET https://agent.brainonbnb.com/wall/how',
@@ -3229,25 +3265,30 @@ export default {
 // the dash. Every answer is now also kept a day as a spare: with the fresh copy gone and the source slow, the reader gets
 // the spare (the last real answer, minutes old) while the fetch goes on in the background and renews both. A 404 is said
 // as a 404, never covered by a spare; only a source that never answered at this edge still leaves the page as it was.
+// A 404 is kept too, briefly (2026-11-28: /chart/999999999 took 3.2 s for its 404 now and then, so the page did not know
+// the id was unknown and pointed to a record that does not exist): 10 minutes fresh, an hour as the spare, as a marker
+// {"__status":404} — short, because an id nobody holds today can be registered tomorrow.
+const GONE = '{"__status":404}';
 async function edgeRecord(u, ctx, waitMs = 2200) {
   const cache = caches.default, fresh = new Request(u), su = new URL(u);
   su.searchParams.set('_spare', '1');
   const spare = new Request(su.toString());
-  const hit = await cache.match(fresh).catch(() => null);
-  if (hit) { const json = await hit.json().catch(() => null); if (json) return { status: 200, json }; }
+  const read = async (r) => { const json = r ? await r.json().catch(() => null) : null; return json && json.__status === 404 ? { status: 404, json: null } : json ? { status: 200, json } : null; };
+  const hit = await read(await cache.match(fresh).catch(() => null));
+  if (hit) return hit;
+  const keep = (body, s) => new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${s}` } });
   const f = fetch(u, { headers: { 'user-agent': 'brainonbnb-site-record' }, signal: AbortSignal.timeout(15000) }).then(async (x) => {
+    if (x.status === 404) { await Promise.all([cache.put(fresh, keep(GONE, 600)), cache.put(spare, keep(GONE, 3600))]).catch(() => {}); return { status: 404, json: null }; }
     if (!x.ok) return { status: x.status, json: null };
     const body = await x.text(), json = JSON.parse(body);
-    const keep = (s) => new Response(body, { headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${s}` } });
-    await Promise.all([cache.put(fresh, keep(120)), cache.put(spare, keep(86400))]).catch(() => {});
+    await Promise.all([cache.put(fresh, keep(body, 120)), cache.put(spare, keep(body, 86400))]).catch(() => {});
     return { status: 200, json };
   }).catch(() => ({ status: 0, json: null }));
   ctx.waitUntil(f);
   const got = await Promise.race([f, new Promise((res) => setTimeout(() => res(null), waitMs))]);
   if (got && (got.json || got.status === 404)) return got;
-  const old = await cache.match(spare).catch(() => null);
-  const json = old ? await old.json().catch(() => null) : null;
-  return json ? { status: 200, json, spare: true } : (got || { status: 0, json: null });
+  const sp = await read(await cache.match(spare).catch(() => null));
+  return sp ? { ...sp, spare: true } : got || { status: 0, json: null };
 }
 
 // the record pages: where the record comes from, and the sentence per waiting element (selector -> text)

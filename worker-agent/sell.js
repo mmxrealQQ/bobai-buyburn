@@ -411,7 +411,17 @@ const rpcErr = (id, code, message) => Response.json({ jsonrpc: '2.0', id: id ===
 // that index result.accepted / result.provider directly (the generated
 // /registry ask box, register-own-agents.mjs) until they read the part.
 const flatMessage = (data) => ({ ...data, ...agentMessage(data) });
-const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money', position_look: 'pancakeswap_position_look', fix_lookup: 'bnb_fix_lookup' };
+const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb_agent_census', agent_employment: 'bnb_agent_employment', agent_chart: 'bnb_agent_chart', agents_by_evidence: 'bnb_agents_by_evidence', fee_tiers: 'pancakeswap_fee_tiers', range_plan: 'pancakeswap_range_plan', token_preflight: 'bsc_token_preflight', best_route: 'pancakeswap_best_route', pool_depth: 'bsc_pool_scan', token_info: 'bobai_token_info', burns: 'bobai_burned', wallet_balance: 'bobai_wallet_balance', links: 'bobai_links', dex_info: 'bobai_dex_info', guide: 'bobai_guide', purchase_guide: 'bobai_purchase_guide', tokenomics: 'bobai_tokenomics', price: 'bobai_price', liquidity: 'bobai_liquidity', activity: 'bobai_activity', nft_drop: 'bobai_nft_drop', escrow_status: 'erc8183_escrow_status', smart_money: 'bobai_smart_money', position_look: 'pancakeswap_position_look', fix_lookup: 'bnb_fix_lookup', agent_id: 'bnb_agent_id' };
+
+// THE AGENT ID BOOK IN PLAIN WORDS (2026-11-28): the words name Binance's Agent ID or the Agentic Wallet, and the action
+// is the one they ask for. With an address: a contract's user count (projects), whether it holds one (check), otherwise
+// the onboarding plan for that wallet. Without one: the count of every listed project, or the steps (how).
+export function agentIdAction(w, withAddress = false) {
+  if (!/\bagent[ -]?ids?\b|\bagentic wallets?\b|\bspace ?id\b|\bbaw\b/.test(w)) return null;
+  if (/\b(hackathon|projects?|pioneer|count|users|how many)\b/.test(w)) return 'projects';
+  if (withAddress) return /\b(does|do|is|has|have|hold|holds|holding|check|verify)\b/.test(w) && !/\b(onboard|onboarding|plan|join|sign|start|set ?up)\b/.test(w) ? 'check' : 'onboard';
+  return 'how';
+}
 
 // Plain words on the shared endpoint -> the free tool they name (2026-11-15). Agents first: "find an agent for X" is a
 // search even when it names $BOBAI's own topics. Then $BOBAI's own questions, most specific first; a $BOBAI question that
@@ -419,6 +429,9 @@ const CARD_TOOLS = { find_agents: 'find_agents_on_bnb_chain', agent_census: 'bnb
 export function textTool(words) {
   const w = String(words || '').toLowerCase().slice(0, 400);
   if (!w.trim()) return null;
+  // the Agent ID Book (28.11.), before the agent search: "agent id" holds the word "agent"
+  const aid = agentIdAction(w);
+  if (aid) return { tool: 'bnb_agent_id', args: { action: aid } };
   if (/\b(agents?|bots?)\b/.test(w) && /\b(find|search|looking|need|who|which|any|is there|are there|hire|recommend|list|show)\b/.test(w) && !/\b(you|your)\s+(agents?|services?)\b/.test(w)) {
     return { tool: 'find_agents_on_bnb_chain', args: { query: String(words).trim().slice(0, 200), limit: 5 } };
   }
@@ -454,6 +467,9 @@ export function addressTool(words, addr) {
   const m = w.match(/\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k\b)?|(\d[\d,]*(?:\.\d+)?)\s*(k)?\s*(?:usd\b|dollars?\b)/);
   const usd = m ? Number((m[1] || m[3]).replace(/,/g, '')) * (m[2] || m[4] ? 1000 : 1) : 0;
   const size = usd > 0 && usd < 1e9 ? usd : null;
+  // "agent id onboarding for 0x…", "does 0x… hold an agent id", "agent id users of 0x<contract>" (28.11.)
+  const aid = agentIdAction(w, true);
+  if (aid) return { tool: 'bnb_agent_id', args: { action: aid, address: addr } };
   const rules = [
     [/\b(escrow|erc-?8183|jobs?)\b/, 'erc8183_escrow_status'],
     [/\b(fee ?tiers?|tiers?)\b/, 'pancakeswap_fee_tiers'],
@@ -820,7 +836,10 @@ export async function handleA2A(request, env, opts = {}) {
     if (tool) {
       const { skill: _s, method: _m, ...inputs } = data;
       const call = (name, args) => fetch('https://brainonbnb.com/mcp', { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'a2a-shared/1' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }) }).then((r) => r.json()).catch(() => null);
-      let used = tool, j = await call(tool, { ...(addr ? { address: addr } : {}), ...(said?.args || {}), ...inputs, ...(data.params || {}) });
+      const args = { ...(addr ? { address: addr } : {}), ...(said?.args || {}), ...inputs, ...(data.params || {}) };
+      // {"skill":"agent_id"} with only an address is the onboarding plan for it, with nothing the steps (28.11.)
+      if (tool === 'bnb_agent_id' && !args.action) args.action = args.address ? 'onboard' : 'how';
+      let used = tool, j = await call(tool, args);
       // a wallet sent as a token (15.11.): "check 0x<wallet>" answered "that is a wallet"; the wallet's balance answers it
       if (!skill && addr && tool === 'bsc_token_preflight' && j?.result?.structuredContent?.code === 'is_wallet') { used = 'bobai_wallet_balance'; j = await call(used, { address: addr }); }
       const body = j?.result?.content?.[0]?.text;

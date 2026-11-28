@@ -27,7 +27,7 @@ ok('worker: writes #rg-live-total and #rg-tile-total only when live > floor', /'
 // is tested with a fake cache in edge-record-regressions.mjs, this pins that the pages still go through it
 const ask = (w.match(/const ask = async \(u\) => \(await edgeRecord\(u, ctx, \d+\)\)\.json;/) || [''])[0];
 const er = (w.match(/async function edgeRecord\(u, ctx, waitMs = \d+\) \{[\s\S]*?\n\}\n/) || [''])[0];
-ok('worker: record sources kept 120 s in caches.default (+ a day as a spare), slow ones finish in waitUntil', !!ask && /caches\.default/.test(er) && /keep\(120\)/.test(er) && /keep\(86400\)/.test(er) && /ctx\.waitUntil\(f\)/.test(er) && /Promise\.race/.test(er));
+ok('worker: record sources kept 120 s in caches.default (+ a day as a spare), slow ones finish in waitUntil', !!ask && /caches\.default/.test(er) && /keep\(body, 120\)/.test(er) && /keep\(body, 86400\)/.test(er) && /ctx\.waitUntil\(f\)/.test(er) && /Promise\.race/.test(er));
 
 console.log(fails ? `\n${fails} FAIL` : '\nall PASS');
 process.exitCode = fails ? 1 : 0;

@@ -38,7 +38,7 @@ const PULLED = {
 
 // bnb-agent-fixes (2026-10-27, operator: "alles optimieren damit Agenten selbst joinen"): the Brain Board library for a
 // coding agent that hits an error building on BNB Chain — nothing pulled, the skill is its SKILL.md
-const SKILLS = ['bsc-pool-depth', 'bnb-agent-fixes'];
+const SKILLS = ['bsc-pool-depth', 'bnb-agent-fixes', 'bnb-agent-id'];
 const PULLED_FOR = { 'bsc-pool-depth': PULLED };
 
 const readFrontmatter = (md) => {

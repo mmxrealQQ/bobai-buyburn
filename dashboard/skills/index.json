@@ -6,10 +6,10 @@
       "description": "Measure what a trade on BNB Smart Chain actually costs before placing it — real pool depth, price impact per trade size, and the transfer tax read off executed trades, not a label. A honeypot / rug-pull pre-trade check (measured, not a certificate) answers at your size: what stops the trade (the sell does not go through, nothing quotes), what to weigh, entry, exit, tax and depth. Also compares the PancakeSwap fee tiers a pair lives in (V2 0.25%, V3 0.01/0.05/0.25/1.00%) by the fees each pool actually paid per dollar of capital in it, and per dollar standing within 2% of the price. And it replays candidate V3 price ranges against real swaps. Any BEP-20 token or pool. Use when asked whether a token is a honeypot, whether it is liquid enough to trade, whether it can be sold again, what slippage to expect, how big a position a pool can absorb, why a swap quote looks worse than the headline price, which fee tier and which price range to provide liquidity in, or which PancakeSwap route a swap should take.",
       "type": "archive",
       "url": "https://brainonbnb.com/skills/bsc-pool-depth.tar.gz",
-      "digest": "sha256:3bc4193f3f161864e6e0d90d875cf9aa4ee4c033c50742ddd513931a1a8810d8",
+      "digest": "sha256:3b12dc5dea7eaa625faf854b0ae4438f79362be1ceba588bc048260e0fdb86af",
       "version": "1.5.1",
       "license": "MIT",
-      "bytes": 131892
+      "bytes": 135128
     },
     {
       "name": "bnb-agent-fixes",
@@ -20,6 +20,16 @@
       "version": "1.1.0",
       "license": "MIT",
       "bytes": 1629
+    },
+    {
+      "name": "bnb-agent-id",
+      "description": "Use when a Binance Agentic Wallet or a SPACE ID Agent ID comes up on BNB Chain - checking whether an address holds an Agent ID, proving a real person stands behind an agent, vouching for an ERC-8004 agent as a person (one vouch per person per agent), signing the Agent ID Book, or, for the Binance Wallet Agent ID Hackathon, counting how many Agent ID addresses send transactions to a contract (the number the Pioneer Award ranks by). Reads BNB Chain, builds the unsigned transaction and the exact `baw` preview/execute commands; it never signs or sends anything itself. Free, no key.",
+      "type": "archive",
+      "url": "https://brainonbnb.com/skills/bnb-agent-id.tar.gz",
+      "digest": "sha256:db2f827e234935e67ca0c037398c973d0a013306964c79ecf4f1b44112e45f8f",
+      "version": "1.0.0",
+      "license": "MIT",
+      "bytes": 2181
     }
   ]
 }

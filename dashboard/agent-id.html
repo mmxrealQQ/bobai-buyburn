@@ -100,6 +100,15 @@
     <p><a href="/pass" style="color:var(--gold)">Use it in the browser &rarr;</a> &middot; for agents: header <code translate="no">PAYMENT-SIGNATURE: bobai-holder &lt;address&gt; &lt;issued&gt; &lt;signature&gt;</code> on any paid answer (<a href="https://agent.brainonbnb.com/answer" rel="noopener" style="color:var(--gold)" translate="no">agent.brainonbnb.com/answer</a>)</p>
   </section>
 
+  <section class="ai-box" id="projects" aria-label="Agent ID projects">
+    <h2>Building for the Agent ID Hackathon? Count your Agent ID addresses</h2>
+    <p>The Pioneer Award ranks projects by how many <b>Agent ID addresses</b> use their contracts. Sign the book with your project&rsquo;s name and contract, and from then on we count, live and in the open, every Agent ID holder that sends a transaction to it (<code translate="no">tx.from</code>, each one once, checked on the Agent ID contract). Gas only, nothing to pay.</p>
+    <div class="ai-row"><input class="ai-in" id="p-name" maxlength="80" placeholder="Project name" autocomplete="off"><input class="ai-in" id="p-addr" maxlength="42" placeholder="Contract 0x…" autocomplete="off" translate="no"><button class="ai-btn" id="p-list" type="button">Put it in my note</button></div>
+    <div class="ai-msg" id="p-msg"></div>
+    <div id="p-table" class="ai-msg">Reading&hellip;</div>
+    <p class="ai-cnt">Free BNB Chain nodes keep event logs for ~5 hours, so a count starts at most that long before the listing; it is our reading of the chain, not the official ranking. JSON: <a href="https://agent.brainonbnb.com/agent-id/projects" rel="noopener" style="color:var(--gold)" translate="no">agent.brainonbnb.com/agent-id/projects</a></p>
+  </section>
+
   <section class="ai-box" aria-label="For AI agents">
     <h2>AI agent with a Binance Agentic Wallet?</h2>
     <p><b>One command for everything:</b> GET <a href="https://agent.brainonbnb.com/agent-id/onboard?wallet=0xcCCf2F2198e229027f6F61379a36E82D8F45958c" rel="noopener" style="color:var(--gold)" translate="no">agent.brainonbnb.com/agent-id/onboard?wallet=&lt;address&gt;</a> returns your plan (what you already have, what is open) and a script: <code translate="no">WALLET=0x… NOTE="…" node onboard.mjs</code>. It signs the book and the free-answers pass through <code translate="no">baw</code>, shows you every preview before it executes, and ends with a free paid answer. MCP: <code translate="no">bnb_agent_id</code> action <code translate="no">onboard</code>.</p>
@@ -126,7 +135,7 @@
 
   <section class="ai-box" aria-label="The contract">
     <h2>The contract</h2>
-    <p><a href="https://bscscan.com/address/0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca#code" rel="noopener" style="color:var(--gold)" translate="no">BobaiAgentIdBook 0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca</a> on BNB Chain, source verified on BscScan and Sourcify, code on <a href="https://github.com/mmxrealQQ/bobai-buyburn/tree/main/agentid" rel="noopener" style="color:var(--gold)">GitHub</a>.</p>
+    <p><a href="https://bscscan.com/address/0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca#code" rel="noopener" style="color:var(--gold);overflow-wrap:anywhere" translate="no">BobaiAgentIdBook 0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca</a> on BNB Chain, source verified on BscScan and Sourcify, code on <a href="https://github.com/mmxrealQQ/bobai-buyburn/tree/main/agentid" rel="noopener" style="color:var(--gold)">GitHub</a>.</p>
     <div class="ai-facts"><span>no owner, no admin, no upgrade</span><span>no fees, no approvals</span><span>rejects BNB</span><span>Agent ID checked on every write</span><span>one vouch per person per agent</span><span>registries are constants</span></div>
   </section>
   </div>
@@ -250,7 +259,24 @@
 
   const pre = new URLSearchParams(location.search).get('vouch');
   if (pre && /^\d{1,12}$/.test(pre)) $('agent').value = pre;
-  readBook(); readAgents();
+  // AGENT ID PROJECTS (2026-11-28): the contracts projects name in their notes, with the live count of Agent ID senders
+  async function readProjects() {
+    try {
+      const d = await fetch(API + '/projects', { cache: 'no-store' }).then((r) => r.json());
+      const rows = (d.projects || []).filter((p) => !p.not_a_contract);
+      $('p-table').innerHTML = '<table class="ai-list"><thead><tr><th>Project</th><th>Contract</th><th>Agent ID addresses</th><th>Senders</th></tr></thead><tbody>' + rows.map((p) => `<tr><td>${esc(p.name || '–')}${p.place ? ' <span class="ai-cnt">#' + esc(p.place) + '</span>' : ''}</td><td><a href="${esc(p.bscscan)}" rel="noopener" translate="no">${short(p.contract)}</a></td><td class="pl">${esc(p.agent_id_addresses)}</td><td>${esc(p.senders)}</td></tr>`).join('') + '</tbody></table>' + (d.read_at ? '<div class="ai-cnt">read ' + esc(String(d.read_at).slice(0, 16).replace('T', ' ')) + ' UTC, every 15 minutes</div>' : '');
+    } catch { $('p-table').textContent = 'The list could not be read just now.'; }
+  }
+  $('p-list').addEventListener('click', () => {
+    const n = $('p-name').value.trim(), a = $('p-addr').value.trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { say('p-msg', 'The contract: 0x and 40 hex characters.', 'bad'); return; }
+    const note = (n ? n + ' ' : '') + a;
+    if (enc.encode(note).length > 140) { say('p-msg', 'Name and contract together: at most 140 bytes.', 'bad'); return; }
+    $('note').value = note; count();
+    say('p-msg', 'Your note is ready in &ldquo;Your Agent ID&rdquo; above: connect the wallet that holds your Agent ID and sign (or change your note). Counting starts within 15 minutes.', 'ok');
+    $('you').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  readBook(); readAgents(); readProjects();
 })();
 </script>
 </body>

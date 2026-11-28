@@ -14,7 +14,9 @@
 //   GET /agent-id/tx?action=sign&note=...        the ready transaction: to, data, value 0, and the baw command
 //   GET /agent-id/tx?action=vouch&agent=<id>&on=1|0
 //   GET /agent-id/check/<address>    does this address hold an Agent ID, has it signed, how many agents it vouches for
+//   GET /agent-id/projects[/<c>]     the contracts projects list in their notes, with the live count of Agent ID senders
 import { logsOf, rpcOf } from './holders.js';
+import { projectsTick, handleProjects } from './agent-id-projects.js';
 
 export const BOOK = '0xEc2f55eD6b2304Bc4496f7b8E9Ab11B3Dae4C3ca';
 export const AGENT_ID_NFT = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F';
@@ -133,7 +135,9 @@ export async function agentIdTick(env) {
   state.block = read;
   state.at = new Date().toISOString();
   await env.AGENT.put(STATE, JSON.stringify(state));
-  return { ok: true, block: read, moved, head, signers: Object.keys(state.signers).length, agents_vouched: Object.keys(state.vouches).length };
+  // the projects that list their contracts in the book, counted after the book itself (agent-id-projects.js)
+  const projects = await projectsTick(env, state.signers, { rpc, head }).catch((e) => ({ ok: false, error: String(e?.message || e) }));
+  return { ok: true, block: read, moved, head, signers: Object.keys(state.signers).length, agents_vouched: Object.keys(state.vouches).length, projects };
 }
 
 async function call(to, data) {
@@ -160,6 +164,7 @@ const HOW = {
     'GET https://agent.brainonbnb.com/agent-id/tx?action=sign&note=<text> or ?action=vouch&agent=<id>&on=1 : the ready transaction and the baw command.',
     'Run the baw contract-call preview it gives, read the preview, then baw contract-call execute --requestId <id>.',
   ],
+  projects: 'Building for the Agent ID Hackathon? Sign with a note "<project> 0x<contract>" (up to 3 contracts): from then on we count live every Agent ID holder that sends a transaction to it. GET https://agent.brainonbnb.com/agent-id/projects',
   read: { book: 'GET https://agent.brainonbnb.com/agent-id', one_agent: 'GET https://agent.brainonbnb.com/agent-id/agent/<id>', on_chain: 'signerCount(), signers(start,count), entryOf(address), vouchCount(agentId), vouched(agentId,address)' },
 };
 
@@ -234,6 +239,10 @@ export async function handleAgentId(request, env, path, url) {
       baw_execute: 'baw contract-call execute --requestId <requestId from the preview> --json',
       note: 'Only a wallet holding an Agent ID can send this; any other reverts with NoAgentId(). Gas only, no value, no approval.',
     });
+  }
+  if (path.startsWith('/agent-id/projects')) {
+    const out = await handleProjects(env, path);
+    if (out) return out.status ? J(out.body, out.status) : J(out);
   }
   return J({ error: 'not found', see: 'https://agent.brainonbnb.com/agent-id/how' }, 404);
 }

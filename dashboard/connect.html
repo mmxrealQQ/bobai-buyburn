@@ -9,7 +9,7 @@
   <link rel="preload" href="/fonts/spacegrotesk-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/fonts.css?v=1">
   <title>Connect Brain on BNB to your AI — MCP for BNB Chain</title>
-  <meta name="description" content="Keep the free BNB Chain tools in Claude, Cursor or VS Code: a rug-pull check before every trade, PancakeSwap fee tiers and routes, AI agent search, the fix board. One click, no key.">
+  <meta name="description" content="Keep the free BNB Chain tools in Claude, Cursor or VS Code: a rug-pull check before every trade, PancakeSwap fee tiers and routes, AI agent search, the fix board, Binance Agent ID onboarding. One click, no key.">
   <link rel="canonical" href="https://brainonbnb.com/connect">
   <link rel="icon" type="image/png" href="favicon.png?v=4">
   <link rel="apple-touch-icon" href="logo.png?v=4">
@@ -38,7 +38,7 @@
   <div class="intro hx"><h1>Keep the <em>Brain</em> in your AI</h1><div class="hx-claim">One click. No key. <em>Free.</em></div><div class="hx-trust"><span><span class="hx-dot"></span>Nothing signs, measured on BNB Chain</span><span>Works in Claude, Cursor and VS Code</span></div></div>
   <section class="sec sec-after-band" id="connect">
     <div class="blk-head fi"><span class="blk-tag">Connect &middot; MCP</span><span class="blk-line"></span></div>
-    <div class="sh fi"><p>An AI agent forgets everything when its session ends. Add one of these servers to your client once, and it can check a token before every trade, find the right PancakeSwap pool or look up a fix, every time you ask.</p></div>
+    <div class="sh fi"><p>An AI agent forgets everything when its session ends. Add one of these servers to your client once, and it can check a token before every trade, find the right PancakeSwap pool, look up a fix or walk a Binance Agentic Wallet through the Agent ID Book, every time you ask.</p></div>
     <div class="cx-grid" id="cx-grid"></div>
     <div class="cx-how fi">
       <h3>Other clients</h3>
@@ -56,16 +56,17 @@
   </div></footer>
 </div>
 <script>
-/* THE FIVE SERVERS (the same tools as /mcp, in sets): name, one sentence, the live tool count, one click per client.
+/* THE SIX SERVERS (the same tools as /mcp, in sets): name, one sentence, the live tool count, one click per client.
    Cursor: cursor://anysphere.cursor-deeplink/mcp/install?name=<name>&config=<base64 of {"url":…}>
    VS Code: vscode:mcp/install?<URL-encoded {"name","type":"http","url"}> · Claude Code: claude mcp add --transport http */
 (() => {
   const S = [
-    ['brainonbnb', '/mcp', 'Everything', 'All our tools in one server: the token check, the rug watch, PancakeSwap, the agent finder and the fix board.'],
+    ['brainonbnb', '/mcp', 'Everything', 'All our tools in one server: the token check, the rug watch, PancakeSwap, the agent finder, the fix board and the Agent ID Book.'],
     ['bsc-preflight', '/mcp/preflight', 'Token check before a trade', 'Honeypot and rug-pull check for any BNB Chain token at your trade size: can you get in, can you get out, what it costs. The full pool scan is free 1,000 times a day per caller, then a day pass.'],
     ['pancakeswap', '/mcp/pancakeswap', 'PancakeSwap', 'Which fee tier actually pays, which price range would have earned most, your position, and the best route for a swap.'],
     ['bnb-agents', '/mcp/agents', 'AI agents on BNB Chain', 'Find an agent for a task and check its track record from the chain before you hire it.'],
     ['bnb-fixes', '/mcp/board', 'Fix board', 'Hit an error building on BNB Chain? First-hand fixes with proof, and a place to ask.'],
+    ['bnb-agent-id', '/mcp/agent-id', 'Binance Agent ID and Agentic Wallet', 'Holding an Agent ID or running a Binance Agentic Wallet? One plan for your wallet with the ready baw command for every step, preview first; and count the Agent ID users of your contract.'],
   ];
   const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
   const grid = document.getElementById('cx-grid'); if (!grid) return;

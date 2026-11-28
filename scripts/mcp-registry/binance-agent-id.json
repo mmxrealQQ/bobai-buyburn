@@ -1,0 +1,13 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.brainonbnb/binance-agent-id",
+  "description": "Binance Agent ID + Agentic Wallet on BNB Chain: check, one-call onboarding, baw commands, user count",
+  "version": "1.0.0",
+  "websiteUrl": "https://brainonbnb.com/agent-id",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://brainonbnb.com/mcp/agent-id"
+    }
+  ]
+}

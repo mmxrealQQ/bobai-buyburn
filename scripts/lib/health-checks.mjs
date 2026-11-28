@@ -682,9 +682,9 @@ ok('Health', 'the 808.41 rule passes its own pins (dust is fine, a cent off is n
 {
   const rpcList = (path) => fetch(`${SITE}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', 'user-agent': 'brainonbnb-health' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })
     .then((x) => x.text()).then((t) => JSON.parse(t.replace(/^data: /m, ''))).catch(() => null);
-  const sets = { '/mcp/preflight': 2, '/mcp/pancakeswap': 4, '/mcp/agents': 6, '/mcp/board': 3 }, got = {};
+  const sets = { '/mcp/preflight': 2, '/mcp/pancakeswap': 4, '/mcp/agents': 6, '/mcp/board': 3, '/mcp/agent-id': 5 }, got = {};
   for (const [p, n] of Object.entries(sets)) got[p] = (await rpcList(p))?.result?.tools?.length ?? 0;
-  ok('Ecosystem', 'the four focused MCP servers list their tools', Object.entries(sets).every(([p, n]) => got[p] === n), Object.entries(got).map(([p, n]) => `${p.slice(5)} ${n}`).join(' · '));
+  ok('Ecosystem', 'the five focused MCP servers list their tools', Object.entries(sets).every(([p, n]) => got[p] === n), Object.entries(got).map(([p, n]) => `${p.slice(5)} ${n}`).join(' · '));
   const page = (p, ua) => fetch(`${SITE}${p}`, { redirect: 'manual', headers: ua ? { 'user-agent': ua } : {} }).then(async (r) => ({ status: r.status, ct: r.headers.get('content-type') || '', loc: r.headers.get('location') || '', text: r.status === 200 && /text|json/.test(r.headers.get('content-type') || '') ? await r.text() : '' })).catch(() => null);
   const con = await page('/connect'); ok('Ecosystem', '/connect offers the one-click installs', con?.status === 200 && /cursor-deeplink/.test(con.text) && /vscode:mcp\/install/.test(con.text), con ? `HTTP ${con.status}` : 'no answer');
   const pp = await page('/pop'); ok('Ecosystem', '/pop, Brain Pop\'s own page, answers', pp?.status === 200 && /Play now/.test(pp.text), pp ? `HTTP ${pp.status}` : 'no answer');
